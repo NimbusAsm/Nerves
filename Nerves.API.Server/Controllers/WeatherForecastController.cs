@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Nerves.API.Server.Models;
 
 namespace Nerves.API.Server.Controllers
 {

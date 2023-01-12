@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.4.33205.214
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nerves.API.Server", "Nerves.API.Server\Nerves.API.Server.csproj", "{B4C21AA1-A612-4EE6-9608-BEC6AC0B48BC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Nerves.API.Server", "Nerves.API.Server\Nerves.API.Server.csproj", "{B4C21AA1-A612-4EE6-9608-BEC6AC0B48BC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nerves.Adapter.DataBase", "Nerves.Adapter.DataBase\Nerves.Adapter.DataBase.csproj", "{776382C3-E368-4055-A36E-0B9AB5FF7DEE}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{B4C21AA1-A612-4EE6-9608-BEC6AC0B48BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B4C21AA1-A612-4EE6-9608-BEC6AC0B48BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B4C21AA1-A612-4EE6-9608-BEC6AC0B48BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{776382C3-E368-4055-A36E-0B9AB5FF7DEE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{776382C3-E368-4055-A36E-0B9AB5FF7DEE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{776382C3-E368-4055-A36E-0B9AB5FF7DEE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{776382C3-E368-4055-A36E-0B9AB5FF7DEE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
