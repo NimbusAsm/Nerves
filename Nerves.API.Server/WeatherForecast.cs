@@ -1,4 +1,4 @@
-namespace Nerves.API.Server
+﻿namespace Nerves.API.Server
 {
     public class WeatherForecast
     {
