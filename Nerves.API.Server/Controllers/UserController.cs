@@ -14,7 +14,7 @@ public class UserController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet(Name = "GetUser")]
+    [HttpGet(Name = "GetUserByName")]
     public User Get(string? name = "test")
     {
         return new User()
