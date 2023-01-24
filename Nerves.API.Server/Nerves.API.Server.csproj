@@ -6,6 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <UserSecretsId>acd9925a-70d9-4fa1-a149-3918a56a9399</UserSecretsId>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <GenerateDocumentationFile>True</GenerateDocumentationFile>
     </PropertyGroup>
 
     <ItemGroup>
@@ -19,11 +20,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Services\" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\Nerves.Adapter.DataBase\Nerves.Adapter.DataBase.csproj" />
+        <ProjectReference Include="..\Nerves.Adapter.DataBase\Nerves.Adapter.DataBase.csproj" />
     </ItemGroup>
 
 </Project>
