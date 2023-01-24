@@ -2,26 +2,59 @@
 
 namespace Nerves.API.Server.Models;
 
+/// <summary>
+/// 用户数据实体类
+/// </summary>
 public class UserData
 {
-    public DateTime? BirthDay { get; set; }
+    /// <summary>
+    /// 用户生日
+    /// </summary>
+    public DateTime? BirthDay { get; set; } = DateTime.Parse("2023.01.12");
 
-    public Sex? Sex { get; set; }
+    /// <summary>
+    /// 用户性别
+    /// </summary>
+    public Sex? Sex { get; set; } = Rules.UserEnum.Sex.Unknown;
 
-    public string? Avatar { get; set; }
+    /// <summary>
+    /// 用户头像链接
+    /// </summary>
+    public string? Avatar { get; set; } = null;
 
-    public string? Background { get; set; }
+    /// <summary>
+    /// 用户背景图片链接
+    /// </summary>
+    public string? Background { get; set; } = null;
 
-    public string? Cover { get; set; }
+    /// <summary>
+    /// 用户封面图片链接
+    /// </summary>
+    public string? Cover { get; set; } = null;
 
-    public string? Location { get; set; }
+    /// <summary>
+    /// 用户所在地
+    /// </summary>
+    public string? Location { get; set; } = "Earth";
 
-    public string? Bio { get; set; }
+    /// <summary>
+    /// Bio
+    /// </summary>
+    public string? Bio { get; set; } = null;
 
-    public string? Website { get; set; }
+    /// <summary>
+    /// 用户网站链接
+    /// </summary>
+    public string? Website { get; set; } = null;
 
-    public List<string>? Labels { get; set; }
+    /// <summary>
+    /// 用户兴趣标签
+    /// </summary>
+    public List<string>? Labels { get; set; } = null;
 
-    public Dictionary<string, string>? Tags { get; set; }
+    /// <summary>
+    /// 标记
+    /// </summary>
+    public Dictionary<string, string>? Tags { get; set; } = null;
 
 }
