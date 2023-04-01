@@ -1,16 +1,23 @@
 ﻿using Microsoft.OpenApi.Models;
 using Nerves.API.Server;
+using Nerves.API.Server.Services;
 using System.Reflection;
+
+var configs = new ConfigManager()
+    .SetLocation("configs")
+    ;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(
+
 #if !Debug
+builder.Services.AddSwaggerGen(
     options =>
     {
         var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
@@ -27,8 +34,8 @@ builder.Services.AddSwaggerGen(
             });
         });
     }
-#endif
 );
+#endif
 
 var app = builder.Build();
 
@@ -39,7 +46,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(
         options =>
         {
-
             /*
              options.SwaggerEndpoint($"/swagger/V1/swagger.json",$"版本选择:V1");
             */
