@@ -1,6 +1,6 @@
-﻿using Nerves.API.Server.Configs;
+﻿using Nerves.ApiServer.Configs;
 
-namespace Nerves.API.Server.Services;
+namespace Nerves.ApiServer.Services;
 
 /// <summary>
 /// 配置文件管理器

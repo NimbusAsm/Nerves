@@ -1,6 +1,6 @@
-﻿using Nerves.API.Server.Models;
+﻿using Nerves.ApiServer.Models;
 
-namespace Nerves.API.Server.Services;
+namespace Nerves.ApiServer.Services;
 
 /// <summary>
 /// 用户管理器

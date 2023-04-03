@@ -1,5 +1,5 @@
 ﻿
-namespace Nerves.API.Server.Models;
+namespace Nerves.ApiServer.Models;
 
 /// <summary>
 /// 用户设备实体类

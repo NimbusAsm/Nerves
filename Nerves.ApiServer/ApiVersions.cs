@@ -1,4 +1,4 @@
-﻿namespace Nerves.API.Server;
+﻿namespace Nerves.ApiServer;
 
 /// <summary>
 /// Api 版本枚举

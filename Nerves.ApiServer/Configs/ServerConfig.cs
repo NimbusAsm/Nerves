@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Nerves.API.Server.Configs
+namespace Nerves.ApiServer.Configs
 {
     /// <summary>
     /// 服务器配置信息

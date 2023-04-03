@@ -1,4 +1,4 @@
-﻿namespace Nerves.API.Server.Models;
+﻿namespace Nerves.ApiServer.Models;
 
 /// <summary>
 /// 用户安全信息实体类

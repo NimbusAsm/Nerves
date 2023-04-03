@@ -1,4 +1,4 @@
-﻿namespace Nerves.API.Server.Rules;
+﻿namespace Nerves.ApiServer.Rules;
 
 /// <summary>
 /// 用户相关枚举值

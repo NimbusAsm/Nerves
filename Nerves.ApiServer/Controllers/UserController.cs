@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Nerves.API.Server.Models;
+using Nerves.ApiServer.Models;
 
-namespace Nerves.API.Server.Controllers;
+namespace Nerves.ApiServer.Controllers;
 
 /// <summary>
 /// 用户数据控制器

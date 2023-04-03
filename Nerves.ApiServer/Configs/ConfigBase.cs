@@ -1,4 +1,4 @@
-﻿namespace Nerves.API.Server.Configs
+﻿namespace Nerves.ApiServer.Configs
 {
     /// <summary>
     /// 配置类基类

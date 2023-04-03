@@ -1,6 +1,6 @@
-﻿using static Nerves.API.Server.Rules.UserEnum;
+﻿using static Nerves.ApiServer.Rules.UserEnum;
 
-namespace Nerves.API.Server.Models;
+namespace Nerves.ApiServer.Models;
 
 /// <summary>
 /// 用户数据实体类
