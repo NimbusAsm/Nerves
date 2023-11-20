@@ -1,22 +1,12 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Nerves.ApiServer.Configs
-{
-    /// <summary>
-    /// 服务器配置信息
-    /// </summary>
-    public class ServerConfig : ConfigBase
-    {
-        /// <summary>
-        /// 服务器名称
-        /// </summary>
-        [JsonInclude]
-        public string? ServerName { get; set; } = "Nerves API Server";
+namespace Nerves.ApiServer.Configs;
 
-        /// <summary>
-        /// 服务器上次启动时间
-        /// </summary>
-        [JsonInclude]
-        public DateTime? LastStartTime { get; set; } = DateTime.Now;
-    }
+public class ServerConfig : ConfigBase
+{
+    [JsonInclude]
+    public string? ServerName { get; set; } = "Nerves API Server";
+
+    [JsonInclude]
+    public DateTime? LastStartTime { get; set; } = DateTime.Now;
 }
