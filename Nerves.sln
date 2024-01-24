@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nerves.Data.MongoDB", "Nerv
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nerves.Shared", "Nerves.Shared\Nerves.Shared.csproj", "{F5A66B1C-34A4-4698-B1D9-F48A17D940DA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Nerves.Dashboard", "Nerves.Dashboard\Nerves.Dashboard.csproj", "{F090E75D-E43F-4666-ADB3-B078C2C1EA49}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{F5A66B1C-34A4-4698-B1D9-F48A17D940DA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F5A66B1C-34A4-4698-B1D9-F48A17D940DA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F5A66B1C-34A4-4698-B1D9-F48A17D940DA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F090E75D-E43F-4666-ADB3-B078C2C1EA49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F090E75D-E43F-4666-ADB3-B078C2C1EA49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F090E75D-E43F-4666-ADB3-B078C2C1EA49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F090E75D-E43F-4666-ADB3-B078C2C1EA49}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
