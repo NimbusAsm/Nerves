@@ -9,6 +9,11 @@ public class ConfigBase
 
 public static class ConfigBaseExtensions
 {
+    private static readonly JsonSerializerOptions serializationOptions = new()
+    {
+        WriteIndented = true,
+    };
+
     public static ConfigBase Load<T>(this string path) where T : ConfigBase, new()
     {
         path = Path.GetFullPath(path);
@@ -32,7 +37,7 @@ public static class ConfigBaseExtensions
     {
         path = Path.GetFullPath(path);
 
-        var text = JsonSerializer.Serialize(config);
+        var text = JsonSerializer.Serialize(config, serializationOptions);
 
         File.WriteAllText(path, text);
     }

@@ -13,7 +13,7 @@ public class ConfigManager
             get => _location;
             set
             {
-                if (value is null) throw new ArgumentNullException(nameof(value));
+                ArgumentNullException.ThrowIfNull(value);
 
                 _location = Path.GetFullPath(value);
 
@@ -30,7 +30,8 @@ public class ConfigManager
     public ConfigManager()
     {
         Infos = new();
-        _configs = new();
+
+        _configs = [];
     }
 
     public ConfigManager SetLocation(string location)
@@ -43,7 +44,9 @@ public class ConfigManager
 
     private void LoadConfigFile<T>() where T : ConfigBase, new()
     {
-        var name = nameof(T);
+        var name = typeof(T).Name;
+
+        ArgumentNullException.ThrowIfNull(name, nameof(name));
 
         _configs?.Add(
             name,
@@ -64,4 +67,6 @@ public class ConfigManager
 
         return this;
     }
+
+    public ServerConfig ServerConfig => _configs?["ServerConfig"] as ServerConfig ?? throw new Exception("Can not find ServerConfig.");
 }

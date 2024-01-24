@@ -1,16 +1,19 @@
 ﻿using Microsoft.OpenApi.Models;
 using Nerves.ApiServer;
-using Nerves.ApiServer.Services;
+using Nerves.ApiServer.Utils;
+using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
 using System.Reflection;
 
-var configs = new ConfigManager()
-    .SetLocation("configs")
-    ;
+Instances.Init();
+
+Instances.userManager!.InsertUserAsync(UserUtil.GetDefaultAdmin(), new()
+{
+    ActionWhenExists = AlreadyExistsActions.Skip
+});
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -51,7 +54,6 @@ if (app.Environment.IsDevelopment())
              options.SwaggerEndpoint($"/swagger/V1/swagger.json",$"版本选择:V1");
             */
             // 如果只有一个版本也要和上方保持一致
-
             typeof(ApiVersions).GetEnumNames().ToList().ForEach(version =>
             {
                 // 切换版本操作

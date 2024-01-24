@@ -6,15 +6,11 @@ public class UserSecurity
 
     public string? UserPasswordHashSalt { get; set; }
 
-    public string? UserToken { get; set; }
-
-    public string? UserTokenHash { get; set; }
-
-    public List<string>? VerifiedEmail { get; set; }
+    public List<string>? VerifiedEmails { get; set; }
 
     public string? PendingEmail { get; set; }
 
-    public List<string>? VerifiedPhoneNumber { get; set; }
+    public List<string>? VerifiedPhoneNumbers { get; set; }
 
     public string? PendingPhoneNumber { get; set; }
 

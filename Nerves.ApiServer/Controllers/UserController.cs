@@ -1,4 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Text.Json;
+using Microsoft.AspNetCore.Mvc;
+using Nerves.ApiServer.Utils;
+using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
 using Nerves.Shared.Models;
 
 namespace Nerves.ApiServer.Controllers;
@@ -16,73 +19,80 @@ public class UserController : ControllerBase
     }
 
     [ApiExplorerSettings(GroupName = "V1")]
-    [HttpGet("{id}", Name = nameof(GetUserById))]
-    public User GetUserById(int? id = 0, bool containSecurityInfo = false)
+    [HttpGet("{name}", Name = nameof(GetUserByName))]
+    public async Task<IActionResult> GetUserByName(string name, [FromQuery] string? token)
     {
-        return new User()
+        if (token is null || await Instances.userManager!.CheckToken(name, token) == false)
+            return BadRequest();
+
+        var queriedUser = await Instances.userManager!.GetUserByNameAsync(name);
+
+        if (queriedUser is null)
+            return NotFound();
+        else return Ok(queriedUser);
+    }
+
+    [ApiExplorerSettings(GroupName = "V1")]
+    [HttpPost("Create", Name = nameof(CreateUser))]
+    public IActionResult CreateUser([FromBody] User user)
+    {
+        try
         {
-            Id = id,
-            Name = "Dynesshely",
-            JoinTime = DateTime.Parse("2021-08-01"),
-            LastLoginTime = DateTime.Now,
-            Data = new()
+            Instances.userManager!.InsertUserAsync(user, new()
             {
-
-            },
-            SecurityInfo = containSecurityInfo ? new()
-            {
-                VerifiedEmail = new()
-                {
-                    $"Dynesshely@catrol.email"
-                },
-                VerifiedPhoneNumber = new()
-                {
-                    "12344445555"
-                },
-                VerifiedDevices = new()
-                {
-                    new()
-                    {
-                        Name = "DESKTOP-MAIN",
-                        OS = "Windows 11",
-                        OSVersion = "22H2",
-                        Type = "Desktop Computer",
-                        TokenHash = "111".GetHashCode().ToString(),
-                        LastLoginTime = DateTime.Now,
-                        MacAddress = "sss",
-                        Ip = "4.124.53.12",
-                        IsOnline = true
-                    }
-                },
-                UserTokenHash = "sdfa".GetHashCode().ToString()
-            } : null,
-            IsOnline = true
-        };
-    }
-
-    [ApiExplorerSettings(GroupName = "V1")]
-    [HttpGet("GetUsers/{ids}", Name = nameof(GetUsersByIds))]
-    public IEnumerable<User> GetUsersByIds(List<int>? ids)
-    {
-        return new List<User>()
+                ActionWhenExists = AlreadyExistsActions.ThrowException
+            });
+        }
+        catch (Exception e)
         {
+            return BadRequest(e);
+        }
 
-        }.ToArray();
+        return Ok(0);
     }
 
     [ApiExplorerSettings(GroupName = "V1")]
-    [HttpPost("Update/{id}", Name = nameof(UpdateUser))]
-    public int UpdateUser(int? id, [FromBody] User user)
+    [HttpPost("Update/{name}", Name = nameof(UpdateUser))]
+    public async Task<IActionResult> UpdateUser(string name, [FromBody] User user, [FromQuery] string? token)
     {
+        if (token is null || await Instances.userManager!.CheckToken(name, token) == false)
+            return BadRequest();
 
-        return 0;
+        Instances.userManager!.InsertUserAsync(user, new()
+        {
+            ActionWhenExists = AlreadyExistsActions.Replace
+        });
+
+        return Ok(0);
     }
 
     [ApiExplorerSettings(GroupName = "V1")]
-    [HttpDelete("Delete/{id}", Name = nameof(DeleteUser))]
-    public bool DeleteUser(int? id)
+    [HttpDelete("Delete/{name}", Name = nameof(DeleteUser))]
+    public async Task<IActionResult> DeleteUser(string name, [FromQuery] string? token)
     {
+        if (token is null || await Instances.userManager!.CheckToken(name, token) == false)
+            return BadRequest();
 
-        return true;
+        var result = await Instances.userManager!.DeleteUserAsync(name);
+        return Ok(result.DeletedCount);
+    }
+
+    [ApiExplorerSettings(GroupName = "V1")]
+    [HttpGet("Login/{name}", Name = nameof(Login))]
+    public async Task<IActionResult> Login(string name, [FromQuery] string? password)
+    {
+        if (password is null)
+            return BadRequest();
+
+        var queriedUser = await Instances.userManager!.GetUserByNameAsync(name);
+
+        if (queriedUser is null)
+            return NotFound();
+        else if (UserUtil.VerifyPassword(password, queriedUser))
+        {
+            var token = await Instances.userManager!.GetOneTokenAsync(name);
+            return Ok(token);
+        }
+        else return NotFound();
     }
 }
