@@ -1,0 +1,36 @@
+<a id="ct"></a>
+
+<script type="text/javascript">
+    function padTo2Digits(num) {
+        return num.toString().padStart(2, '0');
+    }
+
+    function formatDate(date) {
+        return (
+            [
+                date.getFullYear(),
+                padTo2Digits(date.getMonth() + 1),
+                padTo2Digits(date.getDate()),
+            ].join('-') +
+            ' ' +
+            [
+                padTo2Digits(date.getHours()),
+                padTo2Digits(date.getMinutes()),
+                padTo2Digits(date.getSeconds()),
+            ].join(':')
+        );
+    }
+
+    function display_c() {
+        var refresh = 300;
+        mytime = setTimeout('display_ct()', refresh)
+    }
+
+    function display_ct() {
+        var x = formatDate(new Date())
+        document.getElementById('ct').innerHTML = x;
+        display_c();
+    }
+
+    display_ct();
+</script>

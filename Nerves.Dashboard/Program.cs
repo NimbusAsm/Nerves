@@ -1,4 +1,7 @@
+using Nerves.Dashboard;
 using Nerves.Dashboard.Components;
+
+Instances.Init();
 
 var builder = WebApplication.CreateBuilder(args);
 
