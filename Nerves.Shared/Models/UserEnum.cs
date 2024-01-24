@@ -1,4 +1,4 @@
-﻿namespace Nerves.ApiServer.Rules;
+﻿namespace Nerves.Shared.Models;
 
 public class UserEnum
 {

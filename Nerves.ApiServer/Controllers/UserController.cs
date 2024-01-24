@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Nerves.ApiServer.Models;
+using Nerves.Shared.Models;
 
 namespace Nerves.ApiServer.Controllers;
 
@@ -66,7 +66,7 @@ public class UserController : ControllerBase
     {
         return new List<User>()
         {
-            
+
         }.ToArray();
     }
 

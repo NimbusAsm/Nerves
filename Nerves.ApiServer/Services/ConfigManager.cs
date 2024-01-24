@@ -1,4 +1,4 @@
-﻿using Nerves.ApiServer.Configs;
+﻿using Nerves.Shared.Configs;
 
 namespace Nerves.ApiServer.Services;
 

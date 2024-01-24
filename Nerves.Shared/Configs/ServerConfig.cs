@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Nerves.ApiServer.Configs;
+namespace Nerves.Shared.Configs;
 
 public class ServerConfig : ConfigBase
 {

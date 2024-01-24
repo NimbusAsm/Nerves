@@ -1,12 +1,12 @@
-﻿using static Nerves.ApiServer.Rules.UserEnum;
+﻿using static Nerves.Shared.Models.UserEnum;
 
-namespace Nerves.ApiServer.Models;
+namespace Nerves.Shared.Models;
 
 public class UserData
 {
     public DateTime? BirthDay { get; set; } = DateTime.Parse("2023.01.12");
 
-    public Sex? Sex { get; set; } = Rules.UserEnum.Sex.Unknown;
+    public Sex? Sex { get; set; } = UserEnum.Sex.Unknown;
 
     public string? Avatar { get; set; } = null;
 

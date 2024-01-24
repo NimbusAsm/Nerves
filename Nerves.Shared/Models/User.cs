@@ -1,5 +1,4 @@
-﻿
-namespace Nerves.ApiServer.Models;
+﻿namespace Nerves.Shared.Models;
 
 public class User
 {

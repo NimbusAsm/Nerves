@@ -1,2 +1,6 @@
-﻿# Hi, there!
-Nerves is a nice user system.
+﻿# Nerves
+
+A nice user account system powered by dotnet platform.
+
+
+
