@@ -1,0 +1,123 @@
+@page "/account"
+@implements IDisposable
+@inject IJSRuntime JS
+@inject HttpClient HttpClient
+
+<PageTitle>Account</PageTitle>
+
+<h1>Account</h1>
+
+<hr>
+
+<br>
+
+<div class="container" id="container">
+    <div class="form-container sign-up-container">
+        <div class="part">
+            <h1>Info</h1>
+            <hr>
+            <p>You're signed in</p>
+        </div>
+    </div>
+    <div class="form-container sign-in-container">
+        <div class="part">
+            <h1>Sign in</h1>
+            <br><br>
+            <input id="sign_in_input_name" type="text" placeholder="Name" @bind="login_name" />
+            <br>
+            <input id="sign_in_input_password" type="password" placeholder="Password" @bind="login_password" />
+            <br><br>
+            <button @onclick="SignIn">Sign In</button>
+            <br>
+        </div>
+    </div>
+    <div class="overlay-container">
+        <div class="overlay">
+            <div class="overlay-panel overlay-left">
+                <h1>Welcome Back!</h1>
+                <p>To keep connected with us please login with your personal info</p>
+                @* <button class="ghost" id="signIn">Sign In</button> *@
+            </div>
+            <div class="overlay-panel overlay-right">
+                <h1>Welcome to Nerves Dashboard</h1>
+                <p>Sign in and access your nerves server.</p>
+                <button class="ghost">Contact Administrator</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    window.active_right_panel = () => {
+        var container = document.getElementById('container');
+        container.classList.add("right-panel-active");
+    }
+
+    window.disactive_right_panel = () => {
+        var container = document.getElementById('container');
+        container.classList.remove("right-panel-active");
+    }
+
+    window.clear_sign_in_fields = () => {
+        document.getElementById('sign_in_input_name').value = "";
+        document.getElementById('sign_in_input_password').value = "";
+    }
+</script>
+
+@code {
+    protected override void OnInitialized()
+    {
+        CheckLoginState();
+        Instances.authenticationManager!.OnChange += CheckLoginState;
+    }
+
+    private async void CheckLoginState()
+    {
+        await Task.Run(async () =>
+        {
+            if (Instances.authenticationManager!.HasLogin)
+                await JS.InvokeAsync<string>("active_right_panel");
+            else
+                await JS.InvokeAsync<string>("disactive_right_panel");
+        });
+    }
+
+    private async void OnChangeHandler()
+    {
+        CheckLoginState();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private string? login_name;
+
+    private string? login_password;
+
+    private async void SignIn()
+    {
+        if (login_name is null || login_password is null)
+        {
+            Console.WriteLine($"* Warn: Please provide name and password.");
+            return;
+        }
+
+        Instances.authenticationManager!.SetHttpClient(HttpClient);
+
+        if (await Instances.authenticationManager!.SignIn(login_name, login_password))
+        {
+            ClearFields();
+        }
+        else
+        {
+        }
+    }
+
+    private async void ClearFields()
+    {
+        await JS.InvokeAsync<string>("clear_sign_in_fields");
+    }
+
+    public void Dispose()
+    {
+        Instances.authenticationManager!.OnChange -= OnChangeHandler;
+    }
+}

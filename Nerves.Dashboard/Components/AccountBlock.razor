@@ -1,0 +1,30 @@
+@implements IDisposable
+
+@if (Instances.authenticationManager!.HasLogin)
+{
+    <NavLink class="nav-link" href="account">@(Instances.authenticationManager!.LoginUser?.NickName)</NavLink>
+    <button class="btn" @onclick="Logout">logout</button>
+}
+else
+{
+    <NavLink class="nav-link" href="account">Login</NavLink>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        Instances.authenticationManager!.OnChange += OnChangeHandler;
+    }
+
+    private async void OnChangeHandler()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void Logout() => Instances.authenticationManager!.Logout();
+
+    public void Dispose()
+    {
+        Instances.authenticationManager!.OnChange -= OnChangeHandler;
+    }
+}

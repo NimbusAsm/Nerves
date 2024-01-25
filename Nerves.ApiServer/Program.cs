@@ -11,7 +11,17 @@ Instances.userManager!.InsertUserAsync(UserUtil.GetDefaultAdmin(), new()
     ActionWhenExists = AlreadyExistsActions.Skip
 });
 
+var AllowSpecificOriginsPolicyName = "AllowAllOrigins";
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(
+        name: AllowSpecificOriginsPolicyName,
+        policy => policy.AllowAnyOrigin()
+    );
+});
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -65,6 +75,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors(AllowSpecificOriginsPolicyName);
 
 app.UseAuthorization();
 
