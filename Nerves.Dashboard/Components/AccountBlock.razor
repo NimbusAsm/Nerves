@@ -2,12 +2,17 @@
 
 @if (Instances.authenticationManager!.HasLogin)
 {
-    <NavLink class="nav-link" href="account">@(Instances.authenticationManager!.LoginUser?.NickName)</NavLink>
-    <button class="btn" @onclick="Logout">logout</button>
+    <div style="display: flex; justify-content: flex-start;">
+        Hello,
+        <NavLink class="nav-link link" href="account" style="margin-left: 5px;">
+            @(Instances.authenticationManager!.LoginUser?.NickName)
+        </NavLink>
+    </div>
+    <button class="btn link" @onclick="Logout">logout</button>
 }
 else
 {
-    <NavLink class="nav-link" href="account">Login</NavLink>
+    <NavLink class="nav-link link" href="account">Login</NavLink>
 }
 
 @code {
