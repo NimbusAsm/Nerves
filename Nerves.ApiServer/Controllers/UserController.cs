@@ -67,6 +67,27 @@ public class UserController : ControllerBase
     }
 
     [ApiExplorerSettings(GroupName = "V1")]
+    [HttpGet("Update/{name}", Name = nameof(UpdateUserPassword))]
+    public async Task<IActionResult> UpdateUserPassword(string name, [FromQuery] string token, [FromQuery] string new_passwd)
+    {
+        if (token is null || await Instances.userManager!.CheckToken(name, token) == false)
+            return BadRequest();
+
+        var user = (await Instances.userManager!.GetUserByNameAsync(name))!;
+
+        UserUtil.UpdatePasswordHash(user, new_passwd);
+
+        Instances.userManager!.InsertUserAsync(user, new()
+        {
+            ActionWhenExists = AlreadyExistsActions.Replace
+        });
+
+        _ = await Instances.userManager!.ClearToken(name);
+
+        return Ok();
+    }
+
+    [ApiExplorerSettings(GroupName = "V1")]
     [HttpDelete("Delete/{name}", Name = nameof(DeleteUser))]
     public async Task<IActionResult> DeleteUser(string name, [FromQuery] string? token)
     {

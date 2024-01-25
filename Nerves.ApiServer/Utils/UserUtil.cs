@@ -6,6 +6,15 @@ namespace Nerves.ApiServer.Utils;
 
 public static class UserUtil
 {
+    public static void UpdatePasswordHash(User user, string new_passwd)
+    {
+        var salts = user.SecurityInfo!.UserPasswordHashSalt!.Split(" ~ ");
+        var saltPrefix = salts[0];
+        var saltSuffix = salts[1];
+
+        user.SecurityInfo!.UserPasswordHash = GetSHA256($"{saltPrefix}{new_passwd}{saltSuffix}");
+    }
+
     public static bool VerifyPassword(string given_pwd, User target_user)
     {
         var salts = target_user.SecurityInfo!.UserPasswordHashSalt!.Split(" ~ ");

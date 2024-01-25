@@ -1,6 +1,7 @@
 using MongoDB.Driver;
 using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
 using Nerves.Shared.Models;
+using ZstdSharp.Unsafe;
 
 namespace Nerves.Data.MongoDB;
 
@@ -47,11 +48,7 @@ public class UserManager
 
     public async Task<DeleteResult> DeleteUserAsync(string id)
     {
-        var tokens = connector.GetCollection<UserToken>("Nerves", "UsersTokens");
-
-        var filter_tokens = Builders<UserToken>.Filter.Eq(u => u.Id, id);
-
-        _ = await tokens.DeleteManyAsync(filter_tokens);
+        _ = await ClearToken(id);
 
         var filter_users = Builders<User>.Filter.Eq(r => r.Id, id);
 
@@ -94,5 +91,14 @@ public class UserManager
         var tokenQueried = (await tokens.FindAsync(t => t.Id!.Equals(id) && t.Token!.Equals(token))).ToList();
 
         return tokenQueried.Count != 0;
+    }
+
+    public async Task<long> ClearToken(string id)
+    {
+        var tokens = connector.GetCollection<UserToken>("Nerves", "UsersTokens");
+
+        var filter_tokens = Builders<UserToken>.Filter.Eq(u => u.Id, id);
+
+        return (await tokens.DeleteManyAsync(filter_tokens)).DeletedCount;
     }
 }
