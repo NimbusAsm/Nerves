@@ -1,7 +1,6 @@
 @page "/account"
 @implements IDisposable
 @inject IJSRuntime JS
-@inject HttpClient HttpClient
 
 <PageTitle>Account</PageTitle>
 
@@ -99,8 +98,6 @@
             Console.WriteLine($"* Warn: Please provide name and password.");
             return;
         }
-
-        Instances.authenticationManager!.SetHttpClient(HttpClient);
 
         if (await Instances.authenticationManager!.SignIn(login_name, login_password))
         {

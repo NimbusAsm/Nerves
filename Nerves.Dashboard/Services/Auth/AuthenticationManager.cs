@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Blazored.LocalStorage;
 using Nerves.Shared.Models;
 
 namespace Nerves.Dashboard.Services.Auth;
@@ -6,6 +7,8 @@ namespace Nerves.Dashboard.Services.Auth;
 public class AuthenticationManager
 {
     private HttpClient? HttpClient { get; set; }
+
+    private ILocalStorageService? LocalStorage { get; set; }
 
     private readonly string baseUrl = "http://localhost:5252/";
 
@@ -22,6 +25,12 @@ public class AuthenticationManager
     public AuthenticationManager SetHttpClient(HttpClient client)
     {
         HttpClient = client;
+        return this;
+    }
+
+    public AuthenticationManager SetLocalStorage(ILocalStorageService storageService)
+    {
+        LocalStorage = storageService;
         return this;
     }
 
@@ -69,12 +78,40 @@ public class AuthenticationManager
 
         LoginStateChanged();
 
+        await LocalStorage!.SetItemAsStringAsync("userId", name);
+        await LocalStorage!.SetItemAsStringAsync("userToken", JsonSerializer.Serialize(token));
+
         return true;
     }
 
-    public void Logout()
+    public async void Logout()
     {
         LoginUser = null;
+
+        LoginStateChanged();
+
+        await LocalStorage!.RemoveItemAsync("userId");
+        await LocalStorage!.RemoveItemAsync("userToken");
+    }
+
+    public async void ContinueLatestLogin()
+    {
+        if (HasLogin) return;
+
+        var signed = await LocalStorage!.ContainKeyAsync("userId") && await LocalStorage!.ContainKeyAsync("userToken");
+
+        if (!signed) return;
+
+        var token = JsonSerializer.Deserialize<UserToken>(await LocalStorage!.GetItemAsStringAsync("userToken"));
+
+        if (token is null || token.Id is null || token.Token is null)
+            return;
+
+        var user = await GetUser(token!.Id!, token!.Token!);
+
+        if (user is null) return;
+
+        LoginUser = user;
 
         LoginStateChanged();
     }

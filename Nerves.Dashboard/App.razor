@@ -1,4 +1,7 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
+﻿@inject HttpClient HttpClient
+@inject ILocalStorageService LocalStorage
+
+<Router AppAssembly="@typeof(App).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
@@ -10,3 +13,15 @@
         </LayoutView>
     </NotFound>
 </Router>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Instances.authenticationManager!
+            .SetHttpClient(HttpClient)
+            .SetLocalStorage(LocalStorage)
+            ;
+
+        Instances.authenticationManager!.ContinueLatestLogin();
+    }
+}
