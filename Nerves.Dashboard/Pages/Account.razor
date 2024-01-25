@@ -13,9 +13,18 @@
 <div class="container" id="container">
     <div class="form-container sign-up-container">
         <div class="part">
-            <h1>Info</h1>
-            <hr>
-            <p>You're signed in</p>
+            <h1>Your Account</h1>
+            <br>
+            <input id="account_input_src_password" type="password" placeholder="Original password"
+                @bind="original_passwd" />
+            <br>
+            <input id="account_input_new_password" type="password" placeholder="New password" @bind="new_passwd" />
+            <br>
+            <input id="account_input_new_password_confirm" type="password" placeholder="Confirm new password"
+                @bind="new_passwd_confirm" />
+            <br>
+            <button @onclick="Update">Update</button>
+            <br>
         </div>
     </div>
     <div class="form-container sign-in-container">
@@ -60,6 +69,12 @@
     window.clear_sign_in_fields = () => {
         document.getElementById('sign_in_input_name').value = "";
         document.getElementById('sign_in_input_password').value = "";
+    }
+
+    window.clear_account_fields = () => {
+        document.getElementById('account_input_src_password').value = "";
+        document.getElementById('account_input_new_password').value = "";
+        document.getElementById('account_input_new_password_confirm').value = "";
     }
 </script>
 
@@ -111,6 +126,50 @@
     private async void ClearFields()
     {
         await JS.InvokeAsync<string>("clear_sign_in_fields");
+        await JS.InvokeAsync<string>("clear_account_fields");
+    }
+
+    private string? original_passwd;
+
+    private string? new_passwd;
+
+    private string? new_passwd_confirm;
+
+    private async void Update()
+    {
+        if (original_passwd is null || new_passwd is null || new_passwd_confirm is null)
+        {
+            Console.WriteLine($"* WARN: Please input value");
+            return;
+        }
+
+        if (!new_passwd.Equals(new_passwd_confirm))
+        {
+            Console.WriteLine("* WARN: Please input same new passwd");
+            return;
+        }
+
+        var token = await Instances.authenticationManager!.GetToken(Instances.authenticationManager!.LoginUser!.Id!,
+        original_passwd);
+
+        if (token is null)
+        {
+            Console.WriteLine("* WARN: Please input correct original passwd");
+            return;
+        }
+
+        var user = Instances.authenticationManager!.LoginUser!;
+
+        if (await Instances.authenticationManager!.UpdatePassword(user.Id!, token.Token!, new_passwd))
+        {
+            Console.WriteLine("# Info: Password updated");
+            ClearFields();
+            Instances.authenticationManager!.Logout();
+        }
+        else
+        {
+
+        }
     }
 
     public void Dispose()

@@ -38,7 +38,7 @@ public class AuthenticationManager
 
     private void LoginStateChanged() => OnChange?.Invoke();
 
-    private async Task<UserToken?> GetToken(string name, string password)
+    public async Task<UserToken?> GetToken(string name, string password)
     {
         var url = $"{baseUrl}Api/User/Login/{name}?password={password}";
 
@@ -52,7 +52,7 @@ public class AuthenticationManager
         else return null;
     }
 
-    private async Task<User?> GetUser(string name, string token)
+    public async Task<User?> GetUser(string name, string token)
     {
         var url = $"{baseUrl}Api/User/{name}?token={token}";
 
@@ -82,6 +82,16 @@ public class AuthenticationManager
         await LocalStorage!.SetItemAsStringAsync("userToken", JsonSerializer.Serialize(token));
 
         return true;
+    }
+
+    public async Task<bool> UpdatePassword(string name, string token, string new_passwd)
+    {
+        var url = $"{baseUrl}Api/User/Update/{name}?token={token}&&new_passwd={new_passwd}";
+
+        var response = await (HttpClient?.GetAsync(url) ?? throw new ArgumentNullException(nameof(HttpClient)));
+        if (response.IsSuccessStatusCode)
+            return true;
+        else return false;
     }
 
     public async void Logout()
