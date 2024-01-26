@@ -70,7 +70,7 @@ public class AdminController(ILogger<UserController> logger) : ControllerBase
         if (token is null || await Instances.userManager!.CheckAdminToken(token) == false)
             return BadRequest();
 
-        var result = await Instances.userManager!.DeleteUserAsync(name);
-        return Ok(result.DeletedCount);
+        _ = await Instances.userManager!.DeleteUserAsync(name);
+        return NoContent();
     }
 }
