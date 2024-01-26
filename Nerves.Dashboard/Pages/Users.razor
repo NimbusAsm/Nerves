@@ -14,25 +14,48 @@
 
 @if (Instances.authenticationManager!.HasLogin)
 {
+    <div style="display: flex;justify-content: flex-start;">
     <button class="btn btn-primary" @onclick="LoadUsers">Load</button>
-    <div>&nbsp; &nbsp;</div>
+    &nbsp;&nbsp;&nbsp;
+    <text style="align-self: center;">From:</text>
+    &nbsp;&nbsp;
     <input type="number" placeholder="Start index" @bind="StartIndex" />
+    &nbsp;&nbsp;&nbsp;
+    <text style="align-self: center;">To:</text>
+    &nbsp;&nbsp;
     <input type="number" placeholder="End index" @bind="EndIndex" />
+</div>
+
+    <br>
 
     <table class="fixed_headers">
+    <thead>
         <tr>
-            <th>ID</th>
+            <th><text style="margin-left: 10px;">ID</text></th>
             <th>Nick Name</th>
+            <th><text style="margin-left: 10px;">Actions</text></th>
         </tr>
+    </thead>
+    <tbody>
         @if (QueriedUsers is not null)
-            @foreach (var user in QueriedUsers)
-            {
-                <tr>
-                    <td>@user.Id</td>
-                    <td>@user.NickName</td>
-                </tr>
-            }
-    </table>
+                @foreach (var user in QueriedUsers)
+                {
+                    <tr>
+                        <td><text style="margin-left: 10px;">@user.Id</text></td>
+                        <td>@user.NickName</td>
+                        <td style="display: flex;justify-content: flex-start;margin: 10px;">
+                            <Button Color="ButtonColor.Primary">
+                                <Icon Name="IconName.InfoCircleFill" />
+                            </Button>
+                            &nbsp;&nbsp;
+                            <Button Color="ButtonColor.Danger" @onclick="() => DeleteUser(user.Id!)">
+                                <Icon Name="IconName.Trash" />
+                            </Button>
+                        </td>
+                    </tr>
+                }
+    </tbody>
+</table>
 }
 else
 {
@@ -42,6 +65,10 @@ else
 <script>
     window.alert_proxy = (content) => {
         alert(content);
+    }
+
+    window.confirm_proxy = (content) => {
+        return confirm(content);
     }
 </script>
 
@@ -72,15 +99,15 @@ else
         Instances.networkRequest!.SetHttpClient(HttpClient);
 
         var url = new StringBuilder()
-            .Append(Instances.BaseUrl)
-            .Append("Api/Admin?")
-            .Append($"startIndex={StartIndex}&")
-            .Append($"endIndex={EndIndex}&")
-            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
-            .ToString()
-            ;
+        .Append(Instances.BaseUrl)
+        .Append("Api/Admin?")
+        .Append($"startIndex={StartIndex}&")
+        .Append($"endIndex={EndIndex}&")
+        .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
+        .ToString()
+        ;
 
-        var request = await Instances.networkRequest!.RequestAsync(url);
+        var request = await Instances.networkRequest!.GetAsync(url);
 
         if (request is null)
         {
@@ -102,6 +129,42 @@ else
         QueriedUsers = users;
 
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async void DisplayUser(string name)
+    {
+
+    }
+
+    private async void DeleteUser(string name)
+    {
+        var confirm = await JS.InvokeAsync<bool>("confirm_proxy", $"Are you sure to delete user: {name}");
+
+        if (confirm)
+        {
+            var url = new StringBuilder()
+            .Append(Instances.BaseUrl)
+            .Append($"Api/Admin/Delete/{name}?")
+            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
+            .ToString()
+            ;
+
+            var result = await Instances.networkRequest!.DeleteAsync(url);
+
+            if (result)
+            {
+                EndIndex -= 1;
+                LoadUsers();
+            }
+            else
+            {
+                await JS.InvokeAsync<string>("alert_proxy", "Delete failed");
+            }
+        }
+        else
+        {
+
+        }
     }
 
     public void Dispose()

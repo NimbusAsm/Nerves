@@ -1,7 +1,8 @@
 .fixed_headers {
-  width: 750px;
+  width: fit-content;
   table-layout: fixed;
   border-collapse: collapse;
+  max-width: 90%;
 }
 .fixed_headers th {
   text-decoration: underline;

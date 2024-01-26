@@ -15,7 +15,7 @@ public class NetworkRequest
         return this;
     }
 
-    public async Task<string?> RequestAsync(string url)
+    public async Task<string?> GetAsync(string url)
     {
         var request = await HttpClient!.GetAsync(url);
 
@@ -25,5 +25,11 @@ public class NetworkRequest
             return body;
         }
         else return null;
+    }
+
+    public async Task<bool> DeleteAsync(string url)
+    {
+        var request = await HttpClient!.DeleteAsync(url);
+        return request.IsSuccessStatusCode;
     }
 }
