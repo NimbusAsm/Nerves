@@ -1,5 +1,4 @@
-﻿using System.Text.Json;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Nerves.ApiServer.Utils;
 using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
 using Nerves.Shared.Models;
