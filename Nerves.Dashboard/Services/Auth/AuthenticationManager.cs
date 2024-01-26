@@ -10,7 +10,7 @@ public class AuthenticationManager
 
     private ILocalStorageService? LocalStorage { get; set; }
 
-    private readonly string baseUrl = "http://localhost:5252/";
+    private readonly string baseUrl = Instances.BaseUrl;
 
     private readonly static JsonSerializerOptions jsonOptions = new()
     {
@@ -102,6 +102,15 @@ public class AuthenticationManager
 
         await LocalStorage!.RemoveItemAsync("userId");
         await LocalStorage!.RemoveItemAsync("userToken");
+    }
+
+    public async Task<UserToken?> GetLocalStorageToken()
+    {
+        if (await LocalStorage!.ContainKeyAsync("userToken"))
+            return JsonSerializer.Deserialize<UserToken>(
+                await LocalStorage!.GetItemAsStringAsync("userToken")
+            );
+        else return null;
     }
 
     public async void ContinueLatestLogin()

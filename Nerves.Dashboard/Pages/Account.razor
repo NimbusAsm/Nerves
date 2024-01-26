@@ -76,6 +76,10 @@
         document.getElementById('account_input_new_password').value = "";
         document.getElementById('account_input_new_password_confirm').value = "";
     }
+
+    window.alert_proxy = (content) => {
+        alert(content);
+    }
 </script>
 
 @code {
@@ -120,6 +124,7 @@
         }
         else
         {
+            await JS.InvokeAsync<string>("alert_proxy", "Login failed!");
         }
     }
 
@@ -146,6 +151,7 @@
         if (!new_passwd.Equals(new_passwd_confirm))
         {
             Console.WriteLine("* WARN: Please input same new passwd");
+            await JS.InvokeAsync<string>("alert_proxy", "Please input same new passwd");
             return;
         }
 
@@ -155,6 +161,7 @@
         if (token is null)
         {
             Console.WriteLine("* WARN: Please input correct original passwd");
+            await JS.InvokeAsync<string>("alert_proxy", "Please input correct original passwd");
             return;
         }
 
@@ -168,7 +175,7 @@
         }
         else
         {
-
+            await JS.InvokeAsync<string>("alert_proxy", "Password update failed");
         }
     }
 

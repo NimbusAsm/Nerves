@@ -1,0 +1,111 @@
+﻿@page "/users"
+@implements IDisposable
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject HttpClient HttpClient
+@using System.Text.Json
+@using Nerves.Shared.Models
+
+<PageTitle>Users</PageTitle>
+
+<h1>Users</h1>
+
+<hr>
+
+@if (Instances.authenticationManager!.HasLogin)
+{
+    <button class="btn btn-primary" @onclick="LoadUsers">Load</button>
+    <div>&nbsp; &nbsp;</div>
+    <input type="number" placeholder="Start index" @bind="StartIndex" />
+    <input type="number" placeholder="End index" @bind="EndIndex" />
+
+    <table class="fixed_headers">
+        <tr>
+            <th>ID</th>
+            <th>Nick Name</th>
+        </tr>
+        @if (QueriedUsers is not null)
+            @foreach (var user in QueriedUsers)
+            {
+                <tr>
+                    <td>@user.Id</td>
+                    <td>@user.NickName</td>
+                </tr>
+            }
+    </table>
+}
+else
+{
+    <button class="btn btn-primary" @onclick="GotoLogin">Login</button>
+}
+
+<script>
+    window.alert_proxy = (content) => {
+        alert(content);
+    }
+</script>
+
+@code {
+    private int? StartIndex { get; set; } = 0;
+
+    private int? EndIndex { get; set; } = 0;
+
+    private List<User>? QueriedUsers { get; set; }
+
+    protected override void OnInitialized()
+    {
+        Instances.authenticationManager!.OnChange += OnChangeHandler;
+    }
+
+    private async void OnChangeHandler()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void GotoLogin()
+    {
+        Navigation.NavigateTo("account");
+    }
+
+    private async void LoadUsers()
+    {
+        Instances.networkRequest!.SetHttpClient(HttpClient);
+
+        var url = new StringBuilder()
+            .Append(Instances.BaseUrl)
+            .Append("Api/Admin?")
+            .Append($"startIndex={StartIndex}&")
+            .Append($"endIndex={EndIndex}&")
+            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
+            .ToString()
+            ;
+
+        var request = await Instances.networkRequest!.RequestAsync(url);
+
+        if (request is null)
+        {
+            await JS.InvokeAsync<string>("alert_proxy", "Request failed");
+            return;
+        }
+
+        var users = JsonSerializer.Deserialize<List<User>>(request, new JsonSerializerOptions()
+            {
+                PropertyNameCaseInsensitive = true,
+            });
+
+        if (users is null)
+        {
+            await JS.InvokeAsync<string>("alert_proxy", "Request failed");
+            return;
+        }
+
+        QueriedUsers = users;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Instances.authenticationManager!.OnChange -= OnChangeHandler;
+    }
+}
