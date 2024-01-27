@@ -66,7 +66,7 @@ public class UserManager
             {
                 Id = id,
                 Token = Guid.NewGuid().ToString(),
-                ExpireTime = DateTime.Now + TimeSpan.FromDays(7)
+                ExpireTime = DateTime.Now + TimeSpan.FromDays(7),
             };
             await tokens.InsertOneAsync(token);
             return token;
@@ -74,6 +74,7 @@ public class UserManager
         else
         {
             tokenQueried.ExpireTime = DateTime.Now + TimeSpan.FromDays(7);
+            tokenQueried.UpdatedTime = DateTime.Now;
 
             var filter = Builders<UserToken>.Filter.Eq(u => u.Id, id);
 

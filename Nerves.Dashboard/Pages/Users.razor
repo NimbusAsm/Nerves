@@ -38,24 +38,24 @@
     </thead>
     <tbody>
         @if (QueriedUsers is not null)
-                @foreach (var user in QueriedUsers)
-                {
-                    <tr>
-                        <td><text style="margin-left: 10px;">@user.Id</text></td>
-                        <td>@user.NickName</td>
-                        <td style="display: flex;justify-content: flex-start;margin: 10px;">
-                            <Button Color="ButtonColor.Primary">
-                                <Icon Name="IconName.InfoCircleFill" />
-                            </Button>
-                            &nbsp;&nbsp;
-                            <Button Color="ButtonColor.Danger" @onclick="() => DeleteUser(user.Id!)">
-                                <Icon Name="IconName.Trash" />
-                            </Button>
-                        </td>
-                    </tr>
-                }
-    </tbody>
-</table>
+            @foreach (var user in QueriedUsers)
+            {
+                <tr>
+                    <td><text style="margin-left: 10px;">@user.Id</text></td>
+                    <td>@user.NickName</td>
+                    <td style="display: flex;justify-content: flex-start;margin: 10px;">
+                        <Button Color="ButtonColor.Primary">
+                            <Icon Name="IconName.InfoCircleFill" />
+                        </Button>
+                        &nbsp;&nbsp;
+                        <Button Color="ButtonColor.Danger" @onclick="() => DeleteUser(user.Id!)">
+                            <Icon Name="IconName.Trash" />
+                        </Button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
 }
 else
 {
@@ -99,13 +99,13 @@ else
         Instances.networkRequest!.SetHttpClient(HttpClient);
 
         var url = new StringBuilder()
-        .Append(Instances.BaseUrl)
-        .Append("Api/Admin?")
-        .Append($"startIndex={StartIndex}&")
-        .Append($"endIndex={EndIndex}&")
-        .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
-        .ToString()
-        ;
+            .Append(Instances.BaseUrl)
+            .Append("Api/Admin?")
+            .Append($"startIndex={StartIndex}&")
+            .Append($"endIndex={EndIndex}&")
+            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
+            .ToString()
+            ;
 
         var request = await Instances.networkRequest!.GetAsync(url);
 
@@ -116,9 +116,9 @@ else
         }
 
         var users = JsonSerializer.Deserialize<List<User>>(request, new JsonSerializerOptions()
-            {
-                PropertyNameCaseInsensitive = true,
-            });
+        {
+            PropertyNameCaseInsensitive = true,
+        });
 
         if (users is null)
         {
@@ -143,11 +143,11 @@ else
         if (confirm)
         {
             var url = new StringBuilder()
-            .Append(Instances.BaseUrl)
-            .Append($"Api/Admin/Delete/{name}?")
-            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
-            .ToString()
-            ;
+                .Append(Instances.BaseUrl)
+                .Append($"Api/Admin/Delete/{name}?")
+                .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
+                .ToString()
+                ;
 
             var result = await Instances.networkRequest!.DeleteAsync(url);
 
