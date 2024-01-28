@@ -29,14 +29,14 @@
     <br>
 
     <table class="fixed_headers">
-    <thead>
-        <tr>
-            <th><text style="margin-left: 10px;">ID</text></th>
-            <th>Nick Name</th>
-            <th><text style="margin-left: 10px;">Actions</text></th>
-        </tr>
-    </thead>
-    <tbody>
+        <thead>
+            <tr>
+                <th><text style="margin-left: 10px;">ID</text></th>
+                <th>Nick Name</th>
+                <th><text style="margin-left: 10px;">Actions</text></th>
+            </tr>
+        </thead>
+        <tbody>
         @if (QueriedUsers is not null)
             @foreach (var user in QueriedUsers)
             {
@@ -75,7 +75,7 @@ else
 @code {
     private int? StartIndex { get; set; } = 0;
 
-    private int? EndIndex { get; set; } = 0;
+    private int? EndIndex { get; set; } = 10;
 
     private List<User>? QueriedUsers { get; set; }
 

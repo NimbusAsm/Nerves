@@ -1,4 +1,5 @@
 ﻿@page "/"
+@inject IJSRuntime JS
 
 <PageTitle>Home</PageTitle>
 
@@ -12,13 +13,96 @@
     And now you are visiting its dashboard website.
 </p>
 
+<br>
+
 <h3>Debug Info Below</h3>
+
+<table id="debug-table" class="table">
+    <thead>
+        <tr>
+            <th>JS</th>
+            <th>&nbsp;&nbsp;&nbsp;&nbsp;</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody id="debug-table-body">
+
+    </tbody>
+</table>
+
+<br>
 
 <hr>
 
 <footer>
     <p>
         Powered by <a href="https://dotnet.microsoft.com/en-us/apps/aspnet/web-apps/blazor" target="_blank">Blazor</a>
-        Mode: WebAssembly
+        <br>
+        Mode: <a href="https://webassembly.org" target="_blank">WebAssembly</a>
     </p>
 </footer>
+
+<script>
+    var list = [
+        navigator.platform,
+        navigator.appName,
+        navigator.appVersion,
+        window.screen.height,
+        window.screen.width,
+        window.screen.colorDepth,
+        navigator.appCodeName,
+        navigator.vendor,
+        navigator.userAgent,
+        navigator.onLine,
+        navigator.language,
+        navigator.product,
+        navigator.productSub,
+        navigator.cookieEnabled,
+        navigator.mimeTypes.length,
+        navigator.mimeTypes,
+        navigator.plugins.length,
+        navigator.plugins,
+        navigator.geolocation,
+        navigator.maxTouchPoints,
+    ];
+    var list_name = [
+        "navigator.platform",
+        "navigator.appName",
+        "navigator.appVersion",
+        "window.screen.height",
+        "window.screen.width",
+        "window.screen.colorDepth",
+        "navigator.appCodeName",
+        "navigator.vendor",
+        "navigator.userAgent",
+        "navigator.onLine",
+        "navigator.language",
+        "navigator.product",
+        "navigator.productSub",
+        "navigator.cookieEnabled",
+        "navigator.mimeTypes.length",
+        "navigator.mimeTypes",
+        "navigator.plugins.length",
+        "navigator.plugins",
+        "navigator.geolocation",
+        "navigator.maxTouchPoints",
+    ];
+    var body = document.getElementById("debug-table-body");
+    var html = [];
+    var index = 0;
+    list.forEach(function (element) {
+        html.push(
+            "<tr>",
+            "<td>",
+            list_name[index],
+            "</td>",
+            "<td></td>",
+            "<td>",
+            JSON.stringify(element),
+            "</td>",
+            "</tr>"
+        );
+        ++index;
+    });
+    body.innerHTML = html.join("");
+</script>
