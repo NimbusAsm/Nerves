@@ -15,16 +15,16 @@
 @if (Instances.authenticationManager!.HasLogin)
 {
     <div style="display: flex;justify-content: flex-start;">
-    <button class="btn btn-primary" @onclick="LoadUsers">Load</button>
-    &nbsp;&nbsp;&nbsp;
-    <text style="align-self: center;">From:</text>
-    &nbsp;&nbsp;
-    <input type="number" placeholder="Start index" @bind="StartIndex" />
-    &nbsp;&nbsp;&nbsp;
-    <text style="align-self: center;">To:</text>
-    &nbsp;&nbsp;
-    <input type="number" placeholder="End index" @bind="EndIndex" />
-</div>
+        <button class="btn btn-primary" @onclick="LoadUsers">Load</button>
+        &nbsp;&nbsp;&nbsp;
+        <text style="align-self: center;">From:</text>
+        &nbsp;&nbsp;
+        <input type="number" placeholder="Start index" @bind="StartIndex" />
+        &nbsp;&nbsp;&nbsp;
+        <text style="align-self: center;">To:</text>
+        &nbsp;&nbsp;
+        <input type="number" placeholder="End index" @bind="EndIndex" />
+    </div>
 
     <br>
 
@@ -44,7 +44,7 @@
                     <td><text style="margin-left: 10px;">@user.Id</text></td>
                     <td>@user.NickName</td>
                     <td style="display: flex;justify-content: flex-start;margin: 10px;">
-                        <Button Color="ButtonColor.Primary">
+                        <Button Color="ButtonColor.Primary" @onclick="() => DisplayUser(user.Id!)">
                             <Icon Name="IconName.InfoCircleFill" />
                         </Button>
                         &nbsp;&nbsp;
@@ -69,6 +69,10 @@ else
 
     window.confirm_proxy = (content) => {
         return confirm(content);
+    }
+
+    window.console_log = (content) => {
+        console.log(content);
     }
 </script>
 
@@ -100,7 +104,7 @@ else
 
         var url = new StringBuilder()
             .Append(Instances.BaseUrl)
-            .Append("Api/Admin?")
+            .Append("Api/AdminUser/Range?")
             .Append($"startIndex={StartIndex}&")
             .Append($"endIndex={EndIndex}&")
             .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
@@ -133,7 +137,29 @@ else
 
     private async void DisplayUser(string name)
     {
+        var url = new StringBuilder()
+            .Append(Instances.BaseUrl)
+            .Append($"Api/AdminUser/{name}?")
+            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
+            .ToString()
+            ;
 
+        var result = await Instances.networkRequest!.GetAsync(url);
+
+        if (result is null)
+            return;
+
+        var user = JsonSerializer.Deserialize<User>(result, new JsonSerializerOptions()
+        {
+            PropertyNameCaseInsensitive = true
+        });
+
+        var output = JsonSerializer.Serialize(user, new JsonSerializerOptions()
+        {
+            WriteIndented = true
+        });
+
+        await JS.InvokeAsync<string>("console_log", output);
     }
 
     private async void DeleteUser(string name)
@@ -144,7 +170,7 @@ else
         {
             var url = new StringBuilder()
                 .Append(Instances.BaseUrl)
-                .Append($"Api/Admin/Delete/{name}?")
+                .Append($"Api/AdminUser/Delete/{name}?")
                 .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
                 .ToString()
                 ;

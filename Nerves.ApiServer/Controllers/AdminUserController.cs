@@ -8,12 +8,24 @@ namespace Nerves.ApiServer.Controllers;
 [ApiController]
 [Route("Api/[controller]")]
 [ApiExplorerSettings(GroupName = "V1")]
-public class AdminController(ILogger<UserController> logger) : ControllerBase
+public class AdminUserController(ILogger<UserController> logger) : ControllerBase
 {
     private readonly ILogger<UserController> _logger = logger;
 
     [ApiExplorerSettings(GroupName = "V1")]
-    [HttpGet("", Name = nameof(AdminGetUsers))]
+    [HttpGet("{name}", Name = nameof(AdminGetUser))]
+    public async Task<IActionResult> AdminGetUser(string name, [FromQuery] string? token)
+    {
+        if (token is null || await Instances.userManager!.CheckAdminToken(token) == false)
+            return BadRequest();
+
+        var user = await Instances.userManager!.GetUserByNameAsync(name);
+
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    [ApiExplorerSettings(GroupName = "V1")]
+    [HttpGet("Range", Name = nameof(AdminGetUsers))]
     public async Task<IActionResult> AdminGetUsers([FromQuery] int? startIndex, [FromQuery] int? endIndex, [FromQuery] string? token)
     {
         if (startIndex is null || endIndex is null)

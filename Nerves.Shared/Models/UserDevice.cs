@@ -14,11 +14,11 @@ public class UserDevice
 
     public bool IsOnline { get; set; }
 
-    public string? Token { get; set; }
+    public UserToken? Token { get; set; }
 
-    public string? TokenHash { get; set; }
+    public string? IPv4 { get; set; }
 
-    public string? Ip { get; set; }
+    public string? IPv6 { get; set; }
 
     public string? MacAddress { get; set; }
 
