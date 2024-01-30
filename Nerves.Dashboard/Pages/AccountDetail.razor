@@ -1,0 +1,11 @@
+@page "/account/{name}"
+
+<PageTitle>Account Detail</PageTitle>
+
+<h1>Welcome, @Name</h1>
+
+@code {
+    [Parameter]
+    public string? Name { get; set; }
+}
+

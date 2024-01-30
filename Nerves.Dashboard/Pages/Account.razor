@@ -1,6 +1,7 @@
 @page "/account"
 @implements IDisposable
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <PageTitle>Account</PageTitle>
 
@@ -44,7 +45,7 @@
             <div class="overlay-panel overlay-left">
                 <h1>You're In!</h1>
                 <p>On the right-hand side you can update your password.</p>
-                @* <button class="ghost" id="signIn">Sign In</button> *@
+                <button class="ghost" @onclick="ViewDetail">Details</button>
             </div>
             <div class="overlay-panel overlay-right">
                 <h1>Welcome to Nerves Dashboard</h1>
@@ -177,6 +178,12 @@
         {
             await JS.InvokeAsync<string>("alert_proxy", "Password update failed");
         }
+    }
+
+    private void ViewDetail()
+    {
+        if (Instances.authenticationManager!.HasLogin)
+            Navigation.NavigateTo($"account/{Instances.authenticationManager!.LoginUser!.Id}");
     }
 
     public void Dispose()
