@@ -1,7 +1,9 @@
-﻿namespace Nerves.Shared.Models;
+﻿namespace Nerves.Shared.Models.User;
 
 public class UserDevice
 {
+    public string? Id { get; set; }
+
     public string? Name { get; set; }
 
     public string? Type { get; set; }
@@ -13,8 +15,6 @@ public class UserDevice
     public DateTime? LastLoginTime { get; set; }
 
     public bool IsOnline { get; set; }
-
-    public UserToken? Token { get; set; }
 
     public string? IPv4 { get; set; }
 

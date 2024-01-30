@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Nerves.Shared.Models;
+using Nerves.Shared.Models.User;
 
 namespace Nerves.ApiServer.Utils;
 

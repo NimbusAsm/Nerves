@@ -1,6 +1,6 @@
 using MongoDB.Driver;
 using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
-using Nerves.Shared.Models;
+using Nerves.Shared.Models.User;
 
 namespace Nerves.Data.MongoDB;
 
@@ -54,7 +54,7 @@ public class UserManager
         return await connector.GetCollection<User>("Nerves", "Users").DeleteOneAsync(filter_users);
     }
 
-    public async Task<UserToken> GetOneTokenAsync(string id)
+    public async Task<UserToken> GetOneTokenAsync(string id, string deviceId)
     {
         var tokens = connector.GetCollection<UserToken>("Nerves", "UsersTokens");
 
@@ -65,16 +65,15 @@ public class UserManager
             var token = new UserToken()
             {
                 Id = id,
-                Token = Guid.NewGuid().ToString(),
-                ExpireTime = DateTime.Now + TimeSpan.FromDays(7),
-            };
+            }.UpdateOne(deviceId, out var newToken);
             await tokens.InsertOneAsync(token);
             return token;
         }
         else
         {
-            tokenQueried.ExpireTime = DateTime.Now + TimeSpan.FromDays(7);
-            tokenQueried.UpdatedTime = DateTime.Now;
+            if (tokenQueried.Tokens.ContainsKey(deviceId))
+                tokenQueried.Refresh(deviceId);
+            else tokenQueried.UpdateOne(deviceId, out _);
 
             var filter = Builders<UserToken>.Filter.Eq(u => u.Id, id);
 
@@ -84,18 +83,26 @@ public class UserManager
         }
     }
 
-    public async Task<bool> CheckToken(string id, string token)
+    public async Task<bool> CheckToken(string id, string? token, string? deviceId)
     {
+        if ((deviceId is null && !id.Equals("admin")) || token is null)
+            return false;
+
         var tokens = connector.GetCollection<UserToken>("Nerves", "UsersTokens");
 
-        var tokenQueried = (await tokens.FindAsync(t => t.Id!.Equals(id) && t.Token!.Equals(token))).ToList();
+        var tokenQueried = (await tokens.FindAsync(
+            t => t.Id!.Equals(id)
+        ))
+        .ToList()
+        .Select(t => deviceId is null || t.CheckToken(deviceId!, token))
+        .ToList();
 
         return tokenQueried.Count != 0;
     }
 
     public async Task<bool> CheckAdminToken(string token)
     {
-        return await CheckToken("admin", token);
+        return await CheckToken("admin", token, null);
     }
 
     public async Task<long> ClearToken(string id)

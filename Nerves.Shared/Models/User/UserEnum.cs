@@ -1,4 +1,4 @@
-﻿namespace Nerves.Shared.Models;
+﻿namespace Nerves.Shared.Models.User;
 
 public class UserEnum
 {
