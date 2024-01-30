@@ -156,19 +156,27 @@
             return;
         }
 
-        var token = await Instances.authenticationManager!.GetToken(Instances.authenticationManager!.LoginUser!.Id!,
-        original_passwd);
+        var userToken = await Instances.authenticationManager!.GetUserToken(
+        Instances.authenticationManager!.LoginUser!.Id!,
+        original_passwd
+        );
 
-        if (token is null)
+        if (userToken is null)
         {
             Console.WriteLine("* WARN: Please input correct original passwd");
             await JS.InvokeAsync<string>("alert_proxy", "Please input correct original passwd");
             return;
         }
 
+        var token = userToken.GetToken(Instances.authenticationManager!.DeviceId!);
+        if (token is null)
+        {
+            return;
+        }
+
         var user = Instances.authenticationManager!.LoginUser!;
 
-        if (await Instances.authenticationManager!.UpdatePassword(user.Id!, token.Token!, new_passwd))
+        if (await Instances.authenticationManager!.UpdatePassword(user.Id!, token.Value.Value!, new_passwd))
         {
             Console.WriteLine("# Info: Password updated");
             ClearFields();

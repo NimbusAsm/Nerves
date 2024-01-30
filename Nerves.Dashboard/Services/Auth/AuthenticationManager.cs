@@ -1,6 +1,8 @@
 using System.Text.Json;
+using System.Web;
 using Blazored.LocalStorage;
-using Nerves.Shared.Models;
+using Nerves.Shared.Models.Auth;
+using Nerves.Shared.Models.User;
 
 namespace Nerves.Dashboard.Services.Auth;
 
@@ -17,9 +19,25 @@ public class AuthenticationManager
         PropertyNameCaseInsensitive = true,
     };
 
+    public string? DeviceId { get; set; }
+
     public AuthenticationManager()
     {
         Console.WriteLine($"@Init: {nameof(AuthenticationManager)}");
+    }
+
+    public async Task<AuthenticationManager> Init()
+    {
+        if (await LocalStorage!.ContainKeyAsync("deviceId"))
+            DeviceId = await LocalStorage!.GetItemAsStringAsync("deviceId");
+        else
+        {
+            var deviceId = Guid.NewGuid().ToString();
+            await LocalStorage!.SetItemAsStringAsync("deviceId", deviceId);
+            DeviceId = deviceId;
+        }
+
+        return this;
     }
 
     public AuthenticationManager SetHttpClient(HttpClient client)
@@ -38,9 +56,11 @@ public class AuthenticationManager
 
     private void LoginStateChanged() => OnChange?.Invoke();
 
-    public async Task<UserToken?> GetToken(string name, string password)
+    public async Task<UserToken?> GetUserToken(string name, string password)
     {
-        var url = $"{baseUrl}Api/User/Login/{name}?password={password}";
+        var url = $"{baseUrl}Api/User/Login/{name}?password={password}&deviceId={DeviceId}";
+
+        Console.WriteLine(url);
 
         var response = await (HttpClient?.GetAsync(url) ?? throw new ArgumentNullException(nameof(HttpClient)));
         if (response.IsSuccessStatusCode)
@@ -52,9 +72,14 @@ public class AuthenticationManager
         else return null;
     }
 
+    public static Token? GetToken(UserToken userToken, string deviceId)
+    {
+        return userToken.GetToken(deviceId);
+    }
+
     public async Task<User?> GetUser(string name, string token)
     {
-        var url = $"{baseUrl}Api/User/{name}?token={token}";
+        var url = $"{baseUrl}Api/User/{name}?token={token}&deviceId={DeviceId}";
 
         var response = await (HttpClient?.GetAsync(url) ?? throw new ArgumentNullException(nameof(HttpClient)));
         if (response.IsSuccessStatusCode)
@@ -68,10 +93,13 @@ public class AuthenticationManager
 
     public async Task<bool> SignIn(string name, string password)
     {
-        var token = await GetToken(name, password);
+        var userToken = await GetUserToken(name, password);
+        if (userToken is null) return false;
+
+        var token = GetToken(userToken, DeviceId!);
         if (token is null) return false;
 
-        var user = await GetUser(name, token.Token!);
+        var user = await GetUser(name, token.Value.Value!);
         if (user is null) return false;
 
         LoginUser = user;
@@ -86,7 +114,7 @@ public class AuthenticationManager
 
     public async Task<bool> UpdatePassword(string name, string token, string new_passwd)
     {
-        var url = $"{baseUrl}Api/User/Update/{name}?token={token}&&new_passwd={new_passwd}";
+        var url = $"{baseUrl}Api/User/Update/{name}?token={token}&new_passwd={new_passwd}&deviceId={DeviceId}";
 
         var response = await (HttpClient?.GetAsync(url) ?? throw new ArgumentNullException(nameof(HttpClient)));
         if (response.IsSuccessStatusCode)
@@ -104,10 +132,10 @@ public class AuthenticationManager
         await LocalStorage!.RemoveItemAsync("userToken");
     }
 
-    public async Task<UserToken?> GetLocalStorageToken()
+    public async Task<Token?> GetLocalStorageToken()
     {
         if (await LocalStorage!.ContainKeyAsync("userToken"))
-            return JsonSerializer.Deserialize<UserToken>(
+            return JsonSerializer.Deserialize<Token>(
                 await LocalStorage!.GetItemAsStringAsync("userToken")
             );
         else return null;
@@ -121,12 +149,12 @@ public class AuthenticationManager
 
         if (!signed) return;
 
-        var token = JsonSerializer.Deserialize<UserToken>(await LocalStorage!.GetItemAsStringAsync("userToken"));
+        var token = JsonSerializer.Deserialize<Token>(await LocalStorage!.GetItemAsStringAsync("userToken"));
 
-        if (token is null || token.Id is null || token.Token is null)
+        if (token.Value is null)
             return;
 
-        var user = await GetUser(token!.Id!, token!.Token!);
+        var user = await GetUser(await LocalStorage!.GetItemAsStringAsync("userId"), token.Value);
 
         if (user is null) return;
 

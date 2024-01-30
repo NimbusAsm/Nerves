@@ -15,12 +15,14 @@
 </Router>
 
 @code {
-    protected override void OnInitialized()
+    protected override async void OnInitialized()
     {
         Instances.authenticationManager!
             .SetHttpClient(HttpClient)
             .SetLocalStorage(LocalStorage)
             ;
+
+        await Instances.authenticationManager!.Init();
 
         Instances.authenticationManager!.ContinueLatestLogin();
     }
