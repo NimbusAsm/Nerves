@@ -1,6 +1,6 @@
-﻿using static Nerves.Shared.Models.UserEnum;
+﻿using static Nerves.Shared.Models.User.UserEnum;
 
-namespace Nerves.Shared.Models;
+namespace Nerves.Shared.Models.User;
 
 public class UserData
 {

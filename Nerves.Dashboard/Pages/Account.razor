@@ -1,6 +1,7 @@
 @page "/account"
 @implements IDisposable
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <PageTitle>Account</PageTitle>
 
@@ -44,7 +45,7 @@
             <div class="overlay-panel overlay-left">
                 <h1>You're In!</h1>
                 <p>On the right-hand side you can update your password.</p>
-                @* <button class="ghost" id="signIn">Sign In</button> *@
+                <button class="ghost" @onclick="ViewDetail">Details</button>
             </div>
             <div class="overlay-panel overlay-right">
                 <h1>Welcome to Nerves Dashboard</h1>
@@ -155,19 +156,27 @@
             return;
         }
 
-        var token = await Instances.authenticationManager!.GetToken(Instances.authenticationManager!.LoginUser!.Id!,
-        original_passwd);
+        var userToken = await Instances.authenticationManager!.GetUserToken(
+        Instances.authenticationManager!.LoginUser!.Id!,
+        original_passwd
+        );
 
-        if (token is null)
+        if (userToken is null)
         {
             Console.WriteLine("* WARN: Please input correct original passwd");
             await JS.InvokeAsync<string>("alert_proxy", "Please input correct original passwd");
             return;
         }
 
+        var token = userToken.GetToken(Instances.authenticationManager!.DeviceId!);
+        if (token is null)
+        {
+            return;
+        }
+
         var user = Instances.authenticationManager!.LoginUser!;
 
-        if (await Instances.authenticationManager!.UpdatePassword(user.Id!, token.Token!, new_passwd))
+        if (await Instances.authenticationManager!.UpdatePassword(user.Id!, token.Value.Value!, new_passwd))
         {
             Console.WriteLine("# Info: Password updated");
             ClearFields();
@@ -177,6 +186,12 @@
         {
             await JS.InvokeAsync<string>("alert_proxy", "Password update failed");
         }
+    }
+
+    private void ViewDetail()
+    {
+        if (Instances.authenticationManager!.HasLogin)
+            Navigation.NavigateTo($"account/{Instances.authenticationManager!.LoginUser!.Id}");
     }
 
     public void Dispose()

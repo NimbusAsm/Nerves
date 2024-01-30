@@ -4,7 +4,6 @@
 @inject NavigationManager Navigation
 @inject HttpClient HttpClient
 @using System.Text.Json
-@using Nerves.Shared.Models
 
 <PageTitle>Users</PageTitle>
 
@@ -15,47 +14,47 @@
 @if (Instances.authenticationManager!.HasLogin)
 {
     <div style="display: flex;justify-content: flex-start;">
-        <button class="btn btn-primary" @onclick="LoadUsers">Load</button>
-        &nbsp;&nbsp;&nbsp;
-        <text style="align-self: center;">From:</text>
-        &nbsp;&nbsp;
-        <input type="number" placeholder="Start index" @bind="StartIndex" />
-        &nbsp;&nbsp;&nbsp;
-        <text style="align-self: center;">To:</text>
-        &nbsp;&nbsp;
-        <input type="number" placeholder="End index" @bind="EndIndex" />
-    </div>
+    <button class="btn btn-primary" @onclick="LoadUsers">Load</button>
+    &nbsp;&nbsp;&nbsp;
+    <text style="align-self: center;">From:</text>
+    &nbsp;&nbsp;
+    <input type="number" placeholder="Start index" @bind="StartIndex" />
+    &nbsp;&nbsp;&nbsp;
+    <text style="align-self: center;">To:</text>
+    &nbsp;&nbsp;
+    <input type="number" placeholder="End index" @bind="EndIndex" />
+</div>
 
     <br>
 
     <table class="fixed_headers">
-        <thead>
-            <tr>
-                <th><text style="margin-left: 10px;">ID</text></th>
-                <th>Nick Name</th>
-                <th><text style="margin-left: 10px;">Actions</text></th>
-            </tr>
-        </thead>
-        <tbody>
+    <thead>
+        <tr>
+            <th><text style="margin-left: 10px;">ID</text></th>
+            <th>Nick Name</th>
+            <th><text style="margin-left: 10px;">Actions</text></th>
+        </tr>
+    </thead>
+    <tbody>
         @if (QueriedUsers is not null)
-            @foreach (var user in QueriedUsers)
-            {
-                <tr>
-                    <td><text style="margin-left: 10px;">@user.Id</text></td>
-                    <td>@user.NickName</td>
-                    <td style="display: flex;justify-content: flex-start;margin: 10px;">
-                        <Button Color="ButtonColor.Primary" @onclick="() => DisplayUser(user.Id!)">
-                            <Icon Name="IconName.InfoCircleFill" />
-                        </Button>
-                        &nbsp;&nbsp;
-                        <Button Color="ButtonColor.Danger" @onclick="() => DeleteUser(user.Id!)">
-                            <Icon Name="IconName.Trash" />
-                        </Button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+                @foreach (var user in QueriedUsers)
+                {
+                    <tr>
+                        <td><text style="margin-left: 10px;">@user.Id</text></td>
+                        <td>@user.NickName</td>
+                        <td style="display: flex;justify-content: flex-start;margin: 10px;">
+                            <Button Color="ButtonColor.Primary" @onclick="() => DisplayUser(user.Id!)">
+                                <Icon Name="IconName.InfoCircleFill" />
+                            </Button>
+                            &nbsp;&nbsp;
+                            <Button Color="ButtonColor.Danger" @onclick="() => DeleteUser(user.Id!)">
+                                <Icon Name="IconName.Trash" />
+                            </Button>
+                        </td>
+                    </tr>
+                }
+    </tbody>
+</table>
 }
 else
 {
@@ -103,13 +102,13 @@ else
         Instances.networkRequest!.SetHttpClient(HttpClient);
 
         var url = new StringBuilder()
-            .Append(Instances.BaseUrl)
-            .Append("Api/AdminUser/Range?")
-            .Append($"startIndex={StartIndex}&")
-            .Append($"endIndex={EndIndex}&")
-            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
-            .ToString()
-            ;
+        .Append(Instances.BaseUrl)
+        .Append("Api/AdminUser/Range?")
+        .Append($"startIndex={StartIndex}&")
+        .Append($"endIndex={EndIndex}&")
+        .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Value}")
+        .ToString()
+        ;
 
         var request = await Instances.networkRequest!.GetAsync(url);
 
@@ -120,9 +119,9 @@ else
         }
 
         var users = JsonSerializer.Deserialize<List<User>>(request, new JsonSerializerOptions()
-        {
-            PropertyNameCaseInsensitive = true,
-        });
+            {
+                PropertyNameCaseInsensitive = true,
+            });
 
         if (users is null)
         {
@@ -138,11 +137,11 @@ else
     private async void DisplayUser(string name)
     {
         var url = new StringBuilder()
-            .Append(Instances.BaseUrl)
-            .Append($"Api/AdminUser/{name}?")
-            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
-            .ToString()
-            ;
+        .Append(Instances.BaseUrl)
+        .Append($"Api/AdminUser/{name}?")
+        .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Value}")
+        .ToString()
+        ;
 
         var result = await Instances.networkRequest!.GetAsync(url);
 
@@ -150,14 +149,14 @@ else
             return;
 
         var user = JsonSerializer.Deserialize<User>(result, new JsonSerializerOptions()
-        {
-            PropertyNameCaseInsensitive = true
-        });
+            {
+                PropertyNameCaseInsensitive = true
+            });
 
         var output = JsonSerializer.Serialize(user, new JsonSerializerOptions()
-        {
-            WriteIndented = true
-        });
+            {
+                WriteIndented = true
+            });
 
         await JS.InvokeAsync<string>("console_log", output);
     }
@@ -169,11 +168,11 @@ else
         if (confirm)
         {
             var url = new StringBuilder()
-                .Append(Instances.BaseUrl)
-                .Append($"Api/AdminUser/Delete/{name}?")
-                .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Token}")
-                .ToString()
-                ;
+            .Append(Instances.BaseUrl)
+            .Append($"Api/AdminUser/Delete/{name}?")
+            .Append($"token={(await Instances.authenticationManager!.GetLocalStorageToken())?.Value}")
+            .ToString()
+            ;
 
             var result = await Instances.networkRequest!.DeleteAsync(url);
 

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Nerves.ApiServer.Utils;
 using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
-using Nerves.Shared.Models;
+using Nerves.Shared.Models.User;
 
 namespace Nerves.ApiServer.Controllers;
 
