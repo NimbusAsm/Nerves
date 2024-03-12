@@ -8,14 +8,9 @@ namespace Nerves.ApiServer.Controllers;
 [ApiController]
 [Route("Api/[controller]")]
 [ApiExplorerSettings(GroupName = "V1")]
-public class UserController : ControllerBase
+public class UserController(ILogger<UserController> logger) : ControllerBase
 {
-    private readonly ILogger<UserController> _logger;
-
-    public UserController(ILogger<UserController> logger)
-    {
-        _logger = logger;
-    }
+    private readonly ILogger<UserController> _logger = logger;
 
     [ApiExplorerSettings(GroupName = "V1")]
     [HttpGet("{name}", Name = nameof(GetUserByName))]

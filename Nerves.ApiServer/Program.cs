@@ -1,8 +1,8 @@
-﻿using Microsoft.OpenApi.Models;
+﻿using System.Reflection;
+using Microsoft.OpenApi.Models;
 using Nerves.ApiServer;
 using Nerves.ApiServer.Utils;
 using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
-using System.Reflection;
 
 Instances.Init();
 

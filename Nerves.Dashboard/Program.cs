@@ -1,7 +1,7 @@
+using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Nerves.Dashboard;
-using Blazored.LocalStorage;
 
 Instances.Init();
 
