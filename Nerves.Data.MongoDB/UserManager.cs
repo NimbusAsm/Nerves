@@ -1,5 +1,5 @@
 using MongoDB.Driver;
-using Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
+using Nerves.Shared.Options.DataBaseOptions;
 using Nerves.Shared.Models.User;
 
 namespace Nerves.Data.MongoDB;
@@ -17,7 +17,7 @@ public class UserManager
 
     public async Task<User?> GetUserByNameAsync(string id)
     {
-        var users = connector.GetCollection<User>("Nerves", "Users");
+        var users = connector.GetCollection<User>("Users");
         var usersQueried = (await users.FindAsync(u => u.Id!.Equals(id))).ToList();
         return usersQueried.Count == 0 ? null : usersQueried.First();
     }
@@ -26,7 +26,7 @@ public class UserManager
     {
         option ??= new();
 
-        var users = connector.GetCollection<User>("Nerves", "Users");
+        var users = connector.GetCollection<User>("Users");
 
         switch (option.ActionWhenExists)
         {
@@ -51,12 +51,12 @@ public class UserManager
 
         var filter_users = Builders<User>.Filter.Eq(r => r.Id, id);
 
-        return await connector.GetCollection<User>("Nerves", "Users").DeleteOneAsync(filter_users);
+        return await connector.GetCollection<User>("Users").DeleteOneAsync(filter_users);
     }
 
     public async Task<UserToken> GetOneTokenAsync(string id, string deviceId)
     {
-        var tokens = connector.GetCollection<UserToken>("Nerves", "UsersTokens");
+        var tokens = connector.GetCollection<UserToken>("UsersTokens");
 
         var tokenQueried = await (await tokens.FindAsync(t => t.Id!.Equals(id))).FirstOrDefaultAsync();
 
@@ -88,7 +88,7 @@ public class UserManager
         if ((deviceId is null && !id.Equals("admin")) || token is null)
             return false;
 
-        var tokens = connector.GetCollection<UserToken>("Nerves", "UsersTokens");
+        var tokens = connector.GetCollection<UserToken>("UsersTokens");
 
         var tokenQueried = (await tokens.FindAsync(
             t => t.Id!.Equals(id)
@@ -107,7 +107,7 @@ public class UserManager
 
     public async Task<long> ClearToken(string id)
     {
-        var tokens = connector.GetCollection<UserToken>("Nerves", "UsersTokens");
+        var tokens = connector.GetCollection<UserToken>("UsersTokens");
 
         var filter_tokens = Builders<UserToken>.Filter.Eq(u => u.Id, id);
 
@@ -116,7 +116,7 @@ public class UserManager
 
     public List<User> GetUsers(int startIndex, int endIndex)
     {
-        var users = connector.QueryCollection<User>("Nerves", "Users");
+        var users = connector.QueryCollection<User>("Users");
         var query = users.Skip(startIndex).Take(endIndex - startIndex + 1).ToList();
         return query;
     }

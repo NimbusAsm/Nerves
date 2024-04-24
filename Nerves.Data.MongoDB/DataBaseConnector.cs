@@ -1,5 +1,6 @@
 using MongoDB.Driver;
 using MongoDB.Driver.Linq;
+using Nerves.Data.MongoDB.Extensions;
 
 namespace Nerves.Data.MongoDB;
 
@@ -9,27 +10,34 @@ public class DataBaseConnector
 
     public string ConnectionString { get; init; }
 
-    public bool Connected { get; } = false;
+    public string DataBaseName { get; init; }
 
-    public DataBaseConnector(string connectStr)
+    public bool IsConnected => mongoClient is not null;
+
+    public DataBaseConnector(string connectStr, string dbName)
     {
         ConnectionString = connectStr;
 
+        DataBaseName = dbName;
+
         mongoClient = new(ConnectionString);
 
-        Connected = mongoClient is not null;
-
-        Console.WriteLine($"@Init: {nameof(DataBaseConnector)}, Connected: {Connected}");
+        Console.WriteLine($"@Init: {nameof(DataBaseConnector)}, Connected: {IsConnected}");
     }
 
-    public IMongoCollection<T> GetCollection<T>(string dbName, string colName)
+    public IMongoCollection<T> GetCollection<T>(string colName)
     {
-        return mongoClient!.GetDatabase(dbName).GetCollection<T>(colName);
+        mongoClient.EnsureConnected();
+
+        return mongoClient!.GetDatabase(DataBaseName).GetCollection<T>(colName);
     }
 
-    public IMongoQueryable<T> QueryCollection<T>(string dbName, string colName)
+    public IMongoQueryable<T> QueryCollection<T>(string colName)
     {
-        var collection = GetCollection<T>(dbName, colName);
+        mongoClient.EnsureConnected();
+
+        var collection = GetCollection<T>(colName);
+
         return collection.AsQueryable();
     }
 }

@@ -1,4 +1,4 @@
-namespace Nerves.Shared.Configs.UsersConfigs.DataBaseOptions;
+namespace Nerves.Shared.Options.DataBaseOptions;
 
 public class InsertUserOption
 {
@@ -12,4 +12,3 @@ public enum AlreadyExistsActions
     Replace = 2,
     ThrowException = 4,
 }
-

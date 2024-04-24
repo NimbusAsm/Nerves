@@ -46,7 +46,6 @@ public static class UserUtil
             Id = "admin",
             NickName = "admin",
             JoinTime = joinTime,
-            LastLoginTime = joinTime,
             Data = new()
             {
 
@@ -62,7 +61,6 @@ public static class UserUtil
                 UserPasswordHash = GetSHA256($"{saltPrefix}admin1q2w3E*{saltSuffix}"),
                 UserPasswordHashSalt = $"{saltPrefix} ~ {saltSuffix}"
             },
-            IsOnline = true
         };
     }
 }

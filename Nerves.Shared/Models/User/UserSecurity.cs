@@ -18,5 +18,7 @@ public class UserSecurity
 
     public UserDevice? PendingUserDevice { get; set; }
 
+    public string? TokenRsaEncryptionKey { get; set; }
+
     public Dictionary<string, string>? Tags { get; set; }
 }
