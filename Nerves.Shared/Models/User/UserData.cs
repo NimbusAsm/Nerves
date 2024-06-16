@@ -4,23 +4,27 @@ namespace Nerves.Shared.Models.User;
 
 public class UserData
 {
-    public DateTime? BirthDay { get; set; } = DateTime.Parse("2023.01.12");
+    public DateTime? BirthDay { get; set; }
+
+    public DateTime? JoinTime { get; set; }
 
     public Sex? Sex { get; set; } = UserEnum.Sex.Unknown;
 
-    public string? Avatar { get; set; } = null;
+    public string? Avatar { get; set; }
 
-    public string? Background { get; set; } = null;
+    public string? Background { get; set; }
 
-    public string? Cover { get; set; } = null;
+    public string? Banner { get; set; }
 
-    public string? Location { get; set; } = "Earth";
+    public string? Cover { get; set; }
 
-    public string? Bio { get; set; } = null;
+    public string? Location { get; set; }
 
-    public string? Website { get; set; } = null;
+    public string? Bio { get; set; }
 
-    public List<string>? Labels { get; set; } = null;
+    public List<UserLink>? Links { get; set; }
+
+    public List<UserLable>? Labels { get; set; }
 
     public Dictionary<string, string>? Tags { get; set; } = null;
 }

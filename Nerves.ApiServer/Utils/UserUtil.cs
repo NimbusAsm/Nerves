@@ -8,20 +8,20 @@ public static class UserUtil
 {
     public static void UpdatePasswordHash(User user, string new_passwd)
     {
-        var salts = user.SecurityInfo!.UserPasswordHashSalt!.Split(" ~ ");
+        var salts = user.Security!.UserPasswordHashSalt!.Split(" ~ ");
         var saltPrefix = salts[0];
         var saltSuffix = salts[1];
 
-        user.SecurityInfo!.UserPasswordHash = GetSHA256($"{saltPrefix}{new_passwd}{saltSuffix}");
+        user.Security!.UserPasswordHash = GetSHA256($"{saltPrefix}{new_passwd}{saltSuffix}");
     }
 
     public static bool VerifyPassword(string given_pwd, User target_user)
     {
-        var salts = target_user.SecurityInfo!.UserPasswordHashSalt!.Split(" ~ ");
+        var salts = target_user.Security!.UserPasswordHashSalt!.Split(" ~ ");
         var saltPrefix = salts[0];
         var saltSuffix = salts[1];
 
-        return GetSHA256($"{saltPrefix}{given_pwd}{saltSuffix}").Equals(target_user.SecurityInfo.UserPasswordHash);
+        return GetSHA256($"{saltPrefix}{given_pwd}{saltSuffix}").Equals(target_user.Security.UserPasswordHash);
     }
 
     public static string GetSHA256(string source)
@@ -50,7 +50,7 @@ public static class UserUtil
             {
 
             },
-            SecurityInfo = new()
+            Security = new()
             {
                 VerifiedEmails =
                 [

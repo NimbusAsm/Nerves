@@ -6,11 +6,9 @@ public class User
 
     public string? NickName { get; set; }
 
-    public DateTime? JoinTime { get; set; }
-
     public UserData? Data { get; set; }
 
-    public UserSecurity? SecurityInfo { get; set; }
+    public UserSecurity? Security { get; set; }
 
     public Dictionary<string, string>? Tags { get; set; }
 }
