@@ -1,4 +1,6 @@
-﻿namespace Nerves.Shared.Models.User;
+﻿using Nerves.Shared.Models.User.Security;
+
+namespace Nerves.Shared.Models.User;
 
 public class UserSecurity
 {
@@ -6,19 +8,9 @@ public class UserSecurity
 
     public string? UserPasswordHashSalt { get; set; }
 
-    public List<string>? VerifiedEmails { get; set; }
+    public VerifiedFields? VerifiedFields { get; set; }
 
-    public string? PendingEmail { get; set; }
-
-    public List<string>? VerifiedPhoneNumbers { get; set; }
-
-    public string? PendingPhoneNumber { get; set; }
-
-    public List<UserDevice>? VerifiedDevices { get; set; }
-
-    public UserDevice? PendingUserDevice { get; set; }
-
-    public string? TokenRsaEncryptionKey { get; set; }
+    public PendingVerificationFields? PendingVerificationFields { get; set; }
 
     public Dictionary<string, string>? Tags { get; set; }
 }

@@ -16,6 +16,8 @@ public static class Instances
     {
         InitConfiguration();
 
+        InitDataBaseConnector();
+
         InitUserManager();
 
         Console.WriteLine($"@Init: {nameof(Instances)}");
@@ -30,14 +32,23 @@ public static class Instances
         var configFileName = "appsettings.json";
 #endif
 
-        configuration = new ConfigurationBuilder().AddJsonFile(configFileName).Build();
-
-        dataBaseConnector = new DataBaseConnector(
-            configuration["Server:DataBase:ConnectionString"]!,
-            configuration["Server:DataBase:DataBaseName"]!
-        );
+        configuration = new ConfigurationBuilder()
+            .AddJsonFile(configFileName)
+            .AddEnvironmentVariables()
+            .Build()
+            ;
 
         Console.WriteLine($"@Init: Server Configuration -> {nameof(configuration)}");
+    }
+
+    public static void InitDataBaseConnector()
+    {
+        var overConnectionString = configuration!["nerves_connectstr"];
+
+        dataBaseConnector = new DataBaseConnector(
+            overConnectionString ?? configuration!["Server:DataBase:ConnectionString"]!,
+            configuration!["Server:DataBase:DataBaseName"]!
+        );
     }
 
     public static void InitUserManager()
