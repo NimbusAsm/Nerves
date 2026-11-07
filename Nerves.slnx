@@ -13,6 +13,7 @@
     <Project Path="src/services/Nerves.Session/Nerves.Session.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Nerves.Identity.UnitTests/Nerves.Identity.UnitTests.csproj" />
     <Project Path="tests/Nerves.UnitTests/Nerves.UnitTests.csproj" />
   </Folder>
 </Solution>
