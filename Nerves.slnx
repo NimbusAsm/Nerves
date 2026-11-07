@@ -1,4 +1,9 @@
 <Solution>
+  <Folder Name="/sdk/" />
+  <Folder Name="/sdk/dotnet/">
+    <Project Path="sdk/dotnet/Nerves.Client.Tests/Nerves.Client.Tests.csproj" />
+    <Project Path="sdk/dotnet/Nerves.Client/Nerves.Client.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Nerves.Contracts.Grpc/Nerves.Contracts.Grpc.csproj" />
     <Project Path="src/Nerves.Core/Nerves.Core.csproj" />
