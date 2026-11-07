@@ -1,0 +1,139 @@
+{{- if .Values.nats.enabled }}
+{{- $fullname := include "nerves.fullname" . }}
+{{- $args := printf "exec nats-server -m %v --auth \"$NATS_TOKEN\"" .Values.nats.service.monitorPort }}
+{{- if .Values.nats.jetstream.enabled }}
+{{- $args = printf "exec nats-server -js -sd %s -m %v --auth \"$NATS_TOKEN\"" .Values.nats.jetstream.storeDir .Values.nats.service.monitorPort }}
+{{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullname }}-nats
+  labels:
+    {{- include "nerves.labels" (dict "root" . "name" "nats") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: nats
+      port: {{ .Values.nats.service.port }}
+      targetPort: nats
+      protocol: TCP
+    - name: monitor
+      port: {{ .Values.nats.service.monitorPort }}
+      targetPort: monitor
+      protocol: TCP
+  selector:
+    {{- include "nerves.selectorLabels" (dict "root" . "name" "nats") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $fullname }}-nats
+  labels:
+    {{- include "nerves.labels" (dict "root" . "name" "nats") | nindent 4 }}
+spec:
+  serviceName: {{ $fullname }}-nats
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "nerves.selectorLabels" (dict "root" . "name" "nats") | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.nats.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "nerves.selectorLabels" (dict "root" . "name" "nats") | nindent 8 }}
+        app.kubernetes.io/version: {{ .Values.nats.image.tag | quote }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: nats
+          image: {{ printf "%s:%s" .Values.nats.image.repository .Values.nats.image.tag | quote }}
+          imagePullPolicy: {{ .Values.nats.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - {{ $args | quote }}
+          env:
+            - name: NATS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $fullname }}-nats
+                  key: token
+          ports:
+            - name: nats
+              containerPort: 4222
+              protocol: TCP
+            - name: monitor
+              containerPort: {{ .Values.nats.service.monitorPort }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitor
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.nats.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.nats.jetstream.storeDir }}
+      {{- if not .Values.nats.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+      {{- with .Values.nats.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nats.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nats.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.nats.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.nats.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.nats.persistence.accessModes | nindent 10 }}
+        {{- if .Values.nats.persistence.storageClass }}
+        storageClassName: {{ .Values.nats.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.nats.persistence.size }}
+  {{- end }}
+{{- end }}

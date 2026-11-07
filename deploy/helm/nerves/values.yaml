@@ -1,0 +1,407 @@
+# Default values for the Nerves Helm chart.
+#
+# The defaults are meant to install on a local Kind or Minikube cluster:
+# one replica per service, bundled single-node PostgreSQL and NATS, no ingress.
+# Production deployments should raise replicas, use managed PostgreSQL/NATS and
+# set image.tag to the release being deployed.
+#
+# Precedence rules (validated by templates/validations):
+#   database.existingSecret > database.url > bundled postgresql.enabled
+#   nats.existingSecret     > nats.url     > bundled nats.enabled
+# Bundled components and their external counterparts are mutually exclusive.
+
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  # Repository prefix for all services. Per-service repositories default to
+  # <repository>/<service>, e.g. ghcr.io/nimbusasm/nerves/gateway:0.1.0.
+  repository: ghcr.io/nimbusasm/nerves
+  # Empty means .Chart.AppVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+serviceAccount:
+  create: true
+  name: ""
+  # The services do not call the Kubernetes API; keep this false.
+  automountServiceAccountToken: false
+  annotations: {}
+
+commonLabels: {}
+
+# Annotations/labels applied to every Nerves service pod (not to PostgreSQL/NATS).
+podAnnotations: {}
+podLabels: {}
+
+config:
+  aspnetcoreEnvironment: Production
+  # OTLP endpoint for the OpenTelemetry exporter, e.g.
+  # http://otel-collector.observability.svc:4317. Empty disables the exporter.
+  otelExporterOtlpEndpoint: ""
+
+# One entry per service. Every Nerves service listens on HTTP 8080 inside the
+# container and exposes /healthz, /readyz and /api/v1/meta.
+services:
+  gateway:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  idp:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  identity:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 192Mi
+      limits:
+        cpu: "1"
+        memory: 768Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  session:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  authorization:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  directory:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  # Optional services from the architecture plan. They are NOT implemented in
+  # this repository yet: enabling them requires images that do not exist here.
+  audit:
+    enabled: false
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  notification:
+    enabled: false
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # All paths are routed to the gateway service.
+  hosts:
+    - host: nerves.localhost
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# Horizontal pod autoscalers are created only for the services listed below.
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  # Empty disables the memory metric.
+  targetMemoryUtilizationPercentage: ""
+  behavior: {}
+  services:
+    - gateway
+    - idp
+    - identity
+    - session
+    - authorization
+    - directory
+
+podDisruptionBudget:
+  enabled: false
+  # Exactly one of minAvailable / maxUnavailable may be set.
+  # When both are empty, maxUnavailable: 1 is used.
+  minAvailable: ""
+  maxUnavailable: ""
+
+database:
+  # External PostgreSQL connection string (Npgsql format). Takes precedence over
+  # the bundled PostgreSQL and is stored in a chart-managed Secret.
+  url: ""
+  # Reference an existing Secret instead of chart-managed credentials. The key
+  # below must contain the full Npgsql connection string.
+  existingSecret: ""
+  secretKey: connection-string
+
+postgresql:
+  # Bundled single-node PostgreSQL for development and small deployments.
+  # Production should use a managed service or an operator (e.g. CloudNativePG).
+  enabled: true
+  image:
+    repository: postgres
+    tag: "18.6-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    username: nerves
+    database: nerves
+    # Empty generates a random password and preserves it across upgrades.
+    password: ""
+  service:
+    port: 5432
+  persistence:
+    enabled: true
+    size: 8Gi
+    # Empty uses the cluster default StorageClass.
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    annotations: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+nats:
+  # Bundled single-node NATS JetStream. Production should run a 3+ node cluster
+  # (or a managed NATS) and point nats.url at it.
+  enabled: true
+  # External NATS URL. Takes precedence over the bundled NATS, e.g.
+  # nats://user:password@nats.example.com:4222
+  url: ""
+  # Reference an existing Secret containing the URL. The key below is used for
+  # both chart-managed and existing Secrets.
+  existingSecret: ""
+  urlSecretKey: url
+  image:
+    repository: nats
+    tag: "2.15.2-alpine"
+    pullPolicy: IfNotPresent
+  auth:
+    # Empty generates a random token and preserves it across upgrades.
+    token: ""
+  jetstream:
+    enabled: true
+    storeDir: /data
+  service:
+    port: 4222
+    monitorPort: 8222
+  persistence:
+    enabled: true
+    size: 8Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    annotations: {}
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+# Pod-level security context for the .NET services. The official ASP.NET images
+# run as UID 1654 (APP_UID) and have HOME=/home/app.
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1654
+  runAsGroup: 1654
+  fsGroup: 1654
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+tests:
+  # Creates the "helm test" smoke-test pod that calls the gateway health probe.
+  enabled: true
+  image: curlimages/curl:8.10.1

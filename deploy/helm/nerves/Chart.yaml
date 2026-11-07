@@ -1,0 +1,21 @@
+apiVersion: v2
+name: nerves
+description: Nerves — self-hosted account center (gateway, IdP, identity, session, authorization, directory)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+kubeVersion: ">=1.27.0-0"
+home: https://github.com/NimbusAsm/Nerves
+sources:
+  - https://github.com/NimbusAsm/Nerves
+keywords:
+  - identity
+  - oidc
+  - oauth2
+  - authorization
+  - iam
+maintainers:
+  - name: Nerves contributors
+    url: https://github.com/NimbusAsm/Nerves
+annotations:
+  category: Security

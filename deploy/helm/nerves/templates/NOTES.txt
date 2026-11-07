@@ -1,0 +1,44 @@
+Nerves {{ .Chart.AppVersion }} has been installed as "{{ .Release.Name }}" in namespace "{{ .Release.Namespace }}".
+
+{{- if .Values.ingress.enabled }}
+The gateway is exposed at:
+{{- range .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
+{{- end }}
+{{- else }}
+No Ingress is created. Reach the gateway with:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "nerves.serviceFullname" (dict "root" . "name" "gateway") }} 8080:{{ .Values.services.gateway.port | default 80 }}
+  curl http://127.0.0.1:8080/healthz
+{{- end }}
+
+Services installed:
+{{- range $name, $svc := .Values.services }}
+{{- if $svc.enabled }}
+  - {{ $name }} ({{ $svc.replicaCount | default 1 }} replica(s))
+{{- end }}
+{{- end }}
+
+Database:
+{{- if .Values.database.existingSecret }}
+  external, from Secret "{{ .Values.database.existingSecret }}" key "{{ .Values.database.secretKey }}"
+{{- else if .Values.database.url }}
+  external, URL stored in Secret "{{ include "nerves.fullname" . }}-database"
+{{- else }}
+  bundled PostgreSQL ({{ .Values.postgresql.image.repository }}:{{ .Values.postgresql.image.tag }})
+  connection string:
+    kubectl -n {{ .Release.Namespace }} get secret {{ include "nerves.fullname" . }}-database -o jsonpath='{.data.{{ .Values.database.secretKey }}}' | base64 -d
+{{- end }}
+
+Messaging:
+{{- if .Values.nats.existingSecret }}
+  external, from Secret "{{ .Values.nats.existingSecret }}"
+{{- else if .Values.nats.url }}
+  external, URL stored in Secret "{{ include "nerves.fullname" . }}-nats"
+{{- else if .Values.nats.enabled }}
+  bundled NATS JetStream ({{ .Values.nats.image.repository }}:{{ .Values.nats.image.tag }})
+{{- else }}
+  not configured: Nats__Url is not injected, messaging-dependent features will fail
+{{- end }}
+
+WARNING: this chart does not run database migrations. Apply them in the release window.
+WARNING: the default image tag refers to {{ .Values.image.tag | default .Chart.AppVersion }} images; build and load them for Kind/Minikube (see README.md).

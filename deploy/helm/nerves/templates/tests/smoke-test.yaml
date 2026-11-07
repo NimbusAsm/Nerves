@@ -1,0 +1,24 @@
+{{- if and .Values.tests.enabled .Values.services.gateway.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "nerves.fullname" . }}-smoke-test
+  labels:
+    {{- include "nerves.labels" (dict "root" . "name" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: curl
+      image: {{ .Values.tests.image | quote }}
+      command:
+        - sh
+        - -c
+      args:
+        - |
+          set -eu
+          curl -fsS "http://{{ include "nerves.serviceFullname" (dict "root" . "name" "gateway") }}:{{ .Values.services.gateway.port | default 80 }}/healthz"
+          echo "gateway is healthy"
+{{- end }}
