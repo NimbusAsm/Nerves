@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package nerves.authorization.v1;
+
+option csharp_namespace = "Nerves.Contracts.Authorization.V1";
+
+// Authorization service answers "may subject S do action A on resource R?".
+service AuthorizationService {
+  rpc GetServiceInfo(GetServiceInfoRequest) returns (ServiceInfoReply);
+}
+
+message GetServiceInfoRequest {}
+
+message ServiceInfoReply {
+  string name = 1;
+  string version = 2;
+  string contract_version = 3;
+}
