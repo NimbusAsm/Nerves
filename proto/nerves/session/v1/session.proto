@@ -4,9 +4,13 @@ package nerves.session.v1;
 
 option csharp_namespace = "Nerves.Contracts.Session.V1";
 
-// Session service owns sessions, refresh token families and revocation state.
+// Session service owns interactive sessions and their revocation state.
 service SessionService {
   rpc GetServiceInfo(GetServiceInfoRequest) returns (GetServiceInfoResponse);
+  rpc CreateSession(CreateSessionRequest) returns (SessionReply);
+  rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
+  rpc RevokeAccountSessions(RevokeAccountSessionsRequest) returns (RevokeAccountSessionsResponse);
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -15,4 +19,56 @@ message GetServiceInfoResponse {
   string name = 1;
   string version = 2;
   string contract_version = 3;
+}
+
+message CreateSessionRequest {
+  string account_id = 1;
+  string legal_entity_id = 2;
+  string realm = 3;
+  string device_id = 4;
+  string ip_hash = 5;
+  string user_agent_hash = 6;
+  repeated string amr = 7;
+  int32 idle_minutes = 8;
+  int32 absolute_hours = 9;
+}
+
+message SessionReply {
+  string session_id = 1;
+  string account_id = 2;
+  string expires_at = 3;
+}
+
+message RevokeSessionRequest {
+  string session_id = 1;
+  string reason = 2;
+}
+
+message RevokeSessionResponse {
+  bool revoked = 1;
+}
+
+message RevokeAccountSessionsRequest {
+  string account_id = 1;
+  string reason = 2;
+}
+
+message RevokeAccountSessionsResponse {
+  int32 revoked = 1;
+}
+
+message ListSessionsRequest {
+  string account_id = 1;
+}
+
+message SessionInfo {
+  string session_id = 1;
+  string device_id = 2;
+  string created_at = 3;
+  string last_seen_at = 4;
+  bool revoked = 5;
+}
+
+message ListSessionsResponse {
+  repeated SessionInfo sessions = 1;
 }

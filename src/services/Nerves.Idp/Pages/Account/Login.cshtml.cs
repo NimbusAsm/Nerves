@@ -9,7 +9,7 @@ using Nerves.Idp.Integration;
 namespace Nerves.Idp.Pages.Account;
 
 /// <summary>Username and password sign-in for the identity provider.</summary>
-public sealed class LoginModel(IdentityDirectory directory) : PageModel
+public sealed class LoginModel(IdentityDirectory directory, SessionDirectory sessions) : PageModel
 {
     [BindProperty]
     [Required]
@@ -56,6 +56,21 @@ public sealed class LoginModel(IdentityDirectory directory) : PageModel
             CookieAuthenticationDefaults.AuthenticationScheme,
             new ClaimsPrincipal(identity),
             new AuthenticationProperties { IsPersistent = false });
+
+        var deviceFingerprint = Convert.ToHexString(
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(
+                    (HttpContext.Request.Headers.UserAgent.ToString() + "|" + HttpContext.Connection.RemoteIpAddress?.ToString())
+                    .ToLowerInvariant()))).ToLowerInvariant();
+
+        await sessions.CreateAsync(
+            check.AccountId,
+            check.LegalEntityId,
+            "nerves",
+            deviceFingerprint[..32],
+            deviceFingerprint[..16],
+            deviceFingerprint[16..32],
+            cancellationToken);
 
         if (!string.IsNullOrEmpty(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))
         {

@@ -13,7 +13,9 @@ namespace Nerves.Idp.Controllers;
 [ApiController]
 public sealed class AuthorizationController(
     IOpenIddictApplicationManager applicationManager,
-    IOpenIddictScopeManager scopeManager) : Controller
+    IOpenIddictScopeManager scopeManager,
+    Nerves.Idp.Integration.AuthorizationDirectory authorization,
+    Nerves.Idp.Integration.SessionDirectory sessions) : Controller
 {
     [HttpGet("~/connect/authorize")]
     public async Task<IActionResult> Authorize()
@@ -63,6 +65,19 @@ public sealed class AuthorizationController(
             identity.AddClaim("leid", legalEntityId);
         }
 
+        var permissions = await authorization.GetPermissionsAsync(
+            subject,
+            legalEntityId ?? string.Empty,
+            "nerves",
+            HttpContext.RequestAborted);
+
+        if (permissions.Permissions.Length > 0)
+        {
+            identity.AddClaim(new Claim("permissions", string.Join(' ', permissions.Permissions)));
+        }
+
+        identity.AddClaim(new Claim("authz_ver", permissions.Version.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(request.GetScopes());
         principal.SetResources(await scopeManager.ListResourcesAsync(principal.GetScopes()).ToListAsync());
@@ -107,6 +122,13 @@ public sealed class AuthorizationController(
     [HttpPost("~/connect/logout")]
     public async Task<IActionResult> Logout()
     {
+        var authenticated = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        var subject = authenticated.Principal?.GetClaim("sub");
+        if (!string.IsNullOrEmpty(subject))
+        {
+            await sessions.RevokeAllAsync(subject, "user signed out", HttpContext.RequestAborted);
+        }
+
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         return SignOut(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
@@ -117,8 +139,8 @@ public sealed class AuthorizationController(
         {
             Claims.Name or Claims.Email or Claims.Role or "leid" =>
                 [Destinations.AccessToken, Destinations.IdentityToken],
-            Claims.Subject =>
-                [Destinations.AccessToken, Destinations.IdentityToken],
+            Claims.Subject or "permissions" or "authz_ver" =>
+                [Destinations.AccessToken],
             _ => [Destinations.AccessToken],
         };
 }

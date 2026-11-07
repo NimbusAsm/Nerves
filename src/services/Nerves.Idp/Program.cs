@@ -1,7 +1,9 @@
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Nerves.Contracts.Authorization.V1;
 using Nerves.Contracts.Identity.V1;
+using Nerves.Contracts.Session.V1;
 using Nerves.Idp.Integration;
 using Nerves.Idp.Options;
 using Nerves.Idp.Persistence;
@@ -78,10 +80,16 @@ builder.Services.Configure<IdentityClientOptions>(
 var grpcAddress = builder.Configuration
     .GetSection(IdentityClientOptions.SectionName)["GrpcAddress"] ?? "http://127.0.0.1:5102";
 
-builder.Services.AddSingleton(_ => GrpcChannel.ForAddress(grpcAddress));
-builder.Services.AddSingleton(sp =>
-    new IdentityService.IdentityServiceClient(sp.GetRequiredService<GrpcChannel>()));
+var sessionAddress = builder.Configuration["Session:GrpcAddress"] ?? "http://127.0.0.1:5203";
+var authorizationAddress = builder.Configuration["Authorization:GrpcAddress"] ?? "http://127.0.0.1:5204";
+
+builder.Services.AddSingleton(_ => new IdentityService.IdentityServiceClient(GrpcChannel.ForAddress(grpcAddress)));
+builder.Services.AddSingleton(_ => new SessionService.SessionServiceClient(GrpcChannel.ForAddress(sessionAddress)));
+builder.Services.AddSingleton(_ => new AuthorizationService.AuthorizationServiceClient(GrpcChannel.ForAddress(authorizationAddress)));
+
 builder.Services.AddSingleton<IdentityDirectory>();
+builder.Services.AddSingleton<SessionDirectory>();
+builder.Services.AddSingleton<AuthorizationDirectory>();
 builder.Services.AddHostedService<OpenIddictClientSeeder>();
 
 var app = builder.Build();
