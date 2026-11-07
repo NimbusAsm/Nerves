@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore;
+using Nerves.Identity.Persistence;
 using Nerves.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,6 +7,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddNervesDefaults("nerves-identity");
 
 builder.Services.AddOpenApi();
+
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
+    builder.Services.AddHealthChecks().AddDbContextCheck<IdentityDbContext>();
+}
 
 var app = builder.Build();
 
