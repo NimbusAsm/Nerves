@@ -6,12 +6,12 @@ option csharp_namespace = "Nerves.Contracts.Identity.V1";
 
 // Identity service owns LegalEntity and NetworkAccount.
 service IdentityService {
-  rpc GetServiceInfo(GetServiceInfoRequest) returns (ServiceInfoReply);
+  rpc GetServiceInfo(GetServiceInfoRequest) returns (GetServiceInfoResponse);
 }
 
 message GetServiceInfoRequest {}
 
-message ServiceInfoReply {
+message GetServiceInfoResponse {
   string name = 1;
   string version = 2;
   string contract_version = 3;

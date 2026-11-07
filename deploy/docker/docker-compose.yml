@@ -1,5 +1,20 @@
-# Development dependencies only. Application services are added as they become runnable.
+# Development stack. Production uses the Helm chart (see deploy/helm).
 name: nerves-dev
+
+x-service: &service
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+  environment:
+    ASPNETCORE_ENVIRONMENT: Development
+    ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+    Nats__Url: nats://nats:4222
+  depends_on:
+    postgres:
+      condition: service_healthy
+    nats:
+      condition: service_healthy
+  restart: unless-stopped
 
 services:
   postgres:
@@ -29,6 +44,66 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  gateway:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Gateway/Nerves.Gateway.csproj
+        ENTRY_DLL: Nerves.Gateway.dll
+    ports: ["5100:8080"]
+
+  idp:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Idp/Nerves.Idp.csproj
+        ENTRY_DLL: Nerves.Idp.dll
+    ports: ["5101:8080"]
+
+  identity:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Identity/Nerves.Identity.csproj
+        ENTRY_DLL: Nerves.Identity.dll
+    ports: ["5102:8080"]
+
+  session:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Session/Nerves.Session.csproj
+        ENTRY_DLL: Nerves.Session.dll
+    ports: ["5103:8080"]
+
+  authorization:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Authorization/Nerves.Authorization.csproj
+        ENTRY_DLL: Nerves.Authorization.dll
+    ports: ["5104:8080"]
+
+  directory:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Directory/Nerves.Directory.csproj
+        ENTRY_DLL: Nerves.Directory.dll
+    ports: ["5105:8080"]
 
 volumes:
   pgdata:
