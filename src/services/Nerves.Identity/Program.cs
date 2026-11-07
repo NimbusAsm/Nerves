@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Nerves.Identity.Grpc;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
+using Nerves.Identity.Seeding;
 using Nerves.ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,9 @@ builder.Services.Configure<IdentitySecurityOptions>(
 
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
+
+builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
+builder.Services.AddHostedService<DevSeeder>();
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))

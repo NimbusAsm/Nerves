@@ -70,6 +70,7 @@ public sealed class IdentityGrpcService(
             AccountId = account.Id.ToString(),
             LegalEntityId = account.LegalEntityId?.ToString() ?? string.Empty,
             DisplayName = account.DisplayName ?? account.Username,
+            Email = account.Email ?? string.Empty,
         };
     }
 

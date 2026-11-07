@@ -34,6 +34,7 @@ message VerifyCredentialResponse {
   string legal_entity_id = 3;
   string display_name = 4;
   string failure_code = 5;
+  string email = 6;
 }
 
 message GetAccountRequest {

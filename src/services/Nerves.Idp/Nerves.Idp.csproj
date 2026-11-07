@@ -5,9 +5,16 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="OpenIddict.AspNetCore" />
+    <PackageReference Include="OpenIddict.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
+    <PackageReference Include="Grpc.Net.Client" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Nerves.Core\Nerves.Core.csproj" />
     <ProjectReference Include="..\..\Nerves.ServiceDefaults\Nerves.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\Nerves.Contracts.Grpc\Nerves.Contracts.Grpc.csproj" />
   </ItemGroup>
