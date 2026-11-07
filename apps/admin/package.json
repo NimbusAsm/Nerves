@@ -1,0 +1,41 @@
+{
+  "name": "@nerves/admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Nerves 管理后台（Vue 3 + TypeScript + Vite + Pinia + Tailwind CSS）",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@lucide/vue": "1.70.0",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "pinia": "4.1.0",
+    "tailwind-merge": "3.7.0",
+    "vue": "3.5.45",
+    "vue-i18n": "11.4.18",
+    "vue-router": "5.4.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.5",
+    "@types/node": "26.6.6",
+    "@vitejs/plugin-vue": "6.0.10",
+    "@vue/test-utils": "2.5.1",
+    "jsdom": "31.0.0",
+    "tailwindcss": "4.3.5",
+    "typescript": "5.9.3",
+    "vite": "8.3.6",
+    "vitest": "5.1.0",
+    "vue-tsc": "3.3.14"
+  }
+}

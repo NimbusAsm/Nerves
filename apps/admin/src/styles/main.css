@@ -1,0 +1,98 @@
+@import 'tailwindcss';
+
+@theme static {
+  --color-canvas: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-line: #e4e7ec;
+  --color-ink: #14181f;
+  --color-muted: #667085;
+  --color-brand: #1f6feb;
+  --color-brand-strong: #1a5fd0;
+  --color-brand-soft: #eef4ff;
+  --font-sans: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Code', Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-brand) 40%, transparent);
+  outline-offset: 1px;
+}
+
+@layer components {
+  .admin-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+  }
+
+  .admin-table thead th {
+    white-space: nowrap;
+    border-bottom: 1px solid var(--color-line);
+    background: color-mix(in srgb, var(--color-canvas) 70%, var(--color-surface));
+    padding: 0.6rem 1rem;
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-muted);
+  }
+
+  .admin-table tbody td {
+    border-bottom: 1px solid #f0f2f5;
+    padding: 0.7rem 1rem;
+    vertical-align: middle;
+  }
+
+  .admin-table--dense tbody td {
+    padding: 0.45rem 1rem;
+  }
+
+  .admin-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .admin-table tbody tr:hover {
+    background: #fafbfc;
+  }
+
+  .admin-table tbody tr[data-clickable='true'] {
+    cursor: pointer;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d3d8e0;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
