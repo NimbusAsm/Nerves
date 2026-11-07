@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package nerves.directory.v1;
+
+option csharp_namespace = "Nerves.Contracts.Directory.V1";
+
+// Directory service owns organizations and memberships.
+service DirectoryService {
+  rpc GetServiceInfo(GetServiceInfoRequest) returns (GetServiceInfoResponse);
+  rpc ListMemberships(ListMembershipsRequest) returns (ListMembershipsResponse);
+  rpc IsMember(IsMemberRequest) returns (IsMemberResponse);
+}
+
+message GetServiceInfoRequest {}
+
+message GetServiceInfoResponse {
+  string name = 1;
+  string version = 2;
+  string contract_version = 3;
+}
+
+message ListMembershipsRequest {
+  string account_id = 1;
+}
+
+message MembershipInfo {
+  string organization_id = 1;
+  string organization_name = 2;
+  string role = 3;
+  string status = 4;
+}
+
+message ListMembershipsResponse {
+  repeated MembershipInfo memberships = 1;
+}
+
+message IsMemberRequest {
+  string organization_id = 1;
+  string account_id = 2;
+}
+
+message IsMemberResponse {
+  bool member = 1;
+  string role = 2;
+}
