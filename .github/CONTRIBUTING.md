@@ -1,4 +1,0 @@
-# How to contribute ?
-
-Todo ...
-
