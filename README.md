@@ -7,13 +7,21 @@ An open-source account center you deploy yourself: one login page, a standards-b
 OpenID Connect provider, and an admin console. Built as microservices so it can grow
 from a single node to a sharded cluster.
 
-**Status: M0 (skeleton).** Nothing is usable yet; this repository is being rebuilt from scratch.
+**Status: end-to-end flow works.** Browser login (OIDC authorization code + PKCE) issues
+signed tokens carrying the caller's legal entity and permission snapshot; sessions are
+created on login and revoked on logout; every identity and login event lands in a
+hash-chained audit trail; the Vue admin console, the Helm chart and the .NET,
+TypeScript and Python SDKs are in place.
+
+Not yet implemented: organizations and SCIM (the directory service is a shell),
+MFA, userinfo and back-channel logout, integration tests, and image builds.
+See docs/guide/status.md for the authoritative capability list.
 
 ## Layout
 
 ```text
 src/
-  Nerves.Core/              domain primitives (Result, Error, IDs, events)
+  Nerves.Core/              domain primitives (Result, Reason, IDs, events)
   Nerves.ServiceDefaults/   health, problem details, OpenTelemetry
   Nerves.Contracts.Grpc/    protobuf contracts + generated types
   services/                 gateway, idp, identity, session, authorization, directory
