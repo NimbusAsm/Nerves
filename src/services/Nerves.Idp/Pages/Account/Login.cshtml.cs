@@ -5,11 +5,12 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Nerves.Idp.Integration;
+using Nerves.Idp.Security;
 
 namespace Nerves.Idp.Pages.Account;
 
 /// <summary>Username and password sign-in for the identity provider.</summary>
-public sealed class LoginModel(IdentityDirectory directory, SessionDirectory sessions, AuditClient audit) : PageModel
+public sealed class LoginModel(IdentityDirectory directory, SessionDirectory sessions, AuditClient audit, LoginThrottle throttle) : PageModel
 {
     [BindProperty]
     [Required]
@@ -36,6 +37,13 @@ public sealed class LoginModel(IdentityDirectory directory, SessionDirectory ses
             return Page();
         }
 
+        var now = DateTimeOffset.UtcNow;
+        if (throttle.IsLocked(Username, now))
+        {
+            Error = "登录失败次数过多，请 15 分钟后再试。";
+            return Page();
+        }
+
         var check = await directory.VerifyCredentialAsync(Username, Password, "nerves", cancellationToken);
         if (!check.Verified)
         {
@@ -48,9 +56,12 @@ public sealed class LoginModel(IdentityDirectory directory, SessionDirectory ses
                 "{\"reason\":\"invalid_credentials\"}",
                 cancellationToken);
 
+            throttle.RecordFailure(Username, now);
             Error = "用户名或口令不正确。";
             return Page();
         }
+
+        throttle.Reset(Username);
 
         var identity = new ClaimsIdentity(
             [

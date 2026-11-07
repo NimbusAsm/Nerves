@@ -2,9 +2,11 @@ using System.Security.Claims;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
+using OpenIddict.Validation.AspNetCore;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
 namespace Nerves.Idp.Controllers;
@@ -116,6 +118,28 @@ public sealed class AuthorizationController(
         var principal = result.Principal;
 
         return SignIn(principal, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+    [HttpGet("~/connect/userinfo")]
+    [Produces("application/json")]
+    public async Task<IActionResult> Userinfo()
+    {
+        var result = await HttpContext.AuthenticateAsync(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+        if (!result.Succeeded || result.Principal is null)
+        {
+            return Challenge(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        var principal = result.Principal;
+        return Ok(new
+        {
+            sub = principal.GetClaim(Claims.Subject),
+            name = principal.GetClaim(Claims.Name),
+            email = principal.GetClaim(Claims.Email),
+            leid = principal.GetClaim("leid"),
+            permissions = principal.GetClaim("permissions"),
+        });
     }
 
     [HttpGet("~/connect/logout")]

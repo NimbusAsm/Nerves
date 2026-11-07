@@ -8,6 +8,7 @@ using Nerves.Contracts.Session.V1;
 using Nerves.Idp.Integration;
 using Nerves.Idp.Options;
 using Nerves.Idp.Persistence;
+using Nerves.Idp.Security;
 using Nerves.ServiceDefaults;
 using OpenIddict.Abstractions;
 
@@ -39,10 +40,17 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddDbContext<IdpDbContext>(options => options.UseNpgsql(connectionString));
 }
 
+builder.Services.AddSingleton<LoginThrottle>();
+
 builder.Services.AddOpenIddict()
     .AddCore(options => options
         .UseEntityFrameworkCore()
         .UseDbContext<IdpDbContext>())
+    .AddValidation(options =>
+    {
+        options.UseLocalServer();
+        options.UseAspNetCore();
+    })
     .AddServer(options =>
     {
         options
