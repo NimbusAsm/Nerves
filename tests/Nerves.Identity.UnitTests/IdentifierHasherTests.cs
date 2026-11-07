@@ -9,7 +9,7 @@ public sealed class IdentifierHasherTests
     private static readonly string Key = Convert.ToBase64String(new byte[32]);
 
     private static HmacIdentifierHasher Create() =>
-        new(Options.Create(new IdentitySecurityOptions { IdentifierHashKey = Key }));
+        new(Microsoft.Extensions.Options.Options.Create(new IdentitySecurityOptions { IdentifierHashKey = Key }));
 
     [Fact]
     public void Is_deterministic_and_case_insensitive()
@@ -36,7 +36,7 @@ public sealed class IdentifierHasherTests
     public void Refuses_to_start_without_a_key()
     {
         Should.Throw<InvalidOperationException>(() =>
-            new HmacIdentifierHasher(Options.Create(new IdentitySecurityOptions())));
+            new HmacIdentifierHasher(Microsoft.Extensions.Options.Options.Create(new IdentitySecurityOptions())));
     }
 
     [Fact]
@@ -45,6 +45,6 @@ public sealed class IdentifierHasherTests
         var shortKey = Convert.ToBase64String(new byte[16]);
 
         Should.Throw<InvalidOperationException>(() =>
-            new HmacIdentifierHasher(Options.Create(new IdentitySecurityOptions { IdentifierHashKey = shortKey })));
+            new HmacIdentifierHasher(Microsoft.Extensions.Options.Options.Create(new IdentitySecurityOptions { IdentifierHashKey = shortKey })));
     }
 }
