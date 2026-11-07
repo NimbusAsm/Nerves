@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>Nerves.Client</RootNamespace>
+    <AssemblyName>Nerves.Client</AssemblyName>
+    <PackageId>Nerves.Client</PackageId>
+    <Description>Chainable .NET client for the Nerves account center management API.</Description>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <IsPackable>true</IsPackable>
+    <NoWarn>$(NoWarn);CA1054;CA2007</NoWarn>
+  </PropertyGroup>
+</Project>
