@@ -9,7 +9,7 @@ using Nerves.Idp.Integration;
 namespace Nerves.Idp.Pages.Account;
 
 /// <summary>Username and password sign-in for the identity provider.</summary>
-public sealed class LoginModel(IdentityDirectory directory, SessionDirectory sessions) : PageModel
+public sealed class LoginModel(IdentityDirectory directory, SessionDirectory sessions, AuditClient audit) : PageModel
 {
     [BindProperty]
     [Required]
@@ -39,6 +39,15 @@ public sealed class LoginModel(IdentityDirectory directory, SessionDirectory ses
         var check = await directory.VerifyCredentialAsync(Username, Password, "nerves", cancellationToken);
         if (!check.Verified)
         {
+            await audit.AppendAsync(
+                "auth.login.failed",
+                "anonymous",
+                Username,
+                string.Empty,
+                "failure",
+                "{\"reason\":\"invalid_credentials\"}",
+                cancellationToken);
+
             Error = "用户名或口令不正确。";
             return Page();
         }
@@ -70,6 +79,15 @@ public sealed class LoginModel(IdentityDirectory directory, SessionDirectory ses
             deviceFingerprint[..32],
             deviceFingerprint[..16],
             deviceFingerprint[16..32],
+            cancellationToken);
+
+        await audit.AppendAsync(
+            "auth.login.succeeded",
+            "account",
+            check.AccountId,
+            check.AccountId,
+            "success",
+            null,
             cancellationToken);
 
         if (!string.IsNullOrEmpty(ReturnUrl) && Url.IsLocalUrl(ReturnUrl))

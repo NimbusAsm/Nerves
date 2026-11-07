@@ -1,6 +1,7 @@
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
+using Nerves.Contracts.Audit.V1;
 using Nerves.Contracts.Authorization.V1;
 using Nerves.Contracts.Identity.V1;
 using Nerves.Contracts.Session.V1;
@@ -86,6 +87,11 @@ var authorizationAddress = builder.Configuration["Authorization:GrpcAddress"] ??
 builder.Services.AddSingleton(_ => new IdentityService.IdentityServiceClient(GrpcChannel.ForAddress(grpcAddress)));
 builder.Services.AddSingleton(_ => new SessionService.SessionServiceClient(GrpcChannel.ForAddress(sessionAddress)));
 builder.Services.AddSingleton(_ => new AuthorizationService.AuthorizationServiceClient(GrpcChannel.ForAddress(authorizationAddress)));
+
+var auditAddress = builder.Configuration["Audit:GrpcAddress"] ?? "http://127.0.0.1:5205";
+
+builder.Services.AddSingleton(_ => new AuditService.AuditServiceClient(GrpcChannel.ForAddress(auditAddress)));
+builder.Services.AddSingleton<AuditClient>();
 
 builder.Services.AddSingleton<IdentityDirectory>();
 builder.Services.AddSingleton<SessionDirectory>();

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nerves.Core;
 using Nerves.Identity.Domain;
+using Nerves.Identity.Integration;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
 
@@ -29,6 +30,8 @@ public static class AccountEndpoints
         IdentityDbContext db,
         IPasswordHasher hasher,
         IIdentifierHasher identifiers,
+        AuditClient audit,
+        HttpContext http,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -101,6 +104,17 @@ public static class AccountEndpoints
 
         await db.SaveChangesAsync(cancellationToken);
 
+        await audit.AppendAsync(
+            "account.created",
+            "admin",
+            null,
+            "account",
+            account.Id.ToString(),
+            "success",
+            http.TraceIdentifier,
+            null,
+            cancellationToken);
+
         return Results.Created(
             $"/api/v1/accounts/{account.Id}",
             ToResponse(account));
@@ -168,15 +182,28 @@ public static class AccountEndpoints
         return account is null ? Results.NotFound() : Results.Ok(ToResponse(account));
     }
 
-    private static Task<IResult> DisableAsync(Guid id, IdentityDbContext db, CancellationToken cancellationToken) =>
-        TransitionAsync(id, db, static (account, now) => account.Disable(now), cancellationToken);
+    private static Task<IResult> DisableAsync(
+        Guid id,
+        IdentityDbContext db,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken) =>
+        TransitionAsync(id, db, audit, http, "account.disabled", static (account, now) => account.Disable(now), cancellationToken);
 
-    private static Task<IResult> LockAsync(Guid id, IdentityDbContext db, CancellationToken cancellationToken) =>
-        TransitionAsync(id, db, static (account, now) => account.Lock(now), cancellationToken);
+    private static Task<IResult> LockAsync(
+        Guid id,
+        IdentityDbContext db,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken) =>
+        TransitionAsync(id, db, audit, http, "account.locked", static (account, now) => account.Lock(now), cancellationToken);
 
     private static async Task<IResult> TransitionAsync(
         Guid id,
         IdentityDbContext db,
+        AuditClient audit,
+        HttpContext http,
+        string action,
         Func<NetworkAccount, DateTimeOffset, Result> transition,
         CancellationToken cancellationToken)
     {
@@ -193,6 +220,10 @@ public static class AccountEndpoints
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.AppendAsync(
+            action, "admin", null, "account", account.Id.ToString(), "success", http.TraceIdentifier, null, cancellationToken);
+
         return Results.Ok(ToResponse(account));
     }
 

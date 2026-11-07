@@ -1,6 +1,10 @@
+using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
+using Nerves.Contracts.Audit.V1;
 using Nerves.Identity.Api;
 using Nerves.Identity.Grpc;
+using Nerves.Identity.Integration;
+using Nerves.Identity.Options;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
 using Nerves.Identity.Seeding;
@@ -24,6 +28,11 @@ builder.Services.Configure<AdminTokenOptions>(builder.Configuration.GetSection(A
 builder.Services.AddScoped<AdminTokenFilter>();
 
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
+builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditOptions.SectionName));
+var auditAddress = builder.Configuration.GetSection(AuditOptions.SectionName)["GrpcAddress"] ?? "http://127.0.0.1:5205";
+builder.Services.AddSingleton(_ => new AuditService.AuditServiceClient(GrpcChannel.ForAddress(auditAddress)));
+builder.Services.AddSingleton<AuditClient>();
+
 builder.Services.AddHostedService<DevSeeder>();
 
 var connectionString = builder.Configuration.GetConnectionString("Default");

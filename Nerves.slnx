@@ -10,6 +10,7 @@
     <Project Path="src/Nerves.ServiceDefaults/Nerves.ServiceDefaults.csproj" />
   </Folder>
   <Folder Name="/src/services/">
+    <Project Path="src/services/Nerves.Audit/Nerves.Audit.csproj" />
     <Project Path="src/services/Nerves.Authorization/Nerves.Authorization.csproj" />
     <Project Path="src/services/Nerves.Directory/Nerves.Directory.csproj" />
     <Project Path="src/services/Nerves.Gateway/Nerves.Gateway.csproj" />
