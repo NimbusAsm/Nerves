@@ -44,7 +44,7 @@
 | MFA：TOTP / Passkey / 恢复码 | 🧭 v1.0 计划 | 凭据类型已建模，流程未实现 |
 | 账户切换（switch-account） | 🧭 v1.0 计划 | — |
 | 上游联邦：OIDC / LDAP | 🧭 v1.0 计划 | — |
-| 失败锁定与限流 | 🧭 v1.0 计划 | 目前只有状态机，未接入限流器 |
+| 失败锁定 | ✅ 已实现 | 15 分钟内 5 次失败锁定 15 分钟（内存实现；多副本需换 Redis）；限流器未接入 |
 
 ## 授权、目录与审计
 
@@ -54,8 +54,9 @@
 | 决策 API（gRPC Check / ListPermissions） | ✅ 已实现 | 令牌签发时取权限快照，写入 permissions 与 authz_ver |
 | 决策缓存与版本失效 | 🚧 部分实现 | 版本号随令牌下发并随分配递增；服务端缓存未实现 |
 | 属性条件 / 外挂 PDP | 🔭 v1.1 计划 | v1 内置 RBAC；Casbin.NET 为可选模块 |
-| 组织、成员、组、邀请 | 🧭 v1.0 计划 | directory 服务仍是空壳 |
-| SCIM 2.0 | 🧭 v1.0 计划 | — |
+| 组织、成员、邀请 | ✅ 已实现 | directory schema：组织（realm 内 slug 唯一）、成员生命周期、邀请（只存 token 哈希，原文仅返回一次）；含 gRPC ListMemberships/IsMember |
+| 用户组 | 🧭 v1.0 计划 | 未实现 |
+| SCIM 2.0 | 🔭 v1.1 计划 | — |
 | 实名核验 Provider | 🧭 v1.0 计划 | 状态机已落地，Provider 抽象与流程未实现 |
 | Compliance.CN 适配 / 国密 / 归档 | 🔭 v1.1 计划 | v1 只交契约与状态机 |
 | 审计（事件、哈希链、检索、校验） | ✅ 已实现 | 每流 SHA-256 链；account.created / locked / disabled、auth.login.succeeded / failed；/api/v1/audit-events 与 /verify |
@@ -70,8 +71,8 @@
 | 授权码 + PKCE | ✅ 已实现 | /connect/authorize、/connect/token，端到端脚本实测 |
 | 令牌签发 | ✅ 已实现 | ID / Access（含 sub、leid、name、email、permissions、authz_ver）/ Refresh |
 | 注销 | ✅ 已实现 | /connect/logout，同时撤销该账户全部会话 |
-| 用户信息端点 | 🧭 v1.0 计划 | /connect/userinfo 未实现 |
-| Back-Channel Logout | 🧭 v1.0 计划 | 未实现 |
+| 用户信息端点 | ✅ 已实现 | /connect/userinfo 返回 sub/name/email/leid/permissions；无令牌 401 |
+| Back-Channel Logout | 🔭 v1.1 计划 | 未实现 |
 | 上游 SAML（SP） | 🔭 v1.1 计划 | — |
 
 ## SDK
