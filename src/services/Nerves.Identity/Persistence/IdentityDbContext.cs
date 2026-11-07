@@ -15,6 +15,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<NetworkAccount> NetworkAccounts => Set<NetworkAccount>();
 
+    public DbSet<AccountCredential> AccountCredentials => Set<AccountCredential>();
+
+    public DbSet<RoutingIndexEntry> RoutingIndex => Set<RoutingIndexEntry>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

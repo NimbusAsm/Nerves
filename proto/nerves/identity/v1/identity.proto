@@ -4,9 +4,12 @@ package nerves.identity.v1;
 
 option csharp_namespace = "Nerves.Contracts.Identity.V1";
 
-// Identity service owns LegalEntity and NetworkAccount.
+// Identity service owns legal entities, network accounts and credentials.
 service IdentityService {
   rpc GetServiceInfo(GetServiceInfoRequest) returns (GetServiceInfoResponse);
+  rpc VerifyCredential(VerifyCredentialRequest) returns (VerifyCredentialResponse);
+  rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
+  rpc ListAccountPermissions(ListAccountPermissionsRequest) returns (ListAccountPermissionsResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -15,4 +18,43 @@ message GetServiceInfoResponse {
   string name = 1;
   string version = 2;
   string contract_version = 3;
+}
+
+message VerifyCredentialRequest {
+  // Realm scoped username, email or phone number.
+  string identifier = 1;
+  string password = 2;
+  string realm = 3;
+}
+
+message VerifyCredentialResponse {
+  bool verified = 1;
+  // Populated only when verified.
+  string account_id = 2;
+  string legal_entity_id = 3;
+  string display_name = 4;
+  string failure_code = 5;
+}
+
+message GetAccountRequest {
+  string account_id = 1;
+}
+
+message GetAccountResponse {
+  string account_id = 1;
+  string legal_entity_id = 2;
+  string realm = 3;
+  string username = 4;
+  string display_name = 5;
+  string status = 6;
+  bool email_verified = 7;
+}
+
+message ListAccountPermissionsRequest {
+  string account_id = 1;
+}
+
+message ListAccountPermissionsResponse {
+  repeated string permissions = 1;
+  int64 authorization_version = 2;
 }

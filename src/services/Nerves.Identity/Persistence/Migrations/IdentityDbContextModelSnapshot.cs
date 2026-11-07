@@ -23,6 +23,50 @@ namespace Nerves.Identity.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Nerves.Identity.Domain.AccountCredential", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Algorithm")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("LastUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Secret")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("account_credential", "identity");
+                });
+
             modelBuilder.Entity("Nerves.Identity.Domain.LegalEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -135,6 +179,40 @@ namespace Nerves.Identity.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("network_account", "identity");
+                });
+
+            modelBuilder.Entity("Nerves.Identity.Domain.RoutingIndexEntry", b =>
+                {
+                    b.Property<string>("IdentifierHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdentifierType")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid?>("LegalEntityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Realm")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("IdentifierHash");
+
+                    b.HasIndex("AccountId");
+
+                    b.HasIndex("Realm");
+
+                    b.ToTable("routing_index", "identity");
                 });
 
             modelBuilder.Entity("Nerves.Identity.Domain.LegalEntity", b =>
