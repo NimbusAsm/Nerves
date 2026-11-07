@@ -7,7 +7,7 @@ option csharp_namespace = "Nerves.Contracts.Session.V1";
 // Session service owns interactive sessions and their revocation state.
 service SessionService {
   rpc GetServiceInfo(GetServiceInfoRequest) returns (GetServiceInfoResponse);
-  rpc CreateSession(CreateSessionRequest) returns (SessionReply);
+  rpc CreateSession(CreateSessionRequest) returns (CreateSessionResponse);
   rpc RevokeSession(RevokeSessionRequest) returns (RevokeSessionResponse);
   rpc RevokeAccountSessions(RevokeAccountSessionsRequest) returns (RevokeAccountSessionsResponse);
   rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
@@ -33,7 +33,7 @@ message CreateSessionRequest {
   int32 absolute_hours = 9;
 }
 
-message SessionReply {
+message CreateSessionResponse {
   string session_id = 1;
   string account_id = 2;
   string expires_at = 3;
