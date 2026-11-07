@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nerves.Contracts.Grpc/Nerves.Contracts.Grpc.csproj" />
+    <Project Path="src/Nerves.Core/Nerves.Core.csproj" />
+    <Project Path="src/Nerves.ServiceDefaults/Nerves.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/services/">
+    <Project Path="src/services/Nerves.Authorization/Nerves.Authorization.csproj" />
+    <Project Path="src/services/Nerves.Directory/Nerves.Directory.csproj" />
+    <Project Path="src/services/Nerves.Gateway/Nerves.Gateway.csproj" />
+    <Project Path="src/services/Nerves.Identity/Nerves.Identity.csproj" />
+    <Project Path="src/services/Nerves.Idp/Nerves.Idp.csproj" />
+    <Project Path="src/services/Nerves.Session/Nerves.Session.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nerves.UnitTests/Nerves.UnitTests.csproj" />
+  </Folder>
+</Solution>
