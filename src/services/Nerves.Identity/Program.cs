@@ -5,6 +5,7 @@ using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
 using Nerves.Identity.Seeding;
 using Nerves.ServiceDefaults;
+using Nerves.ServiceDefaults.Security;
 
 var builder = WebApplication.CreateBuilder(args);
 

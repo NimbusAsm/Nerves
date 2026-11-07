@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 
+using Nerves.ServiceDefaults.Security;
+
 namespace Nerves.Identity.Api;
 
 /// <summary>Management API for legal entities.</summary>

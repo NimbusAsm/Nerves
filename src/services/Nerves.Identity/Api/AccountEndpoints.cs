@@ -4,6 +4,8 @@ using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
 
+using Nerves.ServiceDefaults.Security;
+
 namespace Nerves.Identity.Api;
 
 /// <summary>Management API for network accounts.</summary>

@@ -1,6 +1,9 @@
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 
-namespace Nerves.Identity.Api;
+namespace Nerves.ServiceDefaults.Security;
 
 /// <summary>Requires a bearer token matching the configured admin token.</summary>
 public sealed class AdminTokenFilter(IOptions<AdminTokenOptions> options) : IEndpointFilter
@@ -21,10 +24,11 @@ public sealed class AdminTokenFilter(IOptions<AdminTokenOptions> options) : IEnd
         }
 
         var presented = header["Bearer ".Length..].Trim();
-        var provided = System.Text.Encoding.UTF8.GetBytes(presented);
-        var required = System.Text.Encoding.UTF8.GetBytes(expected);
-        var matches = System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(provided, required);
+        var provided = Encoding.UTF8.GetBytes(presented);
+        var required = Encoding.UTF8.GetBytes(expected);
 
-        return matches ? next(context) : ValueTask.FromResult<object?>(Results.Unauthorized());
+        return CryptographicOperations.FixedTimeEquals(provided, required)
+            ? next(context)
+            : ValueTask.FromResult<object?>(Results.Unauthorized());
     }
 }

@@ -4,9 +4,11 @@ package nerves.authorization.v1;
 
 option csharp_namespace = "Nerves.Contracts.Authorization.V1";
 
-// Authorization service answers "may subject S do action A on resource R?".
+// Authorization service owns roles, permissions and decisions.
 service AuthorizationService {
   rpc GetServiceInfo(GetServiceInfoRequest) returns (GetServiceInfoResponse);
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
+  rpc Check(CheckRequest) returns (CheckResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -15,4 +17,26 @@ message GetServiceInfoResponse {
   string name = 1;
   string version = 2;
   string contract_version = 3;
+}
+
+message ListPermissionsRequest {
+  string account_id = 1;
+  string legal_entity_id = 2;
+  string realm = 3;
+}
+
+message ListPermissionsResponse {
+  repeated string permissions = 1;
+  int64 authorization_version = 2;
+}
+
+message CheckRequest {
+  string account_id = 1;
+  string legal_entity_id = 2;
+  string permission = 3;
+}
+
+message CheckResponse {
+  bool allowed = 1;
+  int64 authorization_version = 2;
 }
