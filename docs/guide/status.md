@@ -16,7 +16,8 @@
 
 | 能力 | 状态 | 说明 |
 | --- | --- | --- |
-| 七个可运行服务（gateway / idp / identity / session / authorization / directory / audit） | ✅ 已实现 | 均可启动，提供 /healthz、/readyz、/api/v1/meta、/openapi/v1.json；gateway 与 directory 目前只有骨架端点 |
+| 网关（gateway） | ✅ 已实现 | YARP 反向代理 /api/v1 到 identity/session/authorization/audit，并提供 /api/v1/auth/login 与受限 CORS |
+| 服务骨架与健康端点 | ✅ 已实现 | 七个服务均可启动，提供 /healthz、/readyz、/api/v1/meta、/openapi/v1.json；directory 仍是骨架 |
 | 共享服务默认值 | ✅ 已实现 | ProblemDetails、健康检查、OpenTelemetry、管理 API 令牌过滤 |
 | 领域基元 | ✅ 已实现 | Result / Reason / UUIDv7 / 游标分页 / 领域事件 |
 | protobuf 契约与契约门禁 | ✅ 已实现 | identity / session / authorization / audit 四个 proto；buf lint + breaking 进 CI |
@@ -24,7 +25,8 @@
 | 开发 compose | ✅ 已实现 | PG 18.6 + NATS 2.15.2 + 六个服务 |
 | Helm Chart | ✅ 已实现 | helm lint --strict 与 kubeconform 通过；未在真实集群安装验证 |
 | 管理后台（Vue 3） | ✅ 已实现 | 9 个页面、mock/live 切换、中英 i18n、35 个测试 |
-| 管理聚合层（console-api） | 🧭 v1.0 计划 | Admin 的 live 模式仍需逐服务直连；未实现 BFF 聚合 |
+| 管理后台 live 模式 | ✅ 已实现 | VITE_USE_MOCK=false 时经 Vite 代理到网关（默认 127.0.0.1:5100），登录走 /api/v1/auth/login |
+| 管理聚合层（console-api） | 🧭 v1.0 计划 | 目前由网关按路径转发，未做响应聚合 |
 | 通知服务（notification） | 🧭 v1.0 计划 | — |
 | CLI（迁移 / 初始化 / 诊断） | 🧭 v1.0 计划 | 当前迁移使用 dotnet ef |
 

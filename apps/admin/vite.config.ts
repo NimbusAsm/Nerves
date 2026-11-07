@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // 真实后端就绪后，把 VITE_USE_MOCK 设为 false 即可直接代理到网关。
         '/api': {
-          target: env.NERVES_API_URL || 'http://127.0.0.1:5280',
+          target: env.NERVES_API_URL || 'http://127.0.0.1:5100',
           changeOrigin: true,
         },
       },
