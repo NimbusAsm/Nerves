@@ -19,7 +19,7 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
             ContractVersion = "v1",
         });
 
-    public override async Task<SessionReply> CreateSession(CreateSessionRequest request, ServerCallContext context)
+    public override async Task<CreateSessionResponse> CreateSession(CreateSessionRequest request, ServerCallContext context)
     {
         if (!Guid.TryParse(request.AccountId, out var accountId))
         {
