@@ -47,7 +47,7 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
         db.Sessions.Add(session);
         await db.SaveChangesAsync(context.CancellationToken);
 
-        return new SessionReply
+        return new CreateSessionResponse
         {
             SessionId = session.Id.ToString(),
             AccountId = session.AccountId.ToString(),
