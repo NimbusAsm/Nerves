@@ -46,6 +46,26 @@ jobs:
         if: github.event_name == 'pull_request'
         run: buf breaking --against '.git#branch=main'
 
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build every service image
+        run: |
+          set -euo pipefail
+          for svc in Gateway Idp Identity Session Authorization Directory Audit; do
+            echo "::group::Building $svc"
+            docker build \
+              -f deploy/docker/Dockerfile \
+              --build-arg PROJECT=src/services/Nerves.$svc/Nerves.$svc.csproj \
+              --build-arg ENTRY_DLL=Nerves.$svc.dll \
+              -t "nerves-$(echo "$svc" | tr '[:upper:]' '[:lower:]'):ci" .
+            docker run --rm --entrypoint dotnet \
+              "nerves-$(echo "$svc" | tr '[:upper:]' '[:lower:]'):ci" --info >/dev/null
+            echo "::endgroup::"
+          done
+
   frontend:
     runs-on: ubuntu-latest
     steps:
