@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Nerves.Identity.Api;
 using Nerves.Identity.Grpc;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
@@ -18,6 +19,9 @@ builder.Services.Configure<IdentitySecurityOptions>(
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
 
+builder.Services.Configure<AdminTokenOptions>(builder.Configuration.GetSection(AdminTokenOptions.SectionName));
+builder.Services.AddScoped<AdminTokenFilter>();
+
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
 builder.Services.AddHostedService<DevSeeder>();
 
@@ -36,6 +40,9 @@ app.UseStatusCodePages();
 app.MapOpenApi();
 app.MapNervesDefaults("nerves-identity");
 app.MapGrpcService<IdentityGrpcService>();
+app.MapAccountEndpoints();
+app.MapLegalEntityEndpoints();
+app.MapStatsEndpoints();
 
 app.Run();
 
