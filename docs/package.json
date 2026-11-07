@@ -1,0 +1,19 @@
+{
+  "name": "@nerves/docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Nerves documentation site (VitePress)",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build": "vitepress build",
+    "preview": "vitepress preview"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "devDependencies": {
+    "vitepress": "1.6.4"
+  }
+}
