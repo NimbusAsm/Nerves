@@ -14,6 +14,7 @@ import type {
   DashboardStats,
   Group,
   IntegrationStatus,
+  LdapSettingsPatch,
   GroupMember,
   LegalEntityDetail,
   LegalEntityQuery,
@@ -25,6 +26,7 @@ import type {
   OrgRole,
   PasskeyRegistration,
   PdpStatus,
+  PdpSettingsPatch,
   PasskeyRegistrationResult,
   Permission,
   Role,
@@ -174,6 +176,12 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
     },
 
     getIntegrationStatus: () => request<IntegrationStatus>('/admin/integrations'),
+
+    updateLdapSettings: (patch: LdapSettingsPatch) =>
+      request<IntegrationStatus['ldap']>('/admin/integrations/ldap', { method: 'PATCH', body: patch }),
+
+    updatePdpSettings: (patch: PdpSettingsPatch) =>
+      request<PdpStatus>('/admin/pdp', { method: 'PATCH', body: patch }),
 
     getPdpStatus: () => request<PdpStatus>('/admin/pdp'),
 

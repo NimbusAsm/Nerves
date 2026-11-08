@@ -5,9 +5,9 @@ using Microsoft.Extensions.Options;
 namespace Nerves.Authorization.Policy;
 
 /// <summary>Calls the external policy decision point when one is configured.</summary>
-public sealed class PdpClient(IOptions<PdpOptions> options, IHttpClientFactory httpClientFactory)
+public sealed class PdpClient(IOptionsMonitor<PdpOptions> options, IHttpClientFactory httpClientFactory)
 {
-    public bool Enabled => !string.IsNullOrWhiteSpace(options.Value.Url);
+    public bool Enabled => !string.IsNullOrWhiteSpace(options.CurrentValue.Url);
 
     public sealed record Decision(bool Allowed, string? Reason, bool FromPdp);
 
@@ -17,7 +17,7 @@ public sealed class PdpClient(IOptions<PdpOptions> options, IHttpClientFactory h
         string permission,
         CancellationToken cancellationToken)
     {
-        var settings = options.Value;
+        var settings = options.CurrentValue;
         if (!Enabled)
         {
             return null;

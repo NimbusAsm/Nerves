@@ -297,3 +297,23 @@ export interface PdpStatus {
   failOpen: boolean
   tokenConfigured: boolean
 }
+
+/** Partial update of the LDAP integration (runtime, non-persistent). */
+export interface LdapSettingsPatch {
+  enabled?: boolean
+  host?: string
+  port?: number
+  useSsl?: boolean
+  baseDn?: string
+  userFilter?: string
+  timeoutSeconds?: number
+}
+
+/** Partial update of the policy decision point. */
+export interface PdpSettingsPatch {
+  enabled?: boolean
+  url?: string | null
+  timeoutSeconds?: number
+  failOpen?: boolean
+  token?: string | null
+}

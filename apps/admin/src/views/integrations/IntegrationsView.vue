@@ -9,6 +9,7 @@ import PageHeader from '@/components/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
+import Input from '@/components/ui/Input.vue'
 
 const { t } = useI18n()
 const api = getApi()
@@ -17,6 +18,11 @@ const integration = ref<IntegrationStatus | null>(null)
 const pdp = ref<PdpStatus | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const editing = ref<'ldap' | 'pdp' | null>(null)
+const saving = ref(false)
+const ldapForm = ref({ enabled: false, host: '', port: '389', baseDn: '', userFilter: '', timeoutSeconds: '5' })
+const pdpForm = ref({ enabled: false, url: '', timeoutSeconds: '3', failOpen: false })
 
 async function load(): Promise<void> {
   loading.value = true
@@ -35,6 +41,55 @@ async function load(): Promise<void> {
   }
 }
 
+function editLdap(): void {
+  if (!integration.value) return
+  editing.value = 'ldap'
+  ldapForm.value = {
+    enabled: integration.value.ldap.enabled,
+    host: integration.value.ldap.host,
+    port: String(integration.value.ldap.port),
+    baseDn: integration.value.ldap.baseDn,
+    userFilter: integration.value.ldap.userFilter,
+    timeoutSeconds: '5',
+  }
+}
+
+function editPdp(): void {
+  if (!pdp.value) return
+  editing.value = 'pdp'
+  pdpForm.value = {
+    enabled: pdp.value.enabled,
+    url: pdp.value.url ?? '',
+    timeoutSeconds: String(pdp.value.timeoutSeconds),
+    failOpen: pdp.value.failOpen,
+  }
+}
+
+async function save(): Promise<void> {
+  saving.value = true
+  try {
+    if (editing.value === 'ldap') {
+      await api.updateLdapSettings({
+        ...ldapForm.value,
+        port: Number(ldapForm.value.port),
+        timeoutSeconds: Number(ldapForm.value.timeoutSeconds),
+      })
+    } else if (editing.value === 'pdp') {
+      await api.updatePdpSettings({
+        ...pdpForm.value,
+        timeoutSeconds: Number(pdpForm.value.timeoutSeconds),
+        url: pdpForm.value.url || null,
+      })
+    }
+    editing.value = null
+    await load()
+  } catch (cause) {
+    error.value = describeError(cause)
+  } finally {
+    saving.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
@@ -48,6 +103,37 @@ onMounted(load)
 
     <p v-if="error" class="mb-4 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{{ error }}</p>
 
+    <form v-if="editing" class="mb-6 rounded-lg border border-line bg-white p-4" @submit.prevent="save">
+      <h3 class="mb-3 text-sm font-semibold text-ink">
+        {{ editing === 'ldap' ? t('integrations.ldapTitle') : t('integrations.pdpTitle') }}
+      </h3>
+      <div v-if="editing === 'ldap'" class="grid gap-3 sm:grid-cols-2">
+        <label class="flex items-center gap-2 text-xs text-ink">
+          <input v-model="ldapForm.enabled" type="checkbox" />{{ t('integrations.enabled') }}
+        </label>
+        <Input v-model="ldapForm.host" :label="t('integrations.host')" />
+        <Input v-model.number="ldapForm.port" :label="t('integrations.port')" type="number" />
+        <Input v-model="ldapForm.baseDn" :label="t('integrations.baseDn')" />
+        <Input v-model="ldapForm.userFilter" :label="t('integrations.userFilter')" />
+        <Input v-model.number="ldapForm.timeoutSeconds" :label="t('integrations.timeout')" type="number" />
+      </div>
+      <div v-else class="grid gap-3 sm:grid-cols-2">
+        <label class="flex items-center gap-2 text-xs text-ink">
+          <input v-model="pdpForm.enabled" type="checkbox" />{{ t('integrations.enabled') }}
+        </label>
+        <Input v-model="pdpForm.url" :label="t('integrations.endpoint')" />
+        <Input v-model.number="pdpForm.timeoutSeconds" :label="t('integrations.timeout')" type="number" />
+        <label class="flex items-center gap-2 text-xs text-ink">
+          <input v-model="pdpForm.failOpen" type="checkbox" />{{ t('integrations.failOpen') }}
+        </label>
+      </div>
+      <div class="mt-4 flex gap-2">
+        <Button :loading="saving" type="submit">{{ t('common.save') }}</Button>
+        <Button variant="ghost" type="button" @click="editing = null">{{ t('common.cancel') }}</Button>
+      </div>
+      <p class="mt-2 text-[11px] text-muted">{{ t('integrations.runtimeNote') }}</p>
+    </form>
+
     <div class="grid gap-6 lg:grid-cols-2">
       <Card :title="t('integrations.ldapTitle')">
         <template v-if="integration">
@@ -55,6 +141,8 @@ onMounted(load)
             <Badge :tone="integration.ldap.enabled ? 'success' : 'neutral'" size="sm">
               {{ integration.ldap.enabled ? t('integrations.enabled') : t('integrations.disabled') }}
             </Badge>
+            <span class="flex-1" />
+            <Button size="sm" variant="ghost" @click="editLdap">{{ t('common.edit') }}</Button>
           </div>
           <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
             <dt class="text-muted">{{ t('integrations.host') }}</dt>
@@ -94,6 +182,8 @@ onMounted(load)
             <Badge :tone="pdp.failOpen ? 'warning' : 'success'" size="sm">
               {{ pdp.failOpen ? t('integrations.failOpen') : t('integrations.failClosed') }}
             </Badge>
+            <span class="flex-1" />
+            <Button size="sm" variant="ghost" @click="editPdp">{{ t('common.edit') }}</Button>
           </div>
           <dl class="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
             <dt class="text-muted">{{ t('integrations.endpoint') }}</dt>

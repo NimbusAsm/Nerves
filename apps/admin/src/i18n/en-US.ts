@@ -198,6 +198,8 @@ export default {
     noProviders: 'No federated providers configured.',
     endpoint: 'Endpoint',
     timeout: 'Timeout',
+    port: 'Port',
+    runtimeNote: 'The change applies to this process only and is lost on restart.',
     token: 'Bearer token',
     failOpen: 'Fail open',
     failClosed: 'Fail closed',

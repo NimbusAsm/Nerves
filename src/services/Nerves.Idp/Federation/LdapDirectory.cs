@@ -38,11 +38,11 @@ public sealed class LdapOptions
 /// configured) and then re-bind as that DN. Group-based authorization stays in
 /// Nerves; LDAP is only a credential source.
 /// </summary>
-public sealed class LdapDirectory(IOptions<LdapOptions> options)
+public sealed class LdapDirectory(IOptionsMonitor<LdapOptions> options)
 {
     public async Task<LdapIdentity?> AuthenticateAsync(string username, string password, CancellationToken cancellationToken)
     {
-        var settings = options.Value;
+        var settings = options.CurrentValue;
         if (!settings.Enabled || string.IsNullOrWhiteSpace(username) || string.IsNullOrWhiteSpace(password))
         {
             return null;

@@ -198,6 +198,8 @@ export default {
     noProviders: '尚未配置联邦提供方。',
     endpoint: '端点',
     timeout: '超时',
+    port: '端口',
+    runtimeNote: '修改仅对当前进程生效，重启后恢复为配置文件中的值。',
     token: 'Bearer 令牌',
     failOpen: '失败放行',
     failClosed: '失败拒绝',

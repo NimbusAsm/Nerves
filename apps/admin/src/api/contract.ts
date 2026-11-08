@@ -12,6 +12,7 @@ import type {
   DashboardStats,
   Group,
   IntegrationStatus,
+  LdapSettingsPatch,
   GroupMember,
   LegalEntityDetail,
   LegalEntityQuery,
@@ -23,6 +24,7 @@ import type {
   OrgRole,
   PasskeyRegistration,
   PdpStatus,
+  PdpSettingsPatch,
   PasskeyRegistrationResult,
   Permission,
   Role,
@@ -63,6 +65,8 @@ export interface NervesApi {
   removePasskeys(accountId: string): Promise<void>
 
   getIntegrationStatus(): Promise<IntegrationStatus>
+  updateLdapSettings(patch: LdapSettingsPatch): Promise<IntegrationStatus['ldap']>
+  updatePdpSettings(patch: PdpSettingsPatch): Promise<PdpStatus>
   getPdpStatus(): Promise<PdpStatus>
 
   listGroups(): Promise<Group[]>

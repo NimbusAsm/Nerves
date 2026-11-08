@@ -854,6 +854,17 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
       }
     },
 
+    async updateLdapSettings(patch): Promise<IntegrationStatus['ldap']> {
+      await delay()
+      return { ...(await this.getIntegrationStatus()).ldap, ...patch }
+    },
+
+    async updatePdpSettings(patch): Promise<PdpStatus> {
+      await delay()
+      const current = await this.getPdpStatus()
+      return { ...current, ...patch, enabled: patch.enabled ?? current.enabled }
+    },
+
     async getPdpStatus(): Promise<PdpStatus> {
       await delay()
       return {

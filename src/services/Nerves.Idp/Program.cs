@@ -160,6 +160,7 @@ app.MapControllers();
 app.MapAuthEndpoints();
 app.MapFederationEndpoints();
 app.MapIntegrationStatusEndpoints();
+app.MapIntegrationSettingsEndpoints();
 
 app.Run();
 

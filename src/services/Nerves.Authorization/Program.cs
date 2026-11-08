@@ -21,7 +21,6 @@ builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 builder.Services.AddSingleton<PermissionCache>();
 builder.Services.AddScoped<CachedPermissions>();
 builder.Services.AddSingleton<PdpClient>();
-builder.Services.AddSingleton<PdpOptions>();
 builder.Services.Configure<PdpOptions>(builder.Configuration.GetSection(PdpOptions.SectionName));
 builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditOptions.SectionName));
 var auditAddress = builder.Configuration["Audit:GrpcAddress"] ?? "http://127.0.0.1:5205";
