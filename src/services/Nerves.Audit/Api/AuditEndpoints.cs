@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Nerves.Audit.Archiving;
 using Nerves.Audit.Persistence;
 using Nerves.ServiceDefaults.Security;
-
 namespace Nerves.Audit.Api;
 
 /// <summary>Read-only access to the audit trail plus chain verification.</summary>
@@ -13,6 +13,8 @@ public static class AuditEndpoints
 
         group.MapGet("/audit-events", ListAsync);
         group.MapGet("/audit-events/verify", VerifyAsync);
+        group.MapPost("/audit-events/archive", ArchiveAsync);
+        group.MapGet("/audit-events/archive/status", ArchiveStatusAsync);
 
         return group;
     }
@@ -100,5 +102,33 @@ public static class AuditEndpoints
         }
 
         return Results.Ok(new { valid = true, count = events.Count });
+    }
+
+    private static async Task<IResult> ArchiveAsync(
+        AuditArchiveService archive,
+        CancellationToken cancellationToken)
+    {
+        var result = await archive.RunAsync(cancellationToken);
+        return Results.Ok(new { archived = result.Events, files = result.Files });
+    }
+
+    private static async Task<IResult> ArchiveStatusAsync(
+        AuditDbContext db,
+        Microsoft.Extensions.Options.IOptions<ArchiveOptions> options,
+        CancellationToken cancellationToken)
+    {
+        var pending = await db.AuditEvents.CountAsync(x => x.ArchivedAt == null, cancellationToken);
+        var archived = await db.AuditEvents.CountAsync(x => x.ArchivedAt != null, cancellationToken);
+        var last = await db.AuditEvents
+            .Where(x => x.ArchivedAt != null)
+            .MaxAsync(x => x.ArchivedAt, cancellationToken);
+
+        return Results.Ok(new
+        {
+            pending,
+            archived,
+            lastArchivedAt = last,
+            directory = Path.GetFullPath(options.Value.Directory),
+        });
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nerves.Audit.Api;
+using Nerves.Audit.Archiving;
 using Nerves.Audit.Grpc;
 using Nerves.Audit.Persistence;
 using Nerves.ServiceDefaults;
@@ -13,6 +14,9 @@ builder.Services.AddOpenApi();
 builder.Services.AddGrpc();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
+builder.Services.Configure<ArchiveOptions>(builder.Configuration.GetSection(ArchiveOptions.SectionName));
+builder.Services.AddScoped<AuditArchiveService>();
+builder.Services.AddHostedService<AuditArchiveWorker>();
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))

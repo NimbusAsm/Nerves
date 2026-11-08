@@ -64,7 +64,7 @@
 | 实名核验 Provider | 🧭 v1.0 计划 | 状态机已落地，Provider 抽象与流程未实现 |
 | Compliance.CN 适配 / 国密 / 归档 | 🔭 v1.1 计划 | v1 只交契约与状态机 |
 | 审计（事件、哈希链、检索、校验） | ✅ 已实现 | 每流 SHA-256 链；account.created / locked / disabled、auth.login.succeeded / failed；/api/v1/audit-events 与 /verify |
-| 审计归档到对象存储 | 🧭 v1.0 计划 | 当前只有数据库表 |
+| 审计归档 | ✅ 已实现 | 未归档事件按 UTC 日写成 NDJSON，附 sha256sum 清单；记录归档时间戳；POST /api/v1/audit-events/archive 手动触发，GET .../archive/status 查看进度；后台任务默认每 30 秒一轮 |
 | 多分片启用与再平衡 | 🔭 v1.1 计划 | v1 交付分片就绪 |
 
 ## IdP / OIDC

@@ -84,6 +84,9 @@ public sealed class AuditEvent
 
     public string Hash { get; private set; }
 
+    /// <summary>When the archive job copied the event to cold storage.</summary>
+    public DateTimeOffset? ArchivedAt { get; private set; }
+
     /// <summary>Builds the event and returns the hash that becomes the next link.</summary>
     public static AuditEvent Append(
         string stream,
@@ -164,6 +167,8 @@ public sealed class AuditEvent
 
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(payload))).ToLowerInvariant();
     }
+
+    public void MarkArchived(DateTimeOffset now) => ArchivedAt = now;
 }
 
 /// <summary>Tracks the tail of the hash chain for one stream.</summary>
@@ -195,4 +200,5 @@ public sealed class AuditChain
         Sequence = sequence;
         LastHash = hash;
     }
+
 }
