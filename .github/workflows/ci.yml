@@ -37,17 +37,15 @@ jobs:
 
       - name: Install buf
         run: |
-          curl --retry 5 --retry-delay 3 --retry-all-errors -fsSL \
-            -o /tmp/buf https://github.com/bufbuild/buf/releases/download/v1.75.0/buf-Linux-x86_64
-          sudo install -m 0755 /tmp/buf /usr/local/bin/buf
-          buf --version
+          npx --yes @bufbuild/buf@1.75.0 --version
+          echo "BUF=npx --yes @bufbuild/buf@1.75.0" >> "$GITHUB_ENV"
 
       - name: Lint protobuf
-        run: buf lint
+        run: $BUF lint
 
       - name: Check protobuf compatibility
         if: github.event_name == 'pull_request'
-        run: buf breaking --against '.git#branch=main'
+        run: $BUF breaking --against '.git#branch=main'
 
   images:
     runs-on: ubuntu-latest
