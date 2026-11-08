@@ -13,6 +13,9 @@ service IdentityService {
   rpc HasActiveTotp(HasActiveTotpRequest) returns (HasActiveTotpResponse);
   rpc VerifyMfa(VerifyMfaRequest) returns (VerifyMfaResponse);
   rpc ResolveIdentifier(ResolveIdentifierRequest) returns (ResolveIdentifierResponse);
+  rpc HasActivePasskey(HasActivePasskeyRequest) returns (HasActivePasskeyResponse);
+  rpc StartPasskeyAssertion(StartPasskeyAssertionRequest) returns (StartPasskeyAssertionResponse);
+  rpc CompletePasskeyAssertion(CompletePasskeyAssertionRequest) returns (CompletePasskeyAssertionResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -96,4 +99,31 @@ message ResolveIdentifierResponse {
   string realm = 4;
   string display_name = 5;
   string email = 6;
+}
+
+message HasActivePasskeyRequest {
+  string account_id = 1;
+}
+
+message HasActivePasskeyResponse {
+  bool active = 1;
+}
+
+message StartPasskeyAssertionRequest {
+  string account_id = 1;
+}
+
+message StartPasskeyAssertionResponse {
+  string options_json = 1;
+  string challenge_id = 2;
+}
+
+message CompletePasskeyAssertionRequest {
+  string account_id = 1;
+  string challenge_id = 2;
+  string assertion_json = 3;
+}
+
+message CompletePasskeyAssertionResponse {
+  bool valid = 1;
 }
