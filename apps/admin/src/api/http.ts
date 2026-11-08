@@ -22,6 +22,8 @@ import type {
   OrgMember,
   Organization,
   OrgRole,
+  PasskeyRegistration,
+  PasskeyRegistrationResult,
   Permission,
   Role,
   SessionInfo,
@@ -149,6 +151,25 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
           sort: '-createdAt',
         })}`,
       ),
+
+    startPasskeyRegistration: (accountId) =>
+      request<PasskeyRegistration>(
+        '/accounts/' + encodeURIComponent(accountId) + '/mfa/passkey/start',
+        { method: 'POST', body: {} },
+      ),
+
+    completePasskeyRegistration: (accountId, challengeId, attestation, nickname) =>
+      request<PasskeyRegistrationResult>(
+        '/accounts/' + encodeURIComponent(accountId) + '/mfa/passkey/complete',
+        { method: 'POST', body: { challengeId, attestation, nickname } },
+      ),
+
+    removePasskeys: async (accountId) => {
+      await request<void>('/accounts/' + encodeURIComponent(accountId) + '/mfa/passkey', {
+        method: 'DELETE',
+        allowEmpty: true,
+      })
+    },
 
     listGroups: () => request<Group[]>('/groups'),
 

@@ -20,6 +20,8 @@ import type {
   OrgMember,
   Organization,
   OrgRole,
+  PasskeyRegistration,
+  PasskeyRegistrationResult,
   Permission,
   Role,
   SessionInfo,
@@ -48,6 +50,15 @@ export interface NervesApi {
   listLegalEntities(query: LegalEntityQuery): Promise<CursorPage<LegalEntitySummary>>
   getLegalEntity(id: string): Promise<LegalEntityDetail>
   listLegalEntityAccounts(id: string, query: CursorQuery): Promise<CursorPage<AccountSummary>>
+
+  startPasskeyRegistration(accountId: string): Promise<PasskeyRegistration>
+  completePasskeyRegistration(
+    accountId: string,
+    challengeId: string,
+    attestation: unknown,
+    nickname?: string,
+  ): Promise<PasskeyRegistrationResult>
+  removePasskeys(accountId: string): Promise<void>
 
   listGroups(): Promise<Group[]>
   createGroup(input: { realm: string; code: string; name: string }): Promise<Group>

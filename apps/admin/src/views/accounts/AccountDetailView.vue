@@ -102,6 +102,91 @@ function amrLabel(value: string): string {
 }
 
 const customFields = computed(() => Object.entries(account.value?.customFields ?? {}))
+
+const passkeyCount = computed(
+  () => account.value?.credentials.filter((credential) => credential.type === 'passkey').length ?? 0,
+)
+
+const passkeyBusy = ref(false)
+
+function base64UrlToBytes(value: string): ArrayBuffer {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/')
+  const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4))
+  const buffer = new ArrayBuffer(binary.length)
+  const bytes = new Uint8Array(buffer)
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index)
+  return buffer
+}
+
+function bytesToBase64Url(bytes: ArrayBuffer): string {
+  const view = new Uint8Array(bytes)
+  let binary = ''
+  for (const byte of view) binary += String.fromCharCode(byte)
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+}
+
+async function registerPasskey(): Promise<void> {
+  if (passkeyBusy.value) return
+  passkeyBusy.value = true
+  try {
+    const registration = await api.startPasskeyRegistration(accountId.value)
+    const options = registration.options
+
+    const credential = (await navigator.credentials.create({
+      publicKey: {
+        challenge: base64UrlToBytes(options.challenge),
+        rp: options.rp,
+        user: {
+          id: base64UrlToBytes(options.user.id),
+          name: options.user.name,
+          displayName: options.user.displayName,
+        },
+        pubKeyCredParams: options.pubKeyCredParams.map((parameter) => ({
+          type: 'public-key' as const,
+          alg: parameter.alg,
+        })),
+        timeout: options.timeout ?? 60000,
+        attestation: (options.attestation ?? 'none') as AttestationConveyancePreference,
+        authenticatorSelection: options.authenticatorSelection as AuthenticatorSelectionCriteria | undefined,
+      },
+    })) as PublicKeyCredential | null
+
+    if (!credential) {
+      toasts.error(t('accounts.passkeyCancelled'))
+      return
+    }
+
+    const response = credential.response as AuthenticatorAttestationResponse
+    const attestation = {
+      id: credential.id,
+      rawId: bytesToBase64Url(credential.rawId),
+      type: credential.type,
+      response: {
+        clientDataJSON: bytesToBase64Url(response.clientDataJSON),
+        attestationObject: bytesToBase64Url(response.attestationObject),
+        transports: response.getTransports?.() ?? [],
+      },
+    }
+
+    await api.completePasskeyRegistration(accountId.value, registration.challengeId, attestation)
+    toasts.success(t('accounts.passkeyAdded'))
+    await load()
+  } catch (cause) {
+    toasts.error(describeError(cause))
+  } finally {
+    passkeyBusy.value = false
+  }
+}
+
+async function removePasskeys(): Promise<void> {
+  try {
+    await api.removePasskeys(accountId.value)
+    toasts.success(t('accounts.passkeyRemoved'))
+    await load()
+  } catch (cause) {
+    toasts.error(describeError(cause))
+  }
+}
 </script>
 
 <template>
@@ -248,10 +333,20 @@ const customFields = computed(() => Object.entries(account.value?.customFields ?
         </Card>
 
         <Card :title="$t('accounts.credentialInfo')">
-          <div class="mb-3 flex items-center gap-2">
+          <div class="mb-3 flex flex-wrap items-center gap-2">
             <Badge :tone="account.mfa ? 'success' : 'warning'" size="sm">
               {{ account.mfa ? $t('accounts.mfaEnabled') : $t('accounts.mfaDisabled') }}
             </Badge>
+            <Badge :tone="passkeyCount > 0 ? 'success' : 'neutral'" size="sm">
+              {{ $t('accounts.passkeyCount', { count: passkeyCount }) }}
+            </Badge>
+            <span class="flex-1" />
+            <Button v-if="canWrite" size="sm" variant="ghost" :loading="passkeyBusy" @click="registerPasskey">
+              {{ $t('accounts.passkeyAdd') }}
+            </Button>
+            <Button v-if="canWrite && passkeyCount > 0" size="sm" variant="ghost" @click="removePasskeys">
+              {{ $t('accounts.passkeyRemove') }}
+            </Button>
           </div>
           <ul class="divide-y divide-line">
             <li v-for="credential in account.credentials" :key="credential.type" class="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">

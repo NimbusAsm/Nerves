@@ -245,3 +245,25 @@ export interface GroupMember {
   addedAt: string
   displayName?: string
 }
+
+/** WebAuthn registration material returned by the identity service. */
+export interface PasskeyRegistration {
+  challengeId: string
+  options: PublicKeyCredentialCreationOptionsJSON
+}
+
+/** Options subset the browser needs to call navigator.credentials.create(). */
+export interface PublicKeyCredentialCreationOptionsJSON {
+  challenge: string
+  rp: { id: string; name: string }
+  user: { id: string; name: string; displayName: string }
+  pubKeyCredParams: Array<{ type: string; alg: number }>
+  timeout?: number
+  attestation?: AttestationConveyancePreference
+  authenticatorSelection?: Record<string, unknown>
+}
+
+/** Result of a completed passkey registration. */
+export interface PasskeyRegistrationResult {
+  active: boolean
+}

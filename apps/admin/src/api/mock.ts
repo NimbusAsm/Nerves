@@ -3,6 +3,8 @@ import type { NervesApi } from './contract'
 import { ApiError } from './http'
 import type {
   Group,
+  PasskeyRegistration,
+  PasskeyRegistrationResult,
   GroupMember,
   AccountDetail,
   AccountQuery,
@@ -784,6 +786,45 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
         .map(accountSummary)
       return paginate(items, query)
+    },
+
+    async startPasskeyRegistration(accountId: string): Promise<PasskeyRegistration> {
+      await delay()
+      requireAccount(accountId)
+      return {
+        challengeId: 'mock-challenge-' + accountId,
+        options: {
+          challenge: 'bW9jay1jaGFsbGVuZ2U',
+          rp: { id: 'nerves.local', name: 'Nerves' },
+          user: { id: accountId, name: accountId, displayName: accountId },
+          pubKeyCredParams: [{ type: 'public-key', alg: -7 }],
+        },
+      }
+    },
+
+    async completePasskeyRegistration(
+      accountId: string,
+      _challengeId: string,
+      _attestation: unknown,
+      nickname?: string,
+    ): Promise<PasskeyRegistrationResult> {
+      await delay()
+      const account = requireAccount(accountId)
+      if (!account.credentials.some((credential) => credential.type === 'passkey')) {
+        account.credentials.push({
+          type: 'passkey',
+          enrolledAt: new Date().toISOString(),
+          lastUsedAt: null,
+        })
+      }
+      void nickname
+      return { active: true }
+    },
+
+    async removePasskeys(accountId: string): Promise<void> {
+      await delay()
+      const account = requireAccount(accountId)
+      account.credentials = account.credentials.filter((credential) => credential.type !== 'passkey')
     },
 
     async listGroups(): Promise<Group[]> {
