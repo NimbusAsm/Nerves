@@ -8,8 +8,8 @@ using Nerves.Identity.Integration;
 using Nerves.Identity.Options;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
-using Nerves.Identity.Sharding;
 using Nerves.Identity.Seeding;
+using Nerves.Identity.Sharding;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
 
