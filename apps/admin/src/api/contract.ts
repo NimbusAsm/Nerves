@@ -10,6 +10,8 @@ import type {
   CursorPage,
   CursorQuery,
   DashboardStats,
+  Group,
+  GroupMember,
   LegalEntityDetail,
   LegalEntityQuery,
   LegalEntitySummary,
@@ -46,6 +48,13 @@ export interface NervesApi {
   listLegalEntities(query: LegalEntityQuery): Promise<CursorPage<LegalEntitySummary>>
   getLegalEntity(id: string): Promise<LegalEntityDetail>
   listLegalEntityAccounts(id: string, query: CursorQuery): Promise<CursorPage<AccountSummary>>
+
+  listGroups(): Promise<Group[]>
+  createGroup(input: { realm: string; code: string; name: string }): Promise<Group>
+  deleteGroup(id: string): Promise<void>
+  listGroupMembers(id: string): Promise<GroupMember[]>
+  addGroupMember(id: string, accountId: string): Promise<void>
+  removeGroupMember(id: string, accountId: string): Promise<void>
 
   listOrganizations(): Promise<Organization[]>
   listOrganizationMembers(organizationId: string): Promise<OrgMember[]>

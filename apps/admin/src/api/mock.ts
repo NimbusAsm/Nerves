@@ -2,6 +2,8 @@ import { localDateKey } from '@/lib/format'
 import type { NervesApi } from './contract'
 import { ApiError } from './http'
 import type {
+  Group,
+  GroupMember,
   AccountDetail,
   AccountQuery,
   AccountStatus,
@@ -784,6 +786,64 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
       return paginate(items, query)
     },
 
+    async listGroups(): Promise<Group[]> {
+      await delay()
+      return state.groups.map((group) => ({
+        ...group,
+        memberCount: state.groupMembers.filter((member) => member.groupId === group.id).length,
+        members: state.groupMembers.filter((member) => member.groupId === group.id).map(clone),
+      }))
+    },
+
+    async createGroup(input): Promise<Group> {
+      await delay()
+      if (state.groups.some((group) => group.code === input.code)) {
+        throw new ApiError(409, '分组已存在', '分组代码重复。')
+      }
+      const group: Group = {
+        id: "grp-" + String(state.groups.length + 1) + "-" + Date.now().toString(36),
+        realm: input.realm,
+        code: input.code,
+        name: input.name,
+        memberCount: 0,
+      }
+      state.groups.push(group)
+      return clone(group)
+    },
+
+    async deleteGroup(id: string): Promise<void> {
+      await delay()
+      const index = state.groups.findIndex((group) => group.id === id)
+      if (index < 0) throw new ApiError(404, '分组不存在', '该分组已被删除。')
+      state.groups.splice(index, 1)
+      state.groupMembers = state.groupMembers.filter((member) => member.groupId !== id)
+    },
+
+    async listGroupMembers(id: string): Promise<GroupMember[]> {
+      await delay()
+      return state.groupMembers
+        .filter((member) => member.groupId === id)
+        .map((member) => ({
+          ...member,
+          displayName: state.accounts.find((account) => account.id === member.accountId)?.displayName,
+        }))
+    },
+
+    async addGroupMember(id: string, accountId: string): Promise<void> {
+      await delay()
+      requireAccount(accountId)
+      if (!state.groupMembers.some((member) => member.groupId === id && member.accountId === accountId)) {
+        state.groupMembers.push({ groupId: id, accountId, addedAt: new Date().toISOString() })
+      }
+    },
+
+    async removeGroupMember(id: string, accountId: string): Promise<void> {
+      await delay()
+      state.groupMembers = state.groupMembers.filter(
+        (member) => !(member.groupId === id && member.accountId === accountId),
+      )
+    },
+
     async listOrganizations(): Promise<Organization[]> {
       await delay()
       return state.organizations.map((organization) => ({
@@ -1054,6 +1114,8 @@ interface MockState {
   sessions: SessionInfo[]
   auditEvents: AuditEvent[]
   organizations: Array<Omit<Organization, 'memberCount'>>
+  groups: Group[]
+  groupMembers: Array<{ groupId: string; accountId: string; addedAt: string }>
   members: OrgMember[]
   roles: Role[]
   applications: Application[]
@@ -1444,6 +1506,11 @@ function seedState(context: { rand: () => number; now: Date }): MockState {
     accounts,
     sessions,
     auditEvents,
+    groups: [
+      { id: 'grp-1', realm: 'nerves', code: 'engineering', name: 'Engineering' },
+      { id: 'grp-2', realm: 'nerves', code: 'finance', name: 'Finance' },
+    ],
+    groupMembers: [],
     organizations: ORG_SEEDS.map((organization, index) => ({
       ...organization,
       createdAt: daysBefore(now, 120 + index * 30).toISOString(),

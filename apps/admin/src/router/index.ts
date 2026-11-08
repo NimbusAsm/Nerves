@@ -93,6 +93,16 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'groups',
+        name: 'groups',
+        component: () => import('@/views/groups/GroupListView.vue'),
+        meta: {
+          titleKey: 'groups.title',
+          sectionKey: 'nav.sections.access',
+          permission: 'authz:role:read',
+        },
+      },
+      {
         path: 'roles',
         name: 'roles',
         component: () => import('@/views/roles/RoleListView.vue'),

@@ -12,6 +12,8 @@ import type {
   CursorPage,
   CursorQuery,
   DashboardStats,
+  Group,
+  GroupMember,
   LegalEntityDetail,
   LegalEntityQuery,
   LegalEntitySummary,
@@ -147,6 +149,32 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
           sort: '-createdAt',
         })}`,
       ),
+
+    listGroups: () => request<Group[]>('/groups'),
+
+    createGroup: (input) => request<Group>('/groups', { method: 'POST', body: input }),
+
+    deleteGroup: async (id) => {
+      await request<void>('/groups/' + encodeURIComponent(id), { method: 'DELETE', allowEmpty: true })
+    },
+
+    listGroupMembers: (id) =>
+      request<GroupMember[]>('/groups/' + encodeURIComponent(id) + '/members'),
+
+    addGroupMember: async (id, accountId) => {
+      await request<void>('/groups/' + encodeURIComponent(id) + '/members', {
+        method: 'POST',
+        body: { accountId },
+        allowEmpty: true,
+      })
+    },
+
+    removeGroupMember: async (id, accountId) => {
+      await request<void>(
+        '/groups/' + encodeURIComponent(id) + '/members/' + encodeURIComponent(accountId),
+        { method: 'DELETE', allowEmpty: true },
+      )
+    },
 
     listOrganizations: () => request<Organization[]>('/organizations'),
 

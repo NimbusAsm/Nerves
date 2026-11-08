@@ -24,7 +24,7 @@
 | CI（三作业） | ✅ 已实现 | dotnet（build/test/format/pack/buf）+ frontend（admin 与 TS SDK）+ python（pytest），均绿 |
 | 开发 compose | ✅ 已实现 | PG 18.6 + NATS 2.15.2 + 六个服务 |
 | Helm Chart | ✅ 已实现 | helm lint --strict 与 kubeconform 通过；未在真实集群安装验证 |
-| 管理后台（Vue 3） | ✅ 已实现 | 9 个页面、mock/live 切换、中英 i18n、35 个测试 |
+| 管理后台（Vue 3） | ✅ 已实现 | 10 个页面（含用户组）、mock/live 切换、中英 i18n、35 个测试 |
 | 管理后台 live 模式 | ✅ 已实现 | VITE_USE_MOCK=false 走 OIDC 授权码 + PKCE（登录 API 取票 → 跳 IdP → 回调换令牌），令牌仅存内存 |
 | 管理聚合层（console-api） | 🧭 v1.0 计划 | 目前由网关按路径转发，未做响应聚合 |
 | 通知服务（notification） | 🧭 v1.0 计划 | — |

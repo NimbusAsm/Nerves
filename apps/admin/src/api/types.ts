@@ -228,3 +228,20 @@ export interface AuditQuery extends CursorQuery {
   result?: AuditResult | ''
   action?: string
 }
+
+/** A named set of accounts that can receive roles. */
+export interface Group {
+  id: string
+  realm: string
+  code: string
+  name: string
+  memberCount?: number
+  members?: GroupMember[]
+}
+
+/** One group membership. */
+export interface GroupMember {
+  accountId: string
+  addedAt: string
+  displayName?: string
+}
