@@ -44,7 +44,7 @@
 | 会话服务 | ✅ 已实现 | session schema、登录建会话、登出撤销、管理端列出/撤销 |
 | MFA：TOTP | ✅ 已实现 | 注册返回 otpauth URI（密钥一次可见）、激活需验证码、密钥用 Data Protection 加密存储；登录先返回 mfaRequired + 一次性 mfaTicket，再凭 /api/v1/auth/mfa 完成二次校验 |
 | MFA：恢复码 | ✅ 已实现 | 生成 10 个一次性恢复码（明文只返回一次、库中仅存 SHA-256），可查询剩余数量与重置；登录时与 TOTP 共用 /api/v1/auth/mfa，使用后即作废 |
-| MFA：Passkey | 🧭 v1.0 计划 | 凭据类型已建模，流程未实现 |
+| MFA：Passkey | ✅ 已实现（基础） | WebAuthn 注册/认证（Fido2NetLib）：challenge 单次使用并持久化，凭据 Data Protection 加密、签名计数递增校验；登录 MFA 支持 passkey 断言。管理台暂无 passkey 登记界面 |
 | 账户切换 | ✅ 已实现 | 同一法人名下账户可凭当前 Bearer 令牌调用 /api/v1/auth/switch-account 换取新登录票据（不重输口令）；跨法人 403。实测新令牌 sub 为目标账户、leid 不变 |
 | 上游联邦：OIDC / LDAP | 🧭 v1.0 计划 | — |
 | 失败锁定 | ✅ 已实现 | 15 分钟内 5 次失败锁定 15 分钟（内存实现；多副本需换 Redis）；限流器未接入 |

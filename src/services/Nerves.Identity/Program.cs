@@ -1,3 +1,4 @@
+using Fido2NetLib;
 using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Nerves.Contracts.Audit.V1;
@@ -26,6 +27,13 @@ builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
 builder.Services.AddSingleton<TotpService>();
 builder.Services.AddSingleton<TotpSecretProtector>();
 builder.Services.AddSingleton<RecoveryCodes>();
+builder.Services.AddScoped<PasskeyService>();
+builder.Services.AddSingleton<IFido2>(_ => new Fido2(new Fido2Configuration
+{
+    RPID = "nerves.local",
+    RPName = "Nerves",
+    Origins = new HashSet<string> { "http://127.0.0.1:5300", "http://localhost:5300" },
+}));
 builder.Services.AddDataProtection();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);

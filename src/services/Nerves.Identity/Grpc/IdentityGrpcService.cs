@@ -11,6 +11,7 @@ namespace Nerves.Identity.Grpc;
 public sealed class IdentityGrpcService(
     IdentityDbContext dbContext,
     IPasswordHasher passwordHasher,
+    PasskeyService passkeys,
     IIdentifierHasher identifierHasher,
     TotpService totp,
     TotpSecretProtector protector) : IdentityService.IdentityServiceBase
@@ -220,5 +221,56 @@ public sealed class IdentityGrpcService(
             DisplayName = account.DisplayName,
             Email = account.Email ?? string.Empty,
         };
+    }
+
+    public override async Task<HasActivePasskeyResponse> HasActivePasskey(
+        HasActivePasskeyRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Guid.TryParse(request.AccountId, out var accountId))
+        {
+            return new HasActivePasskeyResponse { Active = false };
+        }
+
+        var active = await dbContext.AccountCredentials.AnyAsync(
+            x => x.AccountId == accountId && x.Type == CredentialType.Passkey && x.ActivatedAt != null,
+            context.CancellationToken);
+
+        return new HasActivePasskeyResponse { Active = active };
+    }
+
+    public override async Task<StartPasskeyAssertionResponse> StartPasskeyAssertion(
+        StartPasskeyAssertionRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Guid.TryParse(request.AccountId, out var accountId))
+        {
+            return new StartPasskeyAssertionResponse();
+        }
+
+        var (options, challengeId) = await passkeys.StartAssertionAsync(accountId, context.CancellationToken);
+        return new StartPasskeyAssertionResponse { OptionsJson = options, ChallengeId = challengeId };
+    }
+
+    public override async Task<CompletePasskeyAssertionResponse> CompletePasskeyAssertion(
+        CompletePasskeyAssertionRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Guid.TryParse(request.AccountId, out var accountId))
+        {
+            return new CompletePasskeyAssertionResponse { Valid = false };
+        }
+
+        var document = System.Text.Json.JsonDocument.Parse(request.AssertionJson);
+        var (ok, _) = await passkeys.CompleteAssertionAsync(
+            accountId, request.ChallengeId, document.RootElement, context.CancellationToken);
+
+        return new CompletePasskeyAssertionResponse { Valid = ok };
     }
 }

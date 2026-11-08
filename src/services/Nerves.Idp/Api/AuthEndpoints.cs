@@ -23,6 +23,8 @@ public static class AuthEndpoints
 
         group.MapPost("/login", LoginAsync).RequireRateLimiting("login");
         group.MapPost("/mfa", MfaAsync).RequireRateLimiting("login");
+        group.MapPost("/mfa/passkey/start", StartPasskeyMfaAsync).RequireRateLimiting("login");
+        group.MapPost("/mfa/passkey/complete", CompletePasskeyMfaAsync).RequireRateLimiting("login");
         group.MapPost("/switch-account", SwitchAccountAsync).RequireRateLimiting("login");
         group.MapPost("/logout", LogoutAsync);
 
@@ -151,6 +153,93 @@ public static class AuthEndpoints
 
         return await CompleteAsync(
             ticket.Realm, check, ticket.DisplayName, ["pwd", mfaMethod], tickets, sessions, audit, http, cancellationToken);
+    }
+
+    private static async Task<IResult> StartPasskeyMfaAsync(
+        [FromBody] PasskeyStartRequest request,
+        IdentityDirectory directory,
+        LoginTickets tickets,
+        SessionDirectory sessions,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        var ticket = await tickets.RedeemAsync(request.MfaTicket, "mfa", cancellationToken);
+        if (ticket is null)
+        {
+            return Results.Json(
+                new { error = "mfa_ticket_invalid" },
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var start = await directory.StartPasskeyAssertionAsync(ticket.AccountId.ToString(), cancellationToken);
+        if (start is null)
+        {
+            return Results.Json(
+                new { error = "passkey_unavailable" },
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        // Re-issue an MFA ticket so the client can present it again with the
+        // assertion; the original was consumed by this call.
+        var next = await tickets.IssueAsync(
+            ticket.Realm,
+            ticket.AccountId,
+            ticket.LegalEntityId,
+            ticket.DisplayName,
+            ticket.Email,
+            "mfa",
+            cancellationToken);
+
+        return Results.Ok(new
+        {
+            options = System.Text.Json.JsonDocument.Parse(start.Value.OptionsJson).RootElement,
+            challengeId = start.Value.ChallengeId,
+            mfaTicket = next,
+        });
+    }
+
+    private static async Task<IResult> CompletePasskeyMfaAsync(
+        [FromBody] PasskeyCompleteRequest request,
+        IdentityDirectory directory,
+        LoginTickets tickets,
+        SessionDirectory sessions,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        var ticket = await tickets.RedeemAsync(request.MfaTicket, "mfa", cancellationToken);
+        if (ticket is null)
+        {
+            return Results.Json(
+                new { error = "mfa_ticket_invalid" },
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var accountId = ticket.AccountId.ToString();
+        if (!await directory.CompletePasskeyAssertionAsync(
+                accountId, request.ChallengeId, request.Assertion, cancellationToken))
+        {
+            await audit.AppendAsync(
+                "auth.mfa.failed",
+                "account",
+                accountId,
+                accountId,
+                "failure",
+                "{\"method\":\"passkey\"}",
+                cancellationToken);
+
+            return Results.Json(
+                new { error = "invalid_passkey" },
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var check = new CredentialCheck(
+            true, accountId, ticket.LegalEntityId?.ToString() ?? string.Empty,
+            ticket.DisplayName, string.Empty, ticket.Email ?? string.Empty);
+
+        return await CompleteAsync(
+            ticket.Realm, check, ticket.DisplayName, ["pwd", "passkey"], tickets, sessions, audit, http, cancellationToken);
     }
 
     private static async Task<IResult> CompleteAsync(
@@ -332,6 +421,12 @@ public static class AuthEndpoints
 
 /// <summary>Login payload.</summary>
 public sealed record LoginRequest(string Username, string Password, string? Realm);
+
+/// <summary>Passkey MFA start payload.</summary>
+public sealed record PasskeyStartRequest(string MfaTicket);
+
+/// <summary>Passkey MFA completion payload.</summary>
+public sealed record PasskeyCompleteRequest(string MfaTicket, string ChallengeId, System.Text.Json.JsonElement Assertion);
 
 /// <summary>MFA challenge payload.</summary>
 public sealed record MfaRequest(string MfaTicket, string Code);

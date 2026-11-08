@@ -98,4 +98,33 @@ public sealed class IdentityDirectory(
         string Realm,
         string DisplayName,
         string Email);
+
+    public async Task<(string OptionsJson, string ChallengeId)?> StartPasskeyAssertionAsync(
+        string accountId,
+        CancellationToken cancellationToken)
+    {
+        var reply = await client.StartPasskeyAssertionAsync(
+            new StartPasskeyAssertionRequest { AccountId = accountId },
+            cancellationToken: cancellationToken);
+
+        return string.IsNullOrEmpty(reply.OptionsJson) ? null : (reply.OptionsJson, reply.ChallengeId);
+    }
+
+    public async Task<bool> CompletePasskeyAssertionAsync(
+        string accountId,
+        string challengeId,
+        System.Text.Json.JsonElement assertion,
+        CancellationToken cancellationToken)
+    {
+        var reply = await client.CompletePasskeyAssertionAsync(
+            new CompletePasskeyAssertionRequest
+            {
+                AccountId = accountId,
+                ChallengeId = challengeId,
+                AssertionJson = assertion.GetRawText(),
+            },
+            cancellationToken: cancellationToken);
+
+        return reply.Valid;
+    }
 }

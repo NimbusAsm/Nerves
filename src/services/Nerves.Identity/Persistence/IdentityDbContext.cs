@@ -17,6 +17,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<AccountCredential> AccountCredentials => Set<AccountCredential>();
 
+    public DbSet<PasskeyChallenge> PasskeyChallenges => Set<PasskeyChallenge>();
+
     public DbSet<RoutingIndexEntry> RoutingIndex => Set<RoutingIndexEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

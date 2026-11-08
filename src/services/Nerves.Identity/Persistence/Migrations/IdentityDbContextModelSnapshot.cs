@@ -184,6 +184,41 @@ namespace Nerves.Identity.Persistence.Migrations
                     b.ToTable("network_account", "identity");
                 });
 
+            modelBuilder.Entity("Nerves.Identity.Domain.PasskeyChallenge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Challenge")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("ConsumedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OptionsJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PasskeyChallenges", "identity");
+                });
+
             modelBuilder.Entity("Nerves.Identity.Domain.RoutingIndexEntry", b =>
                 {
                     b.Property<string>("IdentifierHash")

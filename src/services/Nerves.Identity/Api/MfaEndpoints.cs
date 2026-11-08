@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nerves.Identity.Domain;
@@ -22,6 +23,9 @@ public static class MfaEndpoints
         group.MapGet("/recovery-codes", CountRecoveryCodesAsync);
         group.MapPost("/recovery-codes", GenerateRecoveryCodesAsync);
         group.MapDelete("/recovery-codes", RemoveRecoveryCodesAsync);
+        group.MapPost("/passkey/start", StartPasskeyAsync);
+        group.MapPost("/passkey/complete", CompletePasskeyAsync);
+        group.MapDelete("/passkey", RemovePasskeysAsync);
 
         return group;
     }
@@ -140,6 +144,52 @@ public static class MfaEndpoints
         return Results.Ok();
     }
 
+    private static async Task<IResult> StartPasskeyAsync(
+        Guid accountId,
+        IdentityDbContext db,
+        PasskeyService passkeys,
+        CancellationToken cancellationToken)
+    {
+        var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == accountId, cancellationToken);
+        if (account is null)
+        {
+            return Results.NotFound();
+        }
+
+        var (options, challengeId) = await passkeys.StartRegistrationAsync(
+            accountId, account.Username, account.DisplayName ?? account.Username, cancellationToken);
+
+        return Results.Ok(new { options = JsonDocument.Parse(options).RootElement, challengeId });
+    }
+
+    private static async Task<IResult> CompletePasskeyAsync(
+        Guid accountId,
+        [FromBody] CompletePasskeyRequest request,
+        PasskeyService passkeys,
+        CancellationToken cancellationToken)
+    {
+        var (ok, error) = await passkeys.CompleteRegistrationAsync(
+            accountId, request.ChallengeId, request.Attestation, request.Nickname, cancellationToken);
+
+        return ok
+            ? Results.Ok(new { active = true })
+            : Results.Problem(error ?? "registration failed", statusCode: StatusCodes.Status400BadRequest);
+    }
+
+    private static async Task<IResult> RemovePasskeysAsync(
+        Guid accountId,
+        IdentityDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var credentials = await db.AccountCredentials
+            .Where(x => x.AccountId == accountId && x.Type == CredentialType.Passkey)
+            .ToListAsync(cancellationToken);
+
+        db.AccountCredentials.RemoveRange(credentials);
+        await db.SaveChangesAsync(cancellationToken);
+        return Results.Ok();
+    }
+
     private static async Task<IResult> CountRecoveryCodesAsync(
         Guid accountId,
         IdentityDbContext db,
@@ -200,6 +250,9 @@ public static class MfaEndpoints
         return Results.Ok();
     }
 }
+
+/// <summary>Passkey registration payload.</summary>
+public sealed record CompletePasskeyRequest(string ChallengeId, JsonElement Attestation, string? Nickname);
 
 /// <summary>Activation payload.</summary>
 public sealed record ActivateTotpRequest(string Code);
