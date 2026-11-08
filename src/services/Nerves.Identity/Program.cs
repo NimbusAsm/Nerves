@@ -55,6 +55,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
+await app.MigrateNervesDatabaseAsync<IdentityDbContext>();
+
 app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();

@@ -80,6 +80,12 @@ builder.Services.AddOpenIddict()
     })
     .AddServer(options =>
     {
+        var issuer = builder.Configuration["OpenIddict:Issuer"];
+        if (!string.IsNullOrWhiteSpace(issuer))
+        {
+            options.SetIssuer(new Uri(issuer));
+        }
+
         options
             .SetAuthorizationEndpointUris("/connect/authorize")
             .SetTokenEndpointUris("/connect/token")
@@ -136,6 +142,8 @@ builder.Services.AddSingleton<AuthorizationDirectory>();
 builder.Services.AddHostedService<OpenIddictClientSeeder>();
 
 var app = builder.Build();
+
+await app.MigrateNervesDatabaseAsync<IdpDbContext>();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

@@ -29,6 +29,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
+await app.MigrateNervesDatabaseAsync<AuthorizationDbContext>();
+
 app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();

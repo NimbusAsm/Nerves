@@ -29,6 +29,10 @@ public static class BearerAuthentication
         var authority = configuration["Authentication:Authority"] ?? "http://127.0.0.1:5101";
         var audience = configuration["Authentication:Audience"];
 
+        // Behind a proxy the discovery document may be reached by an internal
+        // address while tokens carry the public issuer; pin it when configured.
+        var issuer = configuration["Authentication:Issuer"];
+
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -42,6 +46,7 @@ public static class BearerAuthentication
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
+                    ValidIssuer = string.IsNullOrWhiteSpace(issuer) ? null : issuer,
                     ValidateLifetime = true,
                     ValidateAudience = !string.IsNullOrWhiteSpace(audience),
                     NameClaimType = "sub",

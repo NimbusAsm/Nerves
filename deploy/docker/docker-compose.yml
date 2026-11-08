@@ -1,4 +1,5 @@
-# Development stack. Production uses the Helm chart (see deploy/helm).
+# Development stack: every service plus its database.
+# Production uses the Helm chart in deploy/helm.
 name: nerves-dev
 
 x-service: &service
@@ -8,11 +9,12 @@ x-service: &service
   environment:
     ASPNETCORE_ENVIRONMENT: Development
     ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
-    Nats__Url: nats://nats:4222
+    Authentication__Authority: http://idp:8080
+    Authentication__Issuer: http://127.0.0.1:5101/
+    Authentication__Audience: nerves.api
+    Database__MigrateOnStart: "true"
   depends_on:
     postgres:
-      condition: service_healthy
-    nats:
       condition: service_healthy
   restart: unless-stopped
 
@@ -33,18 +35,6 @@ services:
       timeout: 3s
       retries: 20
 
-  nats:
-    image: nats:2.15.2-alpine
-    command: ["-js", "-m", "8222"]
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8222/healthz || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   gateway:
     <<: *service
     build:
@@ -53,7 +43,34 @@ services:
       args:
         PROJECT: src/services/Nerves.Gateway/Nerves.Gateway.csproj
         ENTRY_DLL: Nerves.Gateway.dll
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Database__MigrateOnStart: "true"
+      DevSeed__Enabled: "true"
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      Kestrel__Endpoints__Http__Protocols: Http1
+      ReverseProxy__Clusters__identity__Destinations__primary__Address: http://identity:8080/
+      ReverseProxy__Clusters__session__Destinations__primary__Address: http://session:8080/
+      ReverseProxy__Clusters__authorization__Destinations__primary__Address: http://authorization:8080/
+      ReverseProxy__Clusters__audit__Destinations__primary__Address: http://audit:8080/
+      ReverseProxy__Clusters__directory__Destinations__primary__Address: http://directory:8080/
+      ReverseProxy__Clusters__compliance__Destinations__primary__Address: http://compliance:8080/
     ports: ["5100:8080"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      identity:
+        condition: service_started
+      session:
+        condition: service_started
+      authorization:
+        condition: service_started
+      audit:
+        condition: service_started
+      directory:
+        condition: service_started
+      compliance:
+        condition: service_started
 
   idp:
     <<: *service
@@ -63,7 +80,28 @@ services:
       args:
         PROJECT: src/services/Nerves.Idp/Nerves.Idp.csproj
         ENTRY_DLL: Nerves.Idp.dll
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      OpenIddict__Issuer: http://127.0.0.1:5101/
+      Database__MigrateOnStart: "true"
+      Identity__GrpcAddress: http://identity:5202
+      Session__GrpcAddress: http://session:5203
+      Authorization__GrpcAddress: http://authorization:5204
+      Audit__GrpcAddress: http://audit:5205
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
     ports: ["5101:8080"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      identity:
+        condition: service_started
+      session:
+        condition: service_started
+      authorization:
+        condition: service_started
+      audit:
+        condition: service_started
 
   identity:
     <<: *service
@@ -73,7 +111,17 @@ services:
       args:
         PROJECT: src/services/Nerves.Identity/Nerves.Identity.csproj
         ENTRY_DLL: Nerves.Identity.dll
-    ports: ["5102:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      Authentication__Authority: http://idp:8080
+      Authentication__Audience: nerves.api
+      Database__MigrateOnStart: "true"
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      Kestrel__Endpoints__Grpc__Url: http://0.0.0.0:5202
+      Kestrel__Endpoints__Grpc__Protocols: Http2
+    ports: ["5102:8080", "5202:5202"]
 
   session:
     <<: *service
@@ -83,7 +131,17 @@ services:
       args:
         PROJECT: src/services/Nerves.Session/Nerves.Session.csproj
         ENTRY_DLL: Nerves.Session.dll
-    ports: ["5103:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      Authentication__Authority: http://idp:8080
+      Authentication__Audience: nerves.api
+      Database__MigrateOnStart: "true"
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      Kestrel__Endpoints__Grpc__Url: http://0.0.0.0:5203
+      Kestrel__Endpoints__Grpc__Protocols: Http2
+    ports: ["5103:8080", "5203:5203"]
 
   authorization:
     <<: *service
@@ -93,7 +151,40 @@ services:
       args:
         PROJECT: src/services/Nerves.Authorization/Nerves.Authorization.csproj
         ENTRY_DLL: Nerves.Authorization.dll
-    ports: ["5104:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      Authentication__Authority: http://idp:8080
+      Authentication__Audience: nerves.api
+      Database__MigrateOnStart: "true"
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      Kestrel__Endpoints__Grpc__Url: http://0.0.0.0:5204
+      Kestrel__Endpoints__Grpc__Protocols: Http2
+    ports: ["5104:8080", "5204:5204"]
+
+  audit:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Audit/Nerves.Audit.csproj
+        ENTRY_DLL: Nerves.Audit.dll
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      Authentication__Authority: http://idp:8080
+      Authentication__Audience: nerves.api
+      Database__MigrateOnStart: "true"
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Archive__Directory: /var/lib/nerves/audit-archive
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      Kestrel__Endpoints__Grpc__Url: http://0.0.0.0:5205
+      Kestrel__Endpoints__Grpc__Protocols: Http2
+    ports: ["5105:8080", "5205:5205"]
+    volumes:
+      - audit-archive:/var/lib/nerves/audit-archive
 
   directory:
     <<: *service
@@ -103,7 +194,36 @@ services:
       args:
         PROJECT: src/services/Nerves.Directory/Nerves.Directory.csproj
         ENTRY_DLL: Nerves.Directory.dll
-    ports: ["5105:8080"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      Authentication__Authority: http://idp:8080
+      Authentication__Audience: nerves.api
+      Database__MigrateOnStart: "true"
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+      Kestrel__Endpoints__Grpc__Url: http://0.0.0.0:5206
+      Kestrel__Endpoints__Grpc__Protocols: Http2
+    ports: ["5106:8080", "5206:5206"]
+
+  compliance:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.ComplianceCn/Nerves.ComplianceCn.csproj
+        ENTRY_DLL: Nerves.ComplianceCn.dll
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      Authentication__Authority: http://idp:8080
+      Authentication__Audience: nerves.api
+      Database__MigrateOnStart: "true"
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+    ports: ["5107:8080"]
 
 volumes:
   pgdata:
+  audit-archive:

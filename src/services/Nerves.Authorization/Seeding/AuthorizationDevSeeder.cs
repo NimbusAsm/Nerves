@@ -40,7 +40,31 @@ public sealed class AuthorizationDevSeeder(
             await db.SaveChangesAsync(cancellationToken);
         }
 
-        foreach (var accountId in seed.AdminAccountIds)
+        var adminIds = seed.AdminAccountIds;
+
+        if (adminIds.Length == 0 && seed.BootstrapFromIdentity)
+        {
+            // Development only: the identity seeder creates the first account in
+            // the shared database, so the id is looked up instead of configured.
+            // The identity service seeds on its own startup; wait briefly so a
+            // fresh compose stack converges regardless of container ordering.
+            for (var attempt = 0; attempt < 60 && adminIds.Length == 0; attempt++)
+            {
+                adminIds = (await db.Database
+                    .SqlQueryRaw<Guid>(
+                        "select \"Id\" as \"Value\" from identity.network_account where \"Username\" = {0}",
+                        seed.BootstrapUsername)
+                    .ToListAsync(cancellationToken))
+                    .ToArray();
+
+                if (adminIds.Length == 0)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                }
+            }
+        }
+
+        foreach (var accountId in adminIds)
         {
             if (await db.RoleAssignments.AnyAsync(
                     x => x.RoleId == role.Id && x.SubjectType == SubjectType.Account && x.SubjectId == accountId,
