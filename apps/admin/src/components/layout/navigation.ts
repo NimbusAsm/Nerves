@@ -1,4 +1,4 @@
-import { AppWindow, Building, Landmark, LayoutDashboard, ScrollText, ShieldCheck, Users, UsersRound } from '@lucide/vue'
+import { AppWindow, Building, Cable, Landmark, LayoutDashboard, ScrollText, ShieldCheck, Users, UsersRound } from '@lucide/vue'
 import type { Component } from 'vue'
 
 export interface NavItem {
@@ -39,6 +39,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     labelKey: 'nav.sections.directory',
     items: [
+      { name: 'integrations', path: '/integrations', labelKey: 'nav.integrations', icon: Cable, permission: 'authz:role:read' },
       { name: 'applications', path: '/applications', labelKey: 'nav.applications', icon: AppWindow, permission: 'directory:application:read' },
     ],
   },

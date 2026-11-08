@@ -123,6 +123,16 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'integrations',
+        name: 'integrations',
+        component: () => import('@/views/integrations/IntegrationsView.vue'),
+        meta: {
+          titleKey: 'integrations.title',
+          sectionKey: 'nav.sections.directory',
+          permission: 'authz:role:read',
+        },
+      },
+      {
         path: 'applications',
         name: 'applications',
         component: () => import('@/views/applications/ApplicationListView.vue'),

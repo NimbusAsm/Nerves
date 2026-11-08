@@ -159,6 +159,7 @@ app.MapNervesDefaults("nerves-idp");
 app.MapControllers();
 app.MapAuthEndpoints();
 app.MapFederationEndpoints();
+app.MapIntegrationStatusEndpoints();
 
 app.Run();
 

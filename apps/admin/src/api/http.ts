@@ -13,6 +13,7 @@ import type {
   CursorQuery,
   DashboardStats,
   Group,
+  IntegrationStatus,
   GroupMember,
   LegalEntityDetail,
   LegalEntityQuery,
@@ -23,6 +24,7 @@ import type {
   Organization,
   OrgRole,
   PasskeyRegistration,
+  PdpStatus,
   PasskeyRegistrationResult,
   Permission,
   Role,
@@ -170,6 +172,10 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
         allowEmpty: true,
       })
     },
+
+    getIntegrationStatus: () => request<IntegrationStatus>('/admin/integrations'),
+
+    getPdpStatus: () => request<PdpStatus>('/admin/pdp'),
 
     listGroups: () => request<Group[]>('/groups'),
 

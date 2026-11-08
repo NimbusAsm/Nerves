@@ -267,3 +267,33 @@ export interface PublicKeyCredentialCreationOptionsJSON {
 export interface PasskeyRegistrationResult {
   active: boolean
 }
+
+/** Read-only view of the IdP's configured integrations. */
+export interface IntegrationStatus {
+  ldap: {
+    enabled: boolean
+    host: string
+    port: number
+    useSsl: boolean
+    baseDn: string
+    userFilter: string
+    mailAttribute: string
+    serviceAccount: boolean
+  }
+  federation: Array<{
+    id: string
+    displayName: string
+    authority: string
+    clientId: string
+    redirectUri: string
+  }>
+}
+
+/** Read-only view of the authorization PDP configuration. */
+export interface PdpStatus {
+  enabled: boolean
+  url: string | null
+  timeoutSeconds: number
+  failOpen: boolean
+  tokenConfigured: boolean
+}

@@ -3,6 +3,8 @@ import type { NervesApi } from './contract'
 import { ApiError } from './http'
 import type {
   Group,
+  IntegrationStatus,
+  PdpStatus,
   PasskeyRegistration,
   PasskeyRegistrationResult,
   GroupMember,
@@ -825,6 +827,42 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
       await delay()
       const account = requireAccount(accountId)
       account.credentials = account.credentials.filter((credential) => credential.type !== 'passkey')
+    },
+
+    async getIntegrationStatus(): Promise<IntegrationStatus> {
+      await delay()
+      return {
+        ldap: {
+          enabled: false,
+          host: '127.0.0.1',
+          port: 389,
+          useSsl: false,
+          baseDn: 'dc=example,dc=com',
+          userFilter: '(uid={0})',
+          mailAttribute: 'mail',
+          serviceAccount: false,
+        },
+        federation: [
+          {
+            id: 'upstream',
+            displayName: 'Upstream OIDC',
+            authority: 'https://idp.example.com',
+            clientId: 'nerves-demo',
+            redirectUri: 'https://id.example.com/api/v1/auth/federation/callback',
+          },
+        ],
+      }
+    },
+
+    async getPdpStatus(): Promise<PdpStatus> {
+      await delay()
+      return {
+        enabled: false,
+        url: null,
+        timeoutSeconds: 3,
+        failOpen: false,
+        tokenConfigured: false,
+      }
     },
 
     async listGroups(): Promise<Group[]> {

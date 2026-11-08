@@ -11,6 +11,7 @@ import type {
   CursorQuery,
   DashboardStats,
   Group,
+  IntegrationStatus,
   GroupMember,
   LegalEntityDetail,
   LegalEntityQuery,
@@ -21,6 +22,7 @@ import type {
   Organization,
   OrgRole,
   PasskeyRegistration,
+  PdpStatus,
   PasskeyRegistrationResult,
   Permission,
   Role,
@@ -59,6 +61,9 @@ export interface NervesApi {
     nickname?: string,
   ): Promise<PasskeyRegistrationResult>
   removePasskeys(accountId: string): Promise<void>
+
+  getIntegrationStatus(): Promise<IntegrationStatus>
+  getPdpStatus(): Promise<PdpStatus>
 
   listGroups(): Promise<Group[]>
   createGroup(input: { realm: string; code: string; name: string }): Promise<Group>
