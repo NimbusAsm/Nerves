@@ -24,8 +24,7 @@ builder.Services.Configure<IdentitySecurityOptions>(
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
 
-builder.Services.Configure<AdminTokenOptions>(builder.Configuration.GetSection(AdminTokenOptions.SectionName));
-builder.Services.AddScoped<AdminTokenFilter>();
+builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
 builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditOptions.SectionName));
@@ -44,8 +43,12 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
+app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapOpenApi();
 app.MapNervesDefaults("nerves-identity");

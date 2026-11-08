@@ -14,7 +14,7 @@ public static class AccountEndpoints
 {
     public static RouteGroupBuilder MapAccountEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/accounts").AddEndpointFilter<AdminTokenFilter>();
+        var group = app.MapGroup("/api/v1/accounts").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
         group.MapPost("/", CreateAsync);
         group.MapGet("/", ListAsync);

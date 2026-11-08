@@ -12,7 +12,7 @@ public static class OrganizationEndpoints
 {
     public static RouteGroupBuilder MapOrganizationEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1").AddEndpointFilter<AdminTokenFilter>();
+        var group = app.MapGroup("/api/v1").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
         group.MapGet("/organizations", ListAsync);
         group.MapPost("/organizations", CreateAsync);

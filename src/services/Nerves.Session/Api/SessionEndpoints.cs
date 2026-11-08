@@ -9,7 +9,7 @@ public static class SessionEndpoints
 {
     public static RouteGroupBuilder MapSessionEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1").AddEndpointFilter<AdminTokenFilter>();
+        var group = app.MapGroup("/api/v1").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
         group.MapGet("/accounts/{accountId:guid}/sessions", ListAsync);
         group.MapDelete("/sessions/{sessionId:guid}", RevokeAsync);

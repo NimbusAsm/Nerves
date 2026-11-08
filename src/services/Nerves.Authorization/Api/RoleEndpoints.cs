@@ -10,7 +10,7 @@ public static class RoleEndpoints
 {
     public static RouteGroupBuilder MapAuthorizationEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1").AddEndpointFilter<AdminTokenFilter>();
+        var group = app.MapGroup("/api/v1").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
         group.MapGet("/roles", ListRolesAsync);
         group.MapPost("/roles", CreateRoleAsync);

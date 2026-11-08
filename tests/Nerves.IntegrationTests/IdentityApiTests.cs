@@ -1,8 +1,8 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Nerves.Identity.Persistence;
@@ -34,6 +34,17 @@ public sealed class IdentityApiTests : IAsyncLifetime
             builder.UseSetting("Api:AdminToken", "integration-token");
             builder.UseSetting("Security:IdentifierHashKey", Convert.ToBase64String(new byte[32]));
             builder.UseSetting("Kestrel:Endpoints", string.Empty);
+            builder.ConfigureTestServices(services =>
+            {
+                services.AddAuthentication(options =>
+                    {
+                        options.DefaultAuthenticateScheme = TestAuthenticationHandler.SchemeName;
+                        options.DefaultChallengeScheme = TestAuthenticationHandler.SchemeName;
+                    })
+                    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                        TestAuthenticationHandler.SchemeName,
+                        _ => { });
+            });
         });
 
         _client = _factory.CreateClient();
@@ -61,7 +72,7 @@ public sealed class IdentityApiTests : IAsyncLifetime
     [Fact]
     public async Task Creates_legal_entity_and_account_and_blocks_duplicates()
     {
-        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", "integration-token");
+        _client.DefaultRequestHeaders.Add(TestAuthenticationHandler.PermissionHeader, "nerves:admin");
 
         var entityResponse = await _client.PostAsJsonAsync("/api/v1/legal-entities", new
         {

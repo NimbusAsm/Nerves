@@ -11,7 +11,7 @@ public static class StatsEndpoints
 {
     public static RouteGroupBuilder MapStatsEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/stats").AddEndpointFilter<AdminTokenFilter>();
+        var group = app.MapGroup("/api/v1/stats").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
         group.MapGet("/", async (IdentityDbContext db, CancellationToken cancellationToken) =>
         {

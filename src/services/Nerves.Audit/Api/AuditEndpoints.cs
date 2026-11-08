@@ -9,7 +9,7 @@ public static class AuditEndpoints
 {
     public static RouteGroupBuilder MapAuditEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1").AddEndpointFilter<AdminTokenFilter>();
+        var group = app.MapGroup("/api/v1").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
         group.MapGet("/audit-events", ListAsync);
         group.MapGet("/audit-events/verify", VerifyAsync);

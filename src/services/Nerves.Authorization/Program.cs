@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Nerves.Authorization.Api;
 using Nerves.Authorization.Grpc;
 using Nerves.Authorization.Persistence;
+using Nerves.Authorization.Seeding;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
 
@@ -12,7 +13,9 @@ builder.AddNervesDefaults("nerves-authorization");
 builder.Services.AddOpenApi();
 builder.Services.AddGrpc();
 
-builder.Services.Configure<AdminTokenOptions>(builder.Configuration.GetSection(AdminTokenOptions.SectionName));
+builder.Services.AddNervesBearerAuthentication(builder.Configuration);
+builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
+builder.Services.AddHostedService<AuthorizationDevSeeder>();
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))
@@ -23,8 +26,12 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
+app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapOpenApi();
 app.MapNervesDefaults("nerves-authorization");

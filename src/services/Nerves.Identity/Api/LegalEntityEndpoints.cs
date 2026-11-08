@@ -11,7 +11,7 @@ public static class LegalEntityEndpoints
 {
     public static RouteGroupBuilder MapLegalEntityEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/v1/legal-entities").AddEndpointFilter<AdminTokenFilter>();
+        var group = app.MapGroup("/api/v1/legal-entities").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
         group.MapPost("/", CreateAsync);
         group.MapGet("/", ListAsync);
