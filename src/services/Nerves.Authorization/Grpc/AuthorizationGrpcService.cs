@@ -1,11 +1,12 @@
 using Grpc.Core;
 using Nerves.Authorization.Caching;
+using Nerves.Authorization.Policy;
 using Nerves.Contracts.Authorization.V1;
 
 namespace Nerves.Authorization.Grpc;
 
 /// <summary>Answers authorization questions over gRPC.</summary>
-public sealed class AuthorizationGrpcService(CachedPermissions permissions) : AuthorizationService.AuthorizationServiceBase
+public sealed class AuthorizationGrpcService(CachedPermissions permissions, PdpClient pdp) : AuthorizationService.AuthorizationServiceBase
 {
     public override Task<GetServiceInfoResponse> GetServiceInfo(
         GetServiceInfoRequest request,
@@ -42,9 +43,26 @@ public sealed class AuthorizationGrpcService(CachedPermissions permissions) : Au
             request.LegalEntityId,
             context.CancellationToken);
 
-        var allowed = permissions.Any(p => string.Equals(p, request.Permission, StringComparison.OrdinalIgnoreCase));
+        var local = permissions.Any(
+            p => string.Equals(p, request.Permission, StringComparison.OrdinalIgnoreCase));
 
-        return new CheckResponse { Allowed = allowed, AuthorizationVersion = version };
+        if (pdp.Enabled)
+        {
+            var decision = await pdp.DecideAsync(
+                request.AccountId,
+                request.LegalEntityId,
+                request.Permission,
+                context.CancellationToken);
+
+            if (decision is null)
+            {
+                throw new RpcException(new Status(StatusCode.Unavailable, "policy decision point unavailable"));
+            }
+
+            return new CheckResponse { Allowed = decision.Allowed, AuthorizationVersion = version };
+        }
+
+        return new CheckResponse { Allowed = local, AuthorizationVersion = version };
     }
 
     private Task<(IReadOnlyList<string> Permissions, long Version)> ResolveAsync(

@@ -3,6 +3,7 @@ using Nerves.Authorization.Api;
 using Nerves.Authorization.Caching;
 using Nerves.Authorization.Grpc;
 using Nerves.Authorization.Persistence;
+using Nerves.Authorization.Policy;
 using Nerves.Authorization.Seeding;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
@@ -17,6 +18,10 @@ builder.Services.AddGrpc();
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 builder.Services.AddSingleton<PermissionCache>();
 builder.Services.AddScoped<CachedPermissions>();
+builder.Services.AddSingleton<PdpClient>();
+builder.Services.AddSingleton<PdpOptions>();
+builder.Services.Configure<PdpOptions>(builder.Configuration.GetSection(PdpOptions.SectionName));
+builder.Services.AddHttpClient("pdp", client => client.Timeout = TimeSpan.FromSeconds(3));
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
 builder.Services.AddHostedService<AuthorizationDevSeeder>();
 
