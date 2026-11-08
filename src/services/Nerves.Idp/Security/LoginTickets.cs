@@ -17,10 +17,11 @@ public sealed class LoginTickets(IdpDbContext db)
         Guid? legalEntityId,
         string displayName,
         string? email,
+        string purpose,
         CancellationToken cancellationToken)
     {
         var raw = Base64Url(RandomNumberGenerator.GetBytes(32));
-        var ticket = LoginTicket.Issue(Hash(raw), realm, accountId, legalEntityId, displayName, email, Lifetime);
+        var ticket = LoginTicket.Issue(Hash(raw), realm, accountId, legalEntityId, displayName, email, purpose, Lifetime);
 
         db.LoginTickets.Add(ticket);
         await db.SaveChangesAsync(cancellationToken);
@@ -28,7 +29,7 @@ public sealed class LoginTickets(IdpDbContext db)
         return raw;
     }
 
-    public async Task<LoginTicket?> RedeemAsync(string raw, CancellationToken cancellationToken)
+    public async Task<LoginTicket?> RedeemAsync(string raw, string purpose, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(raw))
         {
@@ -38,7 +39,7 @@ public sealed class LoginTickets(IdpDbContext db)
         var hash = Hash(raw);
         var ticket = await db.LoginTickets.FirstOrDefaultAsync(x => x.TokenHash == hash, cancellationToken);
 
-        if (ticket is null || !ticket.IsUsable(DateTimeOffset.UtcNow))
+        if (ticket is null || !ticket.IsUsable(DateTimeOffset.UtcNow) || ticket.Purpose != purpose)
         {
             return null;
         }

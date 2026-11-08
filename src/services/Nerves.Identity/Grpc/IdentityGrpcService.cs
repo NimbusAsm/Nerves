@@ -11,7 +11,9 @@ namespace Nerves.Identity.Grpc;
 public sealed class IdentityGrpcService(
     IdentityDbContext dbContext,
     IPasswordHasher passwordHasher,
-    IIdentifierHasher identifierHasher) : IdentityService.IdentityServiceBase
+    IIdentifierHasher identifierHasher,
+    TotpService totp,
+    TotpSecretProtector protector) : IdentityService.IdentityServiceBase
 {
     public override Task<GetServiceInfoResponse> GetServiceInfo(
         GetServiceInfoRequest request,
@@ -103,6 +105,57 @@ public sealed class IdentityGrpcService(
             DisplayName = account.DisplayName ?? account.Username,
             Status = account.Status.ToString(),
         };
+    }
+
+    public override async Task<HasActiveTotpResponse> HasActiveTotp(
+        HasActiveTotpRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Guid.TryParse(request.AccountId, out var accountId))
+        {
+            return new HasActiveTotpResponse { Active = false };
+        }
+
+        var active = await dbContext.AccountCredentials
+            .AnyAsync(
+                x => x.AccountId == accountId && x.Type == CredentialType.Totp && x.ActivatedAt != null,
+                context.CancellationToken);
+
+        return new HasActiveTotpResponse { Active = active };
+    }
+
+    public override async Task<VerifyTotpResponse> VerifyTotp(
+        VerifyTotpRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Guid.TryParse(request.AccountId, out var accountId))
+        {
+            return new VerifyTotpResponse { Valid = false };
+        }
+
+        var credential = await dbContext.AccountCredentials.FirstOrDefaultAsync(
+            x => x.AccountId == accountId && x.Type == CredentialType.Totp && x.ActivatedAt != null,
+            context.CancellationToken);
+
+        if (credential is null)
+        {
+            return new VerifyTotpResponse { Valid = false };
+        }
+
+        var secret = protector.TryUnprotect(credential.Secret);
+        if (secret is null || !totp.Verify(secret, request.Code))
+        {
+            return new VerifyTotpResponse { Valid = false };
+        }
+
+        credential.MarkUsed(DateTimeOffset.UtcNow);
+        await dbContext.SaveChangesAsync(context.CancellationToken);
+
+        return new VerifyTotpResponse { Valid = true };
     }
 
     public override Task<ListAccountPermissionsResponse> ListAccountPermissions(

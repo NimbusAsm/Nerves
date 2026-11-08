@@ -12,6 +12,7 @@ public sealed class SessionDirectory(SessionService.SessionServiceClient client)
         string deviceId,
         string ipHash,
         string userAgentHash,
+        IEnumerable<string> amr,
         CancellationToken cancellationToken)
     {
         var reply = await client.CreateSessionAsync(
@@ -23,6 +24,7 @@ public sealed class SessionDirectory(SessionService.SessionServiceClient client)
                 DeviceId = deviceId,
                 IpHash = ipHash,
                 UserAgentHash = userAgentHash,
+                Amr = { amr },
                 IdleMinutes = 30,
                 AbsoluteHours = 12,
             },

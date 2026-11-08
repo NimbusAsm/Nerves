@@ -39,6 +39,24 @@ public sealed class IdentityDirectory(
             reply.Email);
     }
 
+    public async Task<bool> HasActiveTotpAsync(string accountId, CancellationToken cancellationToken)
+    {
+        var reply = await client.HasActiveTotpAsync(
+            new HasActiveTotpRequest { AccountId = accountId },
+            cancellationToken: cancellationToken);
+
+        return reply.Active;
+    }
+
+    public async Task<bool> VerifyTotpAsync(string accountId, string code, CancellationToken cancellationToken)
+    {
+        var reply = await client.VerifyTotpAsync(
+            new VerifyTotpRequest { AccountId = accountId, Code = code },
+            cancellationToken: cancellationToken);
+
+        return reply.Valid;
+    }
+
     public async Task<GetAccountResponse?> GetAccountAsync(string accountId, CancellationToken cancellationToken)
     {
         try

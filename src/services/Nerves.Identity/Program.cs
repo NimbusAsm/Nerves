@@ -23,6 +23,9 @@ builder.Services.Configure<IdentitySecurityOptions>(
 
 builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
+builder.Services.AddSingleton<TotpService>();
+builder.Services.AddSingleton<TotpSecretProtector>();
+builder.Services.AddDataProtection();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 
@@ -56,6 +59,7 @@ app.MapGrpcService<IdentityGrpcService>();
 app.MapAccountEndpoints();
 app.MapLegalEntityEndpoints();
 app.MapStatsEndpoints();
+app.MapMfaEndpoints();
 
 app.Run();
 

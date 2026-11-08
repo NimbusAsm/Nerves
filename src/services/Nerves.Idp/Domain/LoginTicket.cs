@@ -11,6 +11,7 @@ public sealed class LoginTicket
         TokenHash = string.Empty;
         Realm = string.Empty;
         DisplayName = string.Empty;
+        Purpose = string.Empty;
     }
 
     private LoginTicket(
@@ -21,6 +22,7 @@ public sealed class LoginTicket
         Guid? legalEntityId,
         string displayName,
         string? email,
+        string purpose,
         DateTimeOffset expiresAt)
     {
         Id = id;
@@ -30,6 +32,7 @@ public sealed class LoginTicket
         LegalEntityId = legalEntityId;
         DisplayName = displayName;
         Email = email;
+        Purpose = purpose;
         ExpiresAt = expiresAt;
         CreatedAt = DateTimeOffset.UtcNow;
     }
@@ -48,6 +51,9 @@ public sealed class LoginTicket
 
     public string? Email { get; private set; }
 
+    /// <summary>Either <c>login</c> or <c>mfa</c>.</summary>
+    public string Purpose { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public DateTimeOffset ExpiresAt { get; private set; }
@@ -61,6 +67,7 @@ public sealed class LoginTicket
         Guid? legalEntityId,
         string displayName,
         string? email,
+        string purpose,
         TimeSpan lifetime)
     {
         var now = DateTimeOffset.UtcNow;
@@ -72,6 +79,7 @@ public sealed class LoginTicket
             legalEntityId,
             displayName,
             email,
+            purpose,
             now.Add(lifetime));
     }
 

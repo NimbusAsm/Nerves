@@ -52,6 +52,12 @@ public sealed class AccountCredential
 
     public DateTimeOffset? LastUsedAt { get; private set; }
 
+    /// <summary>
+    /// When the factor became active. Null means enrollment started but the
+    /// first code has not been verified yet (pending).
+    /// </summary>
+    public DateTimeOffset? ActivatedAt { get; private set; }
+
     public static Result<AccountCredential> Create(Guid accountId, CredentialType type, string? secret, string? algorithm, DateTimeOffset now)
     {
         if (accountId == Guid.Empty)
@@ -78,6 +84,10 @@ public sealed class AccountCredential
     }
 
     public void MarkUsed(DateTimeOffset now) => LastUsedAt = now;
+
+    public void Activate(DateTimeOffset now) => ActivatedAt = now;
+
+    public bool IsActive => ActivatedAt is not null;
 
     public void ReplaceSecret(string secret, string algorithm, DateTimeOffset now)
     {

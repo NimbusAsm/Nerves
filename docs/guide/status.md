@@ -42,7 +42,8 @@
 | 登录（纯 API） | ✅ 已实现 | POST /api/v1/auth/login → 一次性 login_ticket（90 秒、单次使用）→ /connect/authorize；服务端不渲染任何页面 |
 | 登录 UI | 由调用方实现 | 管理后台与第三方产品各自实现登录页，通过 API + OIDC 接入 |
 | 会话服务 | ✅ 已实现 | session schema、登录建会话、登出撤销、管理端列出/撤销 |
-| MFA：TOTP / Passkey / 恢复码 | 🧭 v1.0 计划 | 凭据类型已建模，流程未实现 |
+| MFA：TOTP | ✅ 已实现 | 注册返回 otpauth URI（密钥一次可见）、激活需验证码、密钥用 Data Protection 加密存储；登录先返回 mfaRequired + 一次性 mfaTicket，再凭 /api/v1/auth/mfa 完成二次校验 |
+| MFA：Passkey / 恢复码 | 🧭 v1.0 计划 | 凭据类型已建模，流程未实现 |
 | 账户切换（switch-account） | 🧭 v1.0 计划 | — |
 | 上游联邦：OIDC / LDAP | 🧭 v1.0 计划 | — |
 | 失败锁定 | ✅ 已实现 | 15 分钟内 5 次失败锁定 15 分钟（内存实现；多副本需换 Redis）；限流器未接入 |

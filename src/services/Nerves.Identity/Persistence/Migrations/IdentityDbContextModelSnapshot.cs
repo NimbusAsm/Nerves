@@ -32,6 +32,9 @@ namespace Nerves.Identity.Persistence.Migrations
                     b.Property<Guid>("AccountId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ActivatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Algorithm")
                         .IsRequired()
                         .HasMaxLength(64)

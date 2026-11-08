@@ -40,7 +40,7 @@ public sealed class AuthorizationController(
             // Headless flow: the client's own login UI obtained a single-use
             // ticket from POST /api/v1/auth/login and passed it here.
             var rawTicket = Request.Query["login_ticket"].ToString();
-            var ticket = await tickets.RedeemAsync(rawTicket, HttpContext.RequestAborted);
+            var ticket = await tickets.RedeemAsync(rawTicket, "login", HttpContext.RequestAborted);
             if (ticket is null)
             {
                 return Unauthorized(new

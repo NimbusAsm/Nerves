@@ -53,6 +53,10 @@ namespace Nerves.Idp.Persistence.Migrations
                     b.Property<Guid?>("LegalEntityId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Realm")
                         .IsRequired()
                         .HasMaxLength(64)

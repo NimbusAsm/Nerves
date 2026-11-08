@@ -10,6 +10,8 @@ service IdentityService {
   rpc VerifyCredential(VerifyCredentialRequest) returns (VerifyCredentialResponse);
   rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
   rpc ListAccountPermissions(ListAccountPermissionsRequest) returns (ListAccountPermissionsResponse);
+  rpc HasActiveTotp(HasActiveTotpRequest) returns (HasActiveTotpResponse);
+  rpc VerifyTotp(VerifyTotpRequest) returns (VerifyTotpResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -58,4 +60,21 @@ message ListAccountPermissionsRequest {
 message ListAccountPermissionsResponse {
   repeated string permissions = 1;
   int64 authorization_version = 2;
+}
+
+message HasActiveTotpRequest {
+  string account_id = 1;
+}
+
+message HasActiveTotpResponse {
+  bool active = 1;
+}
+
+message VerifyTotpRequest {
+  string account_id = 1;
+  string code = 2;
+}
+
+message VerifyTotpResponse {
+  bool valid = 1;
 }
