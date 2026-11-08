@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Nerves.Authorization.Domain;
 using Nerves.Authorization.Persistence;
+using Nerves.Authorization.Integration;
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Authorization.Api;
@@ -47,6 +48,7 @@ public static class GroupEndpoints
     private static async Task<IResult> CreateAsync(
         CreateGroupRequest request,
         AuthorizationDbContext db,
+        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         if (await db.Groups.AnyAsync(
@@ -59,6 +61,14 @@ public static class GroupEndpoints
         var group = Group.Create(request.Realm, request.Code, request.Name, DateTimeOffset.UtcNow);
         db.Groups.Add(group);
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.AppendAsync(
+            "authz.group.created",
+            "admin",
+            "group",
+            group.Id.ToString(),
+            "{\"code\":\"" + group.Code + "\"}",
+            cancellationToken);
 
         return Results.Created($"/api/v1/groups/{group.Id}", new { group.Id, group.Realm, group.Code, group.Name });
     }
@@ -81,6 +91,7 @@ public static class GroupEndpoints
     private static async Task<IResult> DeleteAsync(
         Guid id,
         AuthorizationDbContext db,
+        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         var group = await db.Groups.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -99,6 +110,15 @@ public static class GroupEndpoints
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.AppendAsync(
+            "authz.group.deleted",
+            "admin",
+            "group",
+            id.ToString(),
+            null,
+            cancellationToken);
+
         return Results.Ok();
     }
 
@@ -120,6 +140,7 @@ public static class GroupEndpoints
         Guid id,
         AddGroupMemberRequest request,
         AuthorizationDbContext db,
+        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         if (!await db.Groups.AnyAsync(x => x.Id == id, cancellationToken))
@@ -137,6 +158,14 @@ public static class GroupEndpoints
         await BumpAsync(db, request.AccountId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
+        await audit.AppendAsync(
+            "authz.group.member_added",
+            "admin",
+            "account",
+            request.AccountId.ToString(),
+            "{\"groupId\":\"" + id + "\"}",
+            cancellationToken);
+
         return Results.Created($"/api/v1/groups/{id}/members", new { groupId = id, request.AccountId });
     }
 
@@ -144,6 +173,7 @@ public static class GroupEndpoints
         Guid id,
         Guid accountId,
         AuthorizationDbContext db,
+        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         var member = await db.GroupMembers.FirstOrDefaultAsync(
@@ -158,6 +188,15 @@ public static class GroupEndpoints
         db.GroupMembers.Remove(member);
         await BumpAsync(db, accountId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
+
+        await audit.AppendAsync(
+            "authz.group.member_removed",
+            "admin",
+            "account",
+            accountId.ToString(),
+            "{\"groupId\":\"" + id + "\"}",
+            cancellationToken);
+
         return Results.Ok();
     }
 

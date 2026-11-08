@@ -67,6 +67,7 @@
 | 实名核验 Provider | 🧭 v1.0 计划 | 状态机已落地，Provider 抽象与流程未实现 |
 | Compliance.CN | ✅ 已实现（基础） | 同意书授予/查询/撤销（撤销幂等）、留存策略按类别 upsert、汇总统计；schema compliance；经网关 /api/v1/compliance/* 暴露，需 nerves:admin |
 | 审计（事件、哈希链、检索、校验） | ✅ 已实现 | 每流 SHA-256 链；account.created / locked / disabled、auth.login.succeeded / failed；/api/v1/audit-events 与 /verify |
+| 授权变更审计 | ✅ 已实现 | 角色创建/授予/撤销、分组创建/删除、成员增删均写入审计（authz.role.* / authz.group.*），经 gRPC 尽力投递，不影响主操作 |
 | 审计归档 | ✅ 已实现 | 未归档事件按 UTC 日写成 NDJSON，附 sha256sum 清单；记录归档时间戳；POST /api/v1/audit-events/archive 手动触发，GET .../archive/status 查看进度；后台任务默认每 30 秒一轮 |
 | 多分片启用与再平衡 | 🔭 v1.1 计划 | v1 交付分片就绪 |
 
