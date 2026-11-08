@@ -42,6 +42,7 @@ app.MapGrpcService<AuthorizationGrpcService>();
 app.MapAuthorizationEndpoints();
 app.MapGroupEndpoints();
 app.MapDecisionEndpoints();
+app.MapScimGroupEndpoints();
 
 app.Run();
 

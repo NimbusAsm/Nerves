@@ -60,7 +60,7 @@
 | 组织、成员、邀请 | ✅ 已实现 | directory schema：组织（realm 内 slug 唯一）、成员生命周期、邀请（只存 token 哈希，原文仅返回一次）；含 gRPC ListMemberships/IsMember |
 | 授权决策缓存 | ✅ 已实现 | 按 account+legalEntity 缓存权限快照，用 subject 版本号失效（角色/组变更即失效）；POST /api/v1/decisions/check 与 GET /api/v1/decisions/stats |
 | 用户组 | ✅ 已实现 | 组 CRUD、成员增删、按组授予角色；权限解析展开组成员，成员变动递增版本使令牌刷新 |
-| SCIM 2.0 | 🔭 v1.1 计划 | — |
+| SCIM 2.0 | ✅ 已实现（核心子集） | /scim/v2/Users（创建、筛选、PUT 停用、删除）由 Identity 提供；/scim/v2/Groups（创建、成员替换、删除、筛选）由 Authorization 提供；网关转发，需 nerves:admin |
 | 实名核验 Provider | 🧭 v1.0 计划 | 状态机已落地，Provider 抽象与流程未实现 |
 | Compliance.CN | ✅ 已实现（基础） | 同意书授予/查询/撤销（撤销幂等）、留存策略按类别 upsert、汇总统计；schema compliance；经网关 /api/v1/compliance/* 暴露，需 nerves:admin |
 | 审计（事件、哈希链、检索、校验） | ✅ 已实现 | 每流 SHA-256 链；account.created / locked / disabled、auth.login.succeeded / failed；/api/v1/audit-events 与 /verify |

@@ -61,6 +61,7 @@ app.MapAccountEndpoints();
 app.MapLegalEntityEndpoints();
 app.MapStatsEndpoints();
 app.MapMfaEndpoints();
+app.MapScimUserEndpoints();
 
 app.Run();
 
