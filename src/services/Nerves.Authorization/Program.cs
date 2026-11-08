@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nerves.Authorization.Api;
+using Nerves.Authorization.Caching;
 using Nerves.Authorization.Grpc;
 using Nerves.Authorization.Persistence;
 using Nerves.Authorization.Seeding;
@@ -14,6 +15,8 @@ builder.Services.AddOpenApi();
 builder.Services.AddGrpc();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
+builder.Services.AddSingleton<PermissionCache>();
+builder.Services.AddScoped<CachedPermissions>();
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
 builder.Services.AddHostedService<AuthorizationDevSeeder>();
 
@@ -38,6 +41,7 @@ app.MapNervesDefaults("nerves-authorization");
 app.MapGrpcService<AuthorizationGrpcService>();
 app.MapAuthorizationEndpoints();
 app.MapGroupEndpoints();
+app.MapDecisionEndpoints();
 
 app.Run();
 
