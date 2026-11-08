@@ -183,4 +183,42 @@ public sealed class IdentityGrpcService(
         // until then the identity service reports an empty, versioned snapshot.
         return Task.FromResult(new ListAccountPermissionsResponse { AuthorizationVersion = 0 });
     }
+
+    public override async Task<ResolveIdentifierResponse> ResolveIdentifier(
+        ResolveIdentifierRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var realm = string.IsNullOrWhiteSpace(request.Realm) ? "nerves" : request.Realm;
+        var hash = identifierHasher.Hash(request.IdentifierType, realm, request.Value);
+
+        var entry = await dbContext.RoutingIndex
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.IdentifierHash == hash, context.CancellationToken);
+
+        if (entry is null)
+        {
+            return new ResolveIdentifierResponse { Found = false };
+        }
+
+        var account = await dbContext.NetworkAccounts
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == entry.AccountId, context.CancellationToken);
+
+        if (account is null)
+        {
+            return new ResolveIdentifierResponse { Found = false };
+        }
+
+        return new ResolveIdentifierResponse
+        {
+            Found = true,
+            AccountId = account.Id.ToString(),
+            LegalEntityId = account.LegalEntityId?.ToString() ?? string.Empty,
+            Realm = account.Realm,
+            DisplayName = account.DisplayName,
+            Email = account.Email ?? string.Empty,
+        };
+    }
 }

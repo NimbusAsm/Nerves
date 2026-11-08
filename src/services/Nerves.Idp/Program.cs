@@ -7,6 +7,7 @@ using Nerves.Contracts.Authorization.V1;
 using Nerves.Contracts.Identity.V1;
 using Nerves.Contracts.Session.V1;
 using Nerves.Idp.Api;
+using Nerves.Idp.Federation;
 using Nerves.Idp.Integration;
 using Nerves.Idp.Logout;
 using Nerves.Idp.Options;
@@ -59,6 +60,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddScoped<LoginTickets>();
+builder.Services.AddScoped<FederationStateStore>();
+builder.Services.Configure<FederationOptions>(builder.Configuration.GetSection(FederationOptions.SectionName));
 builder.Services.AddSingleton<LogoutTokenIssuer>();
 builder.Services.AddSingleton<BackchannelLogoutDispatcher>();
 builder.Services.AddHttpClient("backchannel-logout", client => client.Timeout = TimeSpan.FromSeconds(5));
@@ -145,6 +148,7 @@ app.MapOpenApi();
 app.MapNervesDefaults("nerves-idp");
 app.MapControllers();
 app.MapAuthEndpoints();
+app.MapFederationEndpoints();
 
 app.Run();
 

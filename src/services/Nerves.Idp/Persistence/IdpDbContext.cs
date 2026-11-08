@@ -10,12 +10,23 @@ public sealed class IdpDbContext(DbContextOptions<IdpDbContext> options) : DbCon
 
     public DbSet<LoginTicket> LoginTickets => Set<LoginTicket>();
 
+    public DbSet<Nerves.Idp.Federation.FederationState> FederationStates => Set<Nerves.Idp.Federation.FederationState>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.UseOpenIddict();
+
+        modelBuilder.Entity<Nerves.Idp.Federation.FederationState>(builder =>
+        {
+            builder.ToTable("federation_state");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Provider).HasMaxLength(64).IsRequired();
+            builder.Property(x => x.ReturnUrl).HasMaxLength(512);
+            builder.HasIndex(x => x.ExpiresAt);
+        });
 
         modelBuilder.Entity<LoginTicket>(builder =>
         {

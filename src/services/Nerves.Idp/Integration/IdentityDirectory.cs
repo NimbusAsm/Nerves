@@ -70,4 +70,32 @@ public sealed class IdentityDirectory(
             return null;
         }
     }
+
+    public async Task<FederatedAccount?> ResolveIdentifierAsync(
+        string identifierType,
+        string realm,
+        string value,
+        CancellationToken cancellationToken)
+    {
+        var reply = await client.ResolveIdentifierAsync(
+            new ResolveIdentifierRequest
+            {
+                IdentifierType = identifierType,
+                Realm = realm,
+                Value = value,
+            },
+            cancellationToken: cancellationToken);
+
+        return reply.Found
+            ? new FederatedAccount(reply.AccountId, reply.LegalEntityId, reply.Realm, reply.DisplayName, reply.Email)
+            : null;
+    }
+
+    /// <summary>Account facts needed to finish a federated login.</summary>
+    public sealed record FederatedAccount(
+        string AccountId,
+        string LegalEntityId,
+        string Realm,
+        string DisplayName,
+        string Email);
 }
