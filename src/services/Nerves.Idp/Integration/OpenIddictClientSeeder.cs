@@ -6,8 +6,8 @@ using static OpenIddict.Abstractions.OpenIddictConstants;
 namespace Nerves.Idp.Integration;
 
 /// <summary>
-/// Registers the development client described by configuration. In-memory
-/// OpenIddict stores are used until the persistence milestone.
+/// Registers the clients described by configuration. Both are public clients
+/// using authorization code + PKCE; the login UI lives in the client.
 /// </summary>
 public sealed class OpenIddictClientSeeder(
     IServiceProvider services,
@@ -24,18 +24,38 @@ public sealed class OpenIddictClientSeeder(
         await using var scope = services.CreateAsyncScope();
         var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();
 
-        if (await manager.FindByClientIdAsync(seed.ClientId, cancellationToken) is not null)
-        {
-            return;
-        }
+        await EnsureClientAsync(
+            manager,
+            seed.ClientId,
+            seed.DisplayName,
+            seed.RedirectUris,
+            seed.PostLogoutRedirectUris,
+            cancellationToken);
+
+        await EnsureClientAsync(
+            manager,
+            seed.AdminClientId,
+            seed.AdminDisplayName,
+            seed.AdminRedirectUris,
+            seed.AdminPostLogoutRedirectUris,
+            cancellationToken);
+    }
+
+    private static async Task EnsureClientAsync(
+        IOpenIddictApplicationManager manager,
+        string clientId,
+        string displayName,
+        string[] redirectUris,
+        string[] postLogoutRedirectUris,
+        CancellationToken cancellationToken)
+    {
+        var existing = await manager.FindByClientIdAsync(clientId, cancellationToken);
 
         var descriptor = new OpenIddictApplicationDescriptor
         {
-            ClientId = seed.ClientId,
+            ClientId = clientId,
             ClientType = ClientTypes.Public,
-            DisplayName = seed.DisplayName,
-            // Implicit consent keeps the skeleton flow runnable without a consent UI;
-            // the consent screen lands with the authorization milestone.
+            DisplayName = displayName,
             ConsentType = ConsentTypes.Implicit,
             Permissions =
             {
@@ -53,17 +73,38 @@ public sealed class OpenIddictClientSeeder(
             Requirements = { Requirements.Features.ProofKeyForCodeExchange },
         };
 
-        foreach (var uri in seed.RedirectUris)
+        foreach (var uri in redirectUris)
         {
             descriptor.RedirectUris.Add(new Uri(uri));
         }
 
-        foreach (var uri in seed.PostLogoutRedirectUris)
+        foreach (var uri in postLogoutRedirectUris)
         {
             descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
         }
 
-        await manager.CreateAsync(descriptor, cancellationToken);
+        if (existing is null)
+        {
+            await manager.CreateAsync(descriptor, cancellationToken);
+            return;
+        }
+
+        // Keep redirect URIs in sync so configuration changes take effect on restart.
+        await manager.PopulateAsync(descriptor, existing, cancellationToken);
+        descriptor.RedirectUris.Clear();
+        descriptor.PostLogoutRedirectUris.Clear();
+
+        foreach (var uri in redirectUris)
+        {
+            descriptor.RedirectUris.Add(new Uri(uri));
+        }
+
+        foreach (var uri in postLogoutRedirectUris)
+        {
+            descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+        }
+
+        await manager.UpdateAsync(existing, descriptor, cancellationToken);
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

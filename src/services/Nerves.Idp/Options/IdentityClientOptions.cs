@@ -6,4 +6,7 @@ public sealed class IdentityClientOptions
     public const string SectionName = "Identity";
 
     public string GrpcAddress { get; set; } = "http://127.0.0.1:5102";
+
+    /// <summary>Realm used when a login request does not specify one.</summary>
+    public string DefaultRealm { get; set; } = "nerves";
 }

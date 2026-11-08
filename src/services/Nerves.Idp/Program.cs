@@ -1,10 +1,12 @@
 using Grpc.Net.Client;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Nerves.Contracts.Audit.V1;
 using Nerves.Contracts.Authorization.V1;
 using Nerves.Contracts.Identity.V1;
 using Nerves.Contracts.Session.V1;
+using Nerves.Idp.Api;
 using Nerves.Idp.Integration;
 using Nerves.Idp.Options;
 using Nerves.Idp.Persistence;
@@ -17,7 +19,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddNervesDefaults("nerves-idp");
 
 builder.Services.AddOpenApi();
-builder.Services.AddRazorPages();
 builder.Services.AddControllers();
 
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -27,12 +28,24 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-        options.LoginPath = "/account/login";
         options.ExpireTimeSpan = TimeSpan.FromHours(12);
         options.SlidingExpiration = true;
     });
 
 builder.Services.AddAuthorization();
+
+var adminOrigins = builder.Configuration.GetSection("Cors:AdminOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
+    .WithOrigins(adminOrigins)
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
+
+builder.Services.AddRateLimiter(options => options.AddFixedWindowLimiter("login", limiter =>
+{
+    limiter.PermitLimit = 10;
+    limiter.Window = TimeSpan.FromMinutes(1);
+    limiter.QueueLimit = 0;
+}));
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))
@@ -41,6 +54,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 builder.Services.AddSingleton<LoginThrottle>();
+builder.Services.AddScoped<LoginTickets>();
 
 builder.Services.AddOpenIddict()
     .AddCore(options => options
@@ -111,13 +125,16 @@ var app = builder.Build();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+app.UseCors();
+app.UseRateLimiter();
+
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapOpenApi();
 app.MapNervesDefaults("nerves-idp");
-app.MapRazorPages();
 app.MapControllers();
+app.MapAuthEndpoints();
 
 app.Run();
 

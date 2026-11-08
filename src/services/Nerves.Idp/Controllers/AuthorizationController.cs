@@ -17,7 +17,8 @@ public sealed class AuthorizationController(
     IOpenIddictApplicationManager applicationManager,
     IOpenIddictScopeManager scopeManager,
     Nerves.Idp.Integration.AuthorizationDirectory authorization,
-    Nerves.Idp.Integration.SessionDirectory sessions) : Controller
+    Nerves.Idp.Integration.SessionDirectory sessions,
+    Nerves.Idp.Security.LoginTickets tickets) : Controller
 {
     [HttpGet("~/connect/authorize")]
     public async Task<IActionResult> Authorize()
@@ -25,20 +26,56 @@ public sealed class AuthorizationController(
         var request = HttpContext.GetOpenIddictServerRequest()
             ?? throw new InvalidOperationException("The OpenID Connect request cannot be retrieved.");
 
-        var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        if (!result.Succeeded)
-        {
-            return Challenge(
-                new AuthenticationProperties
-                {
-                    RedirectUri = Request.PathBase + Request.Path + Request.QueryString,
-                },
-                CookieAuthenticationDefaults.AuthenticationScheme);
-        }
-
         if (await applicationManager.FindByClientIdAsync(request.ClientId!) is null)
         {
             return Forbid(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        var userPrincipal = result.Succeeded ? result.Principal : null;
+        var realm = result.Principal?.GetClaim("realm") ?? "nerves";
+
+        if (userPrincipal is null)
+        {
+            // Headless flow: the client's own login UI obtained a single-use
+            // ticket from POST /api/v1/auth/login and passed it here.
+            var rawTicket = Request.Query["login_ticket"].ToString();
+            var ticket = await tickets.RedeemAsync(rawTicket, HttpContext.RequestAborted);
+            if (ticket is null)
+            {
+                return Unauthorized(new
+                {
+                    error = "login_required",
+                    message = "Sign in through /api/v1/auth/login and retry the authorization request.",
+                });
+            }
+
+            realm = ticket.Realm;
+
+            var cookieIdentity = new ClaimsIdentity(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                Claims.Name,
+                Claims.Role);
+
+            cookieIdentity.AddClaim(new Claim(Claims.Subject, ticket.AccountId.ToString()));
+            cookieIdentity.AddClaim(new Claim(Claims.Name, ticket.DisplayName));
+            if (!string.IsNullOrEmpty(ticket.Email))
+            {
+                cookieIdentity.AddClaim(new Claim(Claims.Email, ticket.Email!));
+            }
+
+            if (ticket.LegalEntityId is not null)
+            {
+                cookieIdentity.AddClaim(new Claim("leid", ticket.LegalEntityId.Value.ToString()));
+            }
+
+            cookieIdentity.AddClaim(new Claim("realm", ticket.Realm));
+
+            userPrincipal = new ClaimsPrincipal(cookieIdentity);
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                userPrincipal,
+                new AuthenticationProperties { IsPersistent = false });
         }
 
         var identity = new ClaimsIdentity(
@@ -46,22 +83,22 @@ public sealed class AuthorizationController(
             Claims.Name,
             Claims.Role);
 
-        var subject = result.Principal.GetClaim(Claims.Subject);
+        var subject = userPrincipal.GetClaim(Claims.Subject);
         if (string.IsNullOrEmpty(subject))
         {
-            return Challenge(CookieAuthenticationDefaults.AuthenticationScheme);
+            return Unauthorized(new { error = "login_required" });
         }
 
         identity.AddClaim(Claims.Subject, subject);
-        identity.AddClaim(Claims.Name, result.Principal.GetClaim(Claims.Name) ?? "user");
+        identity.AddClaim(Claims.Name, userPrincipal.GetClaim(Claims.Name) ?? "user");
 
-        var email = result.Principal.GetClaim(Claims.Email);
+        var email = userPrincipal.GetClaim(Claims.Email);
         if (!string.IsNullOrEmpty(email))
         {
             identity.AddClaim(Claims.Email, email);
         }
 
-        var legalEntityId = result.Principal.GetClaim("leid");
+        var legalEntityId = userPrincipal.GetClaim("leid");
         if (!string.IsNullOrEmpty(legalEntityId))
         {
             identity.AddClaim("leid", legalEntityId);
@@ -70,7 +107,7 @@ public sealed class AuthorizationController(
         var permissions = await authorization.GetPermissionsAsync(
             subject,
             legalEntityId ?? string.Empty,
-            "nerves",
+            realm,
             HttpContext.RequestAborted);
 
         if (permissions.Permissions.Length > 0)
@@ -82,7 +119,9 @@ public sealed class AuthorizationController(
 
         var principal = new ClaimsPrincipal(identity);
         principal.SetScopes(request.GetScopes());
-        principal.SetResources(await scopeManager.ListResourcesAsync(principal.GetScopes()).ToListAsync());
+        var resources = await scopeManager.ListResourcesAsync(principal.GetScopes()).ToListAsync();
+        resources.Add("nerves.api");
+        principal.SetResources(resources);
 
         foreach (var claim in principal.Claims)
         {
