@@ -48,13 +48,13 @@ public sealed class IdentityDirectory(
         return reply.Active;
     }
 
-    public async Task<bool> VerifyTotpAsync(string accountId, string code, CancellationToken cancellationToken)
+    public async Task<(bool Valid, string Method)> VerifyMfaAsync(string accountId, string code, CancellationToken cancellationToken)
     {
-        var reply = await client.VerifyTotpAsync(
-            new VerifyTotpRequest { AccountId = accountId, Code = code },
+        var reply = await client.VerifyMfaAsync(
+            new VerifyMfaRequest { AccountId = accountId, Code = code },
             cancellationToken: cancellationToken);
 
-        return reply.Valid;
+        return (reply.Valid, string.IsNullOrEmpty(reply.Method) ? "totp" : reply.Method);
     }
 
     public async Task<GetAccountResponse?> GetAccountAsync(string accountId, CancellationToken cancellationToken)

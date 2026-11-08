@@ -25,6 +25,7 @@ builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
 builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
 builder.Services.AddSingleton<TotpService>();
 builder.Services.AddSingleton<TotpSecretProtector>();
+builder.Services.AddSingleton<RecoveryCodes>();
 builder.Services.AddDataProtection();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);

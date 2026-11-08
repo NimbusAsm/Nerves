@@ -119,7 +119,8 @@ public static class AuthEndpoints
         }
 
         var accountId = ticket.AccountId.ToString();
-        if (!await directory.VerifyTotpAsync(accountId, request.Code.Trim(), cancellationToken))
+        var (mfaValid, mfaMethod) = await directory.VerifyMfaAsync(accountId, request.Code.Trim(), cancellationToken);
+        if (!mfaValid)
         {
             await audit.AppendAsync(
                 "auth.mfa.failed",
@@ -144,7 +145,7 @@ public static class AuthEndpoints
             ticket.Email ?? string.Empty);
 
         return await CompleteAsync(
-            ticket.Realm, check, ticket.DisplayName, ["pwd", "totp"], tickets, sessions, audit, http, cancellationToken);
+            ticket.Realm, check, ticket.DisplayName, ["pwd", mfaMethod], tickets, sessions, audit, http, cancellationToken);
     }
 
     private static async Task<IResult> CompleteAsync(

@@ -19,6 +19,9 @@ public static class MfaEndpoints
         group.MapPost("/totp", EnrollAsync);
         group.MapPost("/totp/activate", ActivateAsync);
         group.MapDelete("/totp", RemoveAsync);
+        group.MapGet("/recovery-codes", CountRecoveryCodesAsync);
+        group.MapPost("/recovery-codes", GenerateRecoveryCodesAsync);
+        group.MapDelete("/recovery-codes", RemoveRecoveryCodesAsync);
 
         return group;
     }
@@ -133,6 +136,66 @@ public static class MfaEndpoints
         }
 
         db.AccountCredentials.Remove(credential);
+        await db.SaveChangesAsync(cancellationToken);
+        return Results.Ok();
+    }
+
+    private static async Task<IResult> CountRecoveryCodesAsync(
+        Guid accountId,
+        IdentityDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var remaining = await db.AccountCredentials.CountAsync(
+            x => x.AccountId == accountId && x.Type == CredentialType.RecoveryCode,
+            cancellationToken);
+
+        return Results.Ok(new { remaining });
+    }
+
+    private static async Task<IResult> GenerateRecoveryCodesAsync(
+        Guid accountId,
+        IdentityDbContext db,
+        RecoveryCodes generator,
+        CancellationToken cancellationToken)
+    {
+        if (!await db.NetworkAccounts.AnyAsync(x => x.Id == accountId, cancellationToken))
+        {
+            return Results.NotFound();
+        }
+
+        var existing = await db.AccountCredentials
+            .Where(x => x.AccountId == accountId && x.Type == CredentialType.RecoveryCode)
+            .ToListAsync(cancellationToken);
+
+        db.AccountCredentials.RemoveRange(existing);
+
+        var codes = generator.Generate();
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var code in codes)
+        {
+            var credential = AccountCredential.Create(
+                accountId, CredentialType.RecoveryCode, RecoveryCodes.HashCode(code), "sha256", now).Value;
+            credential.Activate(now);
+            db.AccountCredentials.Add(credential);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        // Plaintext codes are returned once; only their hashes are stored.
+        return Results.Ok(new { codes, remaining = codes.Count });
+    }
+
+    private static async Task<IResult> RemoveRecoveryCodesAsync(
+        Guid accountId,
+        IdentityDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var existing = await db.AccountCredentials
+            .Where(x => x.AccountId == accountId && x.Type == CredentialType.RecoveryCode)
+            .ToListAsync(cancellationToken);
+
+        db.AccountCredentials.RemoveRange(existing);
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok();
     }

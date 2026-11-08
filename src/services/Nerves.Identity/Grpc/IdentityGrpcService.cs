@@ -126,36 +126,53 @@ public sealed class IdentityGrpcService(
         return new HasActiveTotpResponse { Active = active };
     }
 
-    public override async Task<VerifyTotpResponse> VerifyTotp(
-        VerifyTotpRequest request,
+    public override async Task<VerifyMfaResponse> VerifyMfa(
+        VerifyMfaRequest request,
         ServerCallContext context)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!Guid.TryParse(request.AccountId, out var accountId))
+        if (!Guid.TryParse(request.AccountId, out var accountId) || string.IsNullOrWhiteSpace(request.Code))
         {
-            return new VerifyTotpResponse { Valid = false };
+            return new VerifyMfaResponse { Valid = false };
         }
 
-        var credential = await dbContext.AccountCredentials.FirstOrDefaultAsync(
-            x => x.AccountId == accountId && x.Type == CredentialType.Totp && x.ActivatedAt != null,
+        var code = request.Code.Trim();
+
+        // Six digits are treated as a TOTP code; anything else is a recovery code.
+        if (code.Length == 6 && code.All(char.IsDigit))
+        {
+            var totpCredential = await dbContext.AccountCredentials.FirstOrDefaultAsync(
+                x => x.AccountId == accountId && x.Type == CredentialType.Totp && x.ActivatedAt != null,
+                context.CancellationToken);
+
+            if (totpCredential is not null)
+            {
+                var secret = protector.TryUnprotect(totpCredential.Secret);
+                if (secret is not null && totp.Verify(secret, code))
+                {
+                    totpCredential.MarkUsed(DateTimeOffset.UtcNow);
+                    await dbContext.SaveChangesAsync(context.CancellationToken);
+                    return new VerifyMfaResponse { Valid = true, Method = "totp" };
+                }
+            }
+        }
+
+        var hash = RecoveryCodes.HashCode(code);
+        var recovery = await dbContext.AccountCredentials.FirstOrDefaultAsync(
+            x => x.AccountId == accountId && x.Type == CredentialType.RecoveryCode && x.Secret == hash,
             context.CancellationToken);
 
-        if (credential is null)
+        if (recovery is null)
         {
-            return new VerifyTotpResponse { Valid = false };
+            return new VerifyMfaResponse { Valid = false };
         }
 
-        var secret = protector.TryUnprotect(credential.Secret);
-        if (secret is null || !totp.Verify(secret, request.Code))
-        {
-            return new VerifyTotpResponse { Valid = false };
-        }
-
-        credential.MarkUsed(DateTimeOffset.UtcNow);
+        // Recovery codes are single use: consume the row.
+        dbContext.AccountCredentials.Remove(recovery);
         await dbContext.SaveChangesAsync(context.CancellationToken);
 
-        return new VerifyTotpResponse { Valid = true };
+        return new VerifyMfaResponse { Valid = true, Method = "recovery" };
     }
 
     public override Task<ListAccountPermissionsResponse> ListAccountPermissions(

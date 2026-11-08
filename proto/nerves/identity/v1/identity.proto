@@ -11,7 +11,7 @@ service IdentityService {
   rpc GetAccount(GetAccountRequest) returns (GetAccountResponse);
   rpc ListAccountPermissions(ListAccountPermissionsRequest) returns (ListAccountPermissionsResponse);
   rpc HasActiveTotp(HasActiveTotpRequest) returns (HasActiveTotpResponse);
-  rpc VerifyTotp(VerifyTotpRequest) returns (VerifyTotpResponse);
+  rpc VerifyMfa(VerifyMfaRequest) returns (VerifyMfaResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -70,11 +70,13 @@ message HasActiveTotpResponse {
   bool active = 1;
 }
 
-message VerifyTotpRequest {
+message VerifyMfaRequest {
   string account_id = 1;
   string code = 2;
 }
 
-message VerifyTotpResponse {
+message VerifyMfaResponse {
   bool valid = 1;
+  // "totp" or "recovery"
+  string method = 3;
 }
