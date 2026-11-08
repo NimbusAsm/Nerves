@@ -3,6 +3,7 @@ using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Scim;
 using Nerves.Identity.Security;
+using Nerves.Identity.Sharding;
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Identity.Api;
@@ -95,6 +96,7 @@ public static class ScimUsersEndpoints
         IdentityDbContext db,
         IPasswordHasher hasher,
         IIdentifierHasher identifiers,
+        ShardResolver shards,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.UserName))
@@ -142,6 +144,7 @@ public static class ScimUsersEndpoints
                 "nerves",
                 account.Value.Id,
                 account.Value.LegalEntityId,
+                shards.Resolve(account.Value.Id),
                 now));
         }
 

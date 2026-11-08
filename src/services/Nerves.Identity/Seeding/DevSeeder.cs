@@ -3,13 +3,15 @@ using Microsoft.Extensions.Options;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
+using Nerves.Identity.Sharding;
 
 namespace Nerves.Identity.Seeding;
 
 /// <summary>Creates the development administrator so a fresh database is usable.</summary>
 public sealed class DevSeeder(
     IServiceProvider services,
-    IOptions<DevSeedOptions> options) : IHostedService
+    IOptions<DevSeedOptions> options,
+    ShardResolver shards) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -61,6 +63,7 @@ public sealed class DevSeeder(
                 seed.Realm,
                 account.Id,
                 entity.Id,
+                shards.Resolve(account.Id),
                 now));
         }
 

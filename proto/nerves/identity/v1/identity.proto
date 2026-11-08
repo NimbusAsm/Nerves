@@ -49,6 +49,7 @@ message GetAccountRequest {
 
 message GetAccountResponse {
   string account_id = 1;
+  int32 shard = 8;
   string legal_entity_id = 2;
   string realm = 3;
   string username = 4;
@@ -94,6 +95,7 @@ message ResolveIdentifierRequest {
 
 message ResolveIdentifierResponse {
   bool found = 1;
+  int32 shard = 7;
   string account_id = 2;
   string legal_entity_id = 3;
   string realm = 4;

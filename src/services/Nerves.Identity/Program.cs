@@ -8,6 +8,7 @@ using Nerves.Identity.Integration;
 using Nerves.Identity.Options;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
+using Nerves.Identity.Sharding;
 using Nerves.Identity.Seeding;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
@@ -27,6 +28,8 @@ builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
 builder.Services.AddSingleton<TotpService>();
 builder.Services.AddSingleton<TotpSecretProtector>();
 builder.Services.AddSingleton<RecoveryCodes>();
+builder.Services.Configure<ShardingOptions>(builder.Configuration.GetSection(ShardingOptions.SectionName));
+builder.Services.AddSingleton<ShardResolver>();
 builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddSingleton<IFido2>(_ => new Fido2(new Fido2Configuration
 {

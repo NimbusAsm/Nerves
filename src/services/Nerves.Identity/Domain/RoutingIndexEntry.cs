@@ -24,6 +24,7 @@ public sealed class RoutingIndexEntry
         string realm,
         Guid accountId,
         Guid? legalEntityId,
+        int shard,
         DateTimeOffset now)
     {
         IdentifierHash = identifierHash;
@@ -31,6 +32,7 @@ public sealed class RoutingIndexEntry
         Realm = realm;
         AccountId = accountId;
         LegalEntityId = legalEntityId;
+        Shard = shard;
         CreatedAt = now;
     }
 
@@ -46,6 +48,9 @@ public sealed class RoutingIndexEntry
 
     public Guid? LegalEntityId { get; private set; }
 
+    /// <summary>Logical shard that owns the account (PLAN §2.5).</summary>
+    public int Shard { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     public static RoutingIndexEntry Create(
@@ -54,12 +59,13 @@ public sealed class RoutingIndexEntry
         string realm,
         Guid accountId,
         Guid? legalEntityId,
+        int shard,
         DateTimeOffset now)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(identifierHash);
         ArgumentException.ThrowIfNullOrWhiteSpace(identifierType);
         ArgumentException.ThrowIfNullOrWhiteSpace(realm);
 
-        return new RoutingIndexEntry(identifierHash, identifierType, realm, accountId, legalEntityId, now);
+        return new RoutingIndexEntry(identifierHash, identifierType, realm, accountId, legalEntityId, shard, now);
     }
 }

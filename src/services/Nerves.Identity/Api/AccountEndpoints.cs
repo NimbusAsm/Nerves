@@ -30,6 +30,7 @@ public static class AccountEndpoints
         IdentityDbContext db,
         IPasswordHasher hasher,
         IIdentifierHasher identifiers,
+        Nerves.Identity.Sharding.ShardResolver shards,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken)
@@ -95,7 +96,7 @@ public static class AccountEndpoints
                     statusCode: StatusCodes.Status409Conflict);
             }
 
-            indexes.Add(RoutingIndexEntry.Create(hash, identifierType, request.Realm, account.Id, account.LegalEntityId, now));
+            indexes.Add(RoutingIndexEntry.Create(hash, identifierType, request.Realm, account.Id, account.LegalEntityId, shards.Resolve(account.Id), now));
         }
 
         db.NetworkAccounts.Add(account);

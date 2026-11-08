@@ -244,6 +244,9 @@ namespace Nerves.Identity.Persistence.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<int>("Shard")
+                        .HasColumnType("integer");
+
                     b.HasKey("IdentifierHash");
 
                     b.HasIndex("AccountId");

@@ -215,6 +215,7 @@ public sealed class IdentityGrpcService(
         return new ResolveIdentifierResponse
         {
             Found = true,
+            Shard = entry.Shard,
             AccountId = account.Id.ToString(),
             LegalEntityId = account.LegalEntityId?.ToString() ?? string.Empty,
             Realm = account.Realm,
