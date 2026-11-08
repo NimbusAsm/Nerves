@@ -1,7 +1,7 @@
 import { createHttpApi } from './http'
 import { createMockApi } from './mock'
 import type { NervesApi } from './contract'
-import { readStoredToken } from './session-storage'
+import { getAccessToken } from './token'
 
 /**
  * Mock is the default so the console is usable before the services exist.
@@ -16,7 +16,7 @@ function createDefaultApi(): NervesApi {
 
   return createHttpApi({
     baseUrl: import.meta.env.VITE_API_BASE_URL ?? '/api/v1',
-    getToken: readStoredToken,
+    getToken: getAccessToken,
     onUnauthorized: () => {
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('nerves:unauthorized'))
     },

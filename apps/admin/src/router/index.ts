@@ -21,6 +21,12 @@ declare module 'vue-router' {
 
 export const routes: RouteRecordRaw[] = [
   {
+    path: '/auth/callback',
+    name: 'auth-callback',
+    component: () => import('@/views/AuthCallbackView.vue'),
+    meta: { public: true },
+  },
+  {
     path: '/login',
     name: 'login',
     component: () => import('@/views/LoginView.vue'),

@@ -1,7 +1,8 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import { getApi } from '@/api'
+import { apiMode, getApi } from '@/api'
+import { beginLogin, completeLogin } from '@/api/oidc'
 import {
   clearStoredSession,
   readStoredSession,
@@ -9,8 +10,13 @@ import {
   type StoredSession,
 } from '@/api/session-storage'
 
+/**
+ * The console never keeps tokens in storage in live mode: the IdP issues a
+ * short-lived access token that lives in memory, and a reload runs the OIDC
+ * flow again. Mock mode keeps the token so the demo survives reloads.
+ */
 export const useAuthStore = defineStore('auth', () => {
-  const session = ref<StoredSession | null>(readStoredSession())
+  const session = ref<StoredSession | null>(apiMode === 'mock' ? readStoredSession() : null)
 
   const token = computed(() => session.value?.token ?? null)
   const user = computed(() => session.value?.user ?? null)
@@ -25,20 +31,37 @@ export const useAuthStore = defineStore('auth', () => {
     return granted.includes('*') || granted.includes(permission)
   }
 
-  async function login(username: string, password: string): Promise<void> {
+  function setSession(next: StoredSession): void {
+    session.value = next
+    if (apiMode === 'mock') writeStoredSession(next)
+  }
+
+  /** Live mode hands off to the IdP and leaves the page; mock logs in locally. */
+  async function login(username: string, password: string, redirectTo = '/'): Promise<void> {
+    if (apiMode !== 'mock') {
+      await beginLogin(username, password, redirectTo)
+      return
+    }
+
     const result = await getApi().login({ username, password })
-    session.value = { token: result.token, user: result.user }
-    writeStoredSession(session.value)
+    setSession({ token: result.token, user: result.user })
+  }
+
+  /** Completes the authorization code exchange after the IdP redirect. */
+  async function finishLogin(search: string): Promise<string> {
+    const result = await completeLogin(search)
+    setSession({ token: result.token, user: result.user })
+    return result.redirectTo
   }
 
   function logout(options: { revoke?: boolean } = {}): void {
-    const api = getApi()
     session.value = null
     clearStoredSession()
-    if (options.revoke !== false) void api.logout().catch(() => undefined)
+    if (options.revoke !== false && apiMode === 'mock') {
+      void getApi().logout().catch(() => undefined)
+    }
   }
 
-  /** Called when the API answers 401: drop the local session without another round trip. */
   function handleUnauthorized(): void {
     session.value = null
     clearStoredSession()
@@ -53,6 +76,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     can,
     login,
+    finishLogin,
     logout,
     handleUnauthorized,
   }

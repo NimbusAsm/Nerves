@@ -1,0 +1,8 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Nerves</title>
+<script>
+  // The console uses hash routing; OAuth redirect URIs must not contain a
+  // fragment, so move the authorization response into the hash route.
+  location.replace('/#/auth/callback' + location.search)
+</script>

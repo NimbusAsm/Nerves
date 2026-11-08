@@ -39,7 +39,7 @@ async function submit(): Promise<void> {
 
   submitting.value = true
   try {
-    await auth.login(username.value.trim(), password.value)
+    await auth.login(username.value.trim(), password.value, safeRedirect(route.query.redirect))
     await router.replace(safeRedirect(route.query.redirect))
   } catch (cause) {
     error.value = describeError(cause)
