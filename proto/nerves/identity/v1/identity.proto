@@ -12,6 +12,7 @@ service IdentityService {
   rpc ListAccountPermissions(ListAccountPermissionsRequest) returns (ListAccountPermissionsResponse);
   rpc HasActiveTotp(HasActiveTotpRequest) returns (HasActiveTotpResponse);
   rpc VerifyMfa(VerifyMfaRequest) returns (VerifyMfaResponse);
+  rpc ResolveIdentifier(ResolveIdentifierRequest) returns (ResolveIdentifierResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -79,4 +80,20 @@ message VerifyMfaResponse {
   bool valid = 1;
   // "totp" or "recovery"
   string method = 3;
+}
+
+message ResolveIdentifierRequest {
+  // username, email or phone
+  string identifier_type = 1;
+  string realm = 2;
+  string value = 3;
+}
+
+message ResolveIdentifierResponse {
+  bool found = 1;
+  string account_id = 2;
+  string legal_entity_id = 3;
+  string realm = 4;
+  string display_name = 5;
+  string email = 6;
 }
