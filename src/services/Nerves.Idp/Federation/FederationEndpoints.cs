@@ -28,7 +28,108 @@ public static class FederationEndpoints
         group.MapPost("/start", StartAsync).RequireRateLimiting("login");
         group.MapGet("/callback", CallbackAsync);
         group.MapGet("/providers", Providers);
+        group.MapPost("/ldap", LdapLoginAsync).RequireRateLimiting("login");
         return app;
+    }
+
+    private static async Task<IResult> LdapLoginAsync(
+        [FromBody] LdapLoginRequest request,
+        LdapDirectory ldap,
+        IdentityDirectory directory,
+        LoginTickets tickets,
+        SessionDirectory sessions,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        {
+            return Results.Problem("username and password are required.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var identity = await ldap.AuthenticateAsync(request.Username, request.Password, cancellationToken);
+        if (identity is null)
+        {
+            await audit.AppendAsync(
+                "auth.federation.ldap.failed",
+                "anonymous",
+                request.Username,
+                string.Empty,
+                "failure",
+                "{\"reason\":\"ldap_rejected\"}",
+                cancellationToken);
+
+            return Results.Json(
+                new { error = "invalid_credentials", message = "Invalid username or password." },
+                statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        var realm = string.IsNullOrWhiteSpace(request.Realm) ? "nerves" : request.Realm;
+        var account = !string.IsNullOrWhiteSpace(identity.Mail)
+            ? await directory.ResolveIdentifierAsync("email", realm, identity.Mail!, cancellationToken)
+            : await directory.ResolveIdentifierAsync("username", realm, request.Username, cancellationToken);
+
+        if (account is null)
+        {
+            await audit.AppendAsync(
+                "auth.federation.ldap.unlinked",
+                "anonymous",
+                identity.DistinguishedName,
+                string.Empty,
+                "failure",
+                "{\"reason\":\"no_linked_account\"}",
+                cancellationToken);
+
+            return Results.Problem(
+                "No Nerves account is linked to this directory entry.",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        var fingerprint = Convert.ToHexString(SHA256.HashData(
+            System.Text.Encoding.UTF8.GetBytes(
+                (http.Request.Headers.UserAgent.ToString() + "|" + http.Connection.RemoteIpAddress).ToLowerInvariant())))
+            .ToLowerInvariant();
+
+        await sessions.CreateAsync(
+            account.AccountId,
+            account.LegalEntityId,
+            account.Realm,
+            fingerprint[..32],
+            fingerprint[..16],
+            fingerprint[16..32],
+            ["ldap"],
+            cancellationToken);
+
+        await audit.AppendAsync(
+            "auth.federation.ldap.succeeded",
+            "account",
+            account.AccountId,
+            account.AccountId,
+            "success",
+            null,
+            cancellationToken);
+
+        var loginTicket = await tickets.IssueAsync(
+            account.Realm,
+            Guid.Parse(account.AccountId),
+            Guid.TryParse(account.LegalEntityId, out var entityId) ? entityId : null,
+            account.DisplayName,
+            account.Email,
+            "login",
+            cancellationToken);
+
+        return Results.Ok(new
+        {
+            loginTicket,
+            expiresInSeconds = (int)LoginTickets.Lifetime.TotalSeconds,
+            user = new
+            {
+                id = account.AccountId,
+                name = account.DisplayName,
+                email = account.Email,
+                legalEntityId = account.LegalEntityId,
+            },
+        });
     }
 
     private static IResult Providers(IOptions<FederationOptions> options) =>
@@ -284,6 +385,9 @@ public static class FederationEndpoints
 
     private static string Base64Url(byte[] bytes) => System.Buffers.Text.Base64Url.EncodeToString(bytes);
 }
+
+/// <summary>LDAP login payload.</summary>
+public sealed record LdapLoginRequest(string Username, string Password, string? Realm);
 
 /// <summary>Federation start payload.</summary>
 public sealed record StartFederationRequest(string Provider, string? ReturnUrl);

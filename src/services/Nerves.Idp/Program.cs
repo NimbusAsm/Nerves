@@ -61,6 +61,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddScoped<LoginTickets>();
 builder.Services.AddScoped<FederationStateStore>();
+builder.Services.Configure<LdapOptions>(builder.Configuration.GetSection(LdapOptions.SectionName));
+builder.Services.AddSingleton<LdapDirectory>();
 builder.Services.Configure<FederationOptions>(builder.Configuration.GetSection(FederationOptions.SectionName));
 builder.Services.AddSingleton<LogoutTokenIssuer>();
 builder.Services.AddSingleton<BackchannelLogoutDispatcher>();
