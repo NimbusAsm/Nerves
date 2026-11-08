@@ -22,7 +22,10 @@ public sealed class LdapOptionsTests
         var options = new LdapOptions { UserFilter = "(uid={0})" };
         var escaped = "a*b(c)";
 
-        var applied = string.Format(options.UserFilter, escaped.Replace("*", "\\2a"));
+        var applied = string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            options.UserFilter,
+            escaped.Replace("*", "\\2a"));
 
         applied.ShouldBe("(uid=a\\2ab(c))");
     }
