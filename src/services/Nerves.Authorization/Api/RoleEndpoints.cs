@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Nerves.Authorization.Domain;
-using Nerves.Authorization.Persistence;
 using Nerves.Authorization.Integration;
+using Nerves.Authorization.Persistence;
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Authorization.Api;

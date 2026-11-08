@@ -1,10 +1,10 @@
+using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
 using Nerves.Authorization.Api;
 using Nerves.Authorization.Caching;
 using Nerves.Authorization.Grpc;
-using Nerves.Authorization.Persistence;
-using Grpc.Net.Client;
 using Nerves.Authorization.Integration;
+using Nerves.Authorization.Persistence;
 using Nerves.Authorization.Policy;
 using Nerves.Authorization.Seeding;
 using Nerves.ServiceDefaults;
