@@ -25,7 +25,7 @@
 | 开发 compose | ✅ 已实现 | PG 18.6 + NATS 2.15.2 + 六个服务 |
 | Helm Chart | ✅ 已实现 | helm lint --strict 与 kubeconform 通过；未在真实集群安装验证 |
 | 管理后台（Vue 3） | ✅ 已实现 | 9 个页面、mock/live 切换、中英 i18n、35 个测试 |
-| 管理后台 live 模式 | ✅ 已实现 | VITE_USE_MOCK=false 时经 Vite 代理到网关（默认 127.0.0.1:5100），登录走 /api/v1/auth/login |
+| 管理后台 live 模式 | ✅ 已实现 | VITE_USE_MOCK=false 走 OIDC 授权码 + PKCE（登录 API 取票 → 跳 IdP → 回调换令牌），令牌仅存内存 |
 | 管理聚合层（console-api） | 🧭 v1.0 计划 | 目前由网关按路径转发，未做响应聚合 |
 | 通知服务（notification） | 🧭 v1.0 计划 | — |
 | CLI（迁移 / 初始化 / 诊断） | 🧭 v1.0 计划 | 当前迁移使用 dotnet ef |
@@ -39,7 +39,8 @@
 | 凭据与口令校验 | ✅ 已实现 | PBKDF2-HMAC-SHA512 / 100k，自描述 PHC 串，常量时间比较 |
 | 登录标识路由索引 | ✅ 已实现 | HMAC-SHA256（type|realm|value），注册与登录共用 |
 | 管理 API | ✅ 已实现 | /api/v1/legal-entities、/accounts、/stats：游标分页、过滤、停用/锁定、重名 409 |
-| OIDC 登录（浏览器） | ✅ 已实现 | Razor 登录页 + cookie 会话；gRPC 验密 |
+| 登录（纯 API） | ✅ 已实现 | POST /api/v1/auth/login → 一次性 login_ticket（90 秒、单次使用）→ /connect/authorize；服务端不渲染任何页面 |
+| 登录 UI | 由调用方实现 | 管理后台与第三方产品各自实现登录页，通过 API + OIDC 接入 |
 | 会话服务 | ✅ 已实现 | session schema、登录建会话、登出撤销、管理端列出/撤销 |
 | MFA：TOTP / Passkey / 恢复码 | 🧭 v1.0 计划 | 凭据类型已建模，流程未实现 |
 | 账户切换（switch-account） | 🧭 v1.0 计划 | — |

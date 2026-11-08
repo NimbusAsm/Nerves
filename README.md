@@ -3,8 +3,8 @@
 > Self-hosted account center: one legal entity, one verified identity, many network accounts.
 > **Not** the Elixir [Nerves](https://nerves-project.org) embedded framework — different project, same name.
 
-An open-source account center you deploy yourself: one login page, a standards-based
-OpenID Connect provider, and an admin console. Built as microservices so it can grow
+An open-source account center you deploy yourself: a login API every product can embed,
+a standards-based OpenID Connect provider, and an API-only server. Built as microservices so it can grow
 from a single node to a sharded cluster.
 
 **Status: end-to-end flow works.** Browser login (OIDC authorization code + PKCE) issues

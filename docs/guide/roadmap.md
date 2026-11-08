@@ -10,7 +10,7 @@
 - 开发用 Compose、Helm Chart 与文档站（本页所在站点）。
 - SDK 三门客户端与 Admin 前端已开始落地（`sdk/`、`apps/admin`），但管理 API / console-api
   尚未实现，SDK 也还没有发布包。
-- **还没有**登录页、OIDC、管理 API、会话、RBAC 与目录服务。
+- 登录、OIDC、管理 API、会话、RBAC、目录与审计均已实现；服务端不渲染 UI，登录界面由各客户端自行实现。
 
 ## v1.0（规划中）
 
