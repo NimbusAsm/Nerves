@@ -8,6 +8,7 @@ using Nerves.Contracts.Identity.V1;
 using Nerves.Contracts.Session.V1;
 using Nerves.Idp.Api;
 using Nerves.Idp.Integration;
+using Nerves.Idp.Logout;
 using Nerves.Idp.Options;
 using Nerves.Idp.Persistence;
 using Nerves.Idp.Security;
@@ -15,6 +16,9 @@ using Nerves.ServiceDefaults;
 using OpenIddict.Abstractions;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var signingKey = new Nerves.Idp.Security.SigningKeyProvider(builder.Configuration, builder.Environment);
+builder.Services.AddSingleton(signingKey);
 
 builder.AddNervesDefaults("nerves-idp");
 
@@ -55,6 +59,10 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddScoped<LoginTickets>();
+builder.Services.AddSingleton<LogoutTokenIssuer>();
+builder.Services.AddSingleton<BackchannelLogoutDispatcher>();
+builder.Services.AddHttpClient("backchannel-logout", client => client.Timeout = TimeSpan.FromSeconds(5));
+builder.Services.Configure<BackchannelLogoutOptions>(builder.Configuration.GetSection(BackchannelLogoutOptions.SectionName));
 
 builder.Services.AddOpenIddict()
     .AddCore(options => options
@@ -86,27 +94,8 @@ builder.Services.AddOpenIddict()
         // In-memory keys are acceptable for the skeleton; production wiring to
         // certificates or a key store lands with the deployment milestone.
         options.AddEphemeralEncryptionKey();
+        options.AddSigningKey(signingKey.Key);
 
-        if (builder.Environment.IsDevelopment())
-        {
-            // A machine-persisted development certificate keeps tokens valid
-            // across restarts; ephemeral keys would invalidate every token.
-            options.AddDevelopmentSigningCertificate();
-        }
-        else
-        {
-            var path = builder.Configuration["OpenIddict:SigningCertificatePath"];
-            if (string.IsNullOrWhiteSpace(path))
-            {
-                throw new InvalidOperationException(
-                    "OpenIddict:SigningCertificatePath must point to a PFX file outside Development.");
-            }
-
-            var password = builder.Configuration["OpenIddict:SigningCertificatePassword"];
-            var certificate = System.Security.Cryptography.X509Certificates.X509CertificateLoader
-                .LoadPkcs12FromFile(path, password);
-            options.AddSigningCertificate(certificate);
-        }
         options.DisableAccessTokenEncryption();
 
         options.UseAspNetCore()

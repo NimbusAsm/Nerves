@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Nerves.Idp.Integration;
+using Nerves.Idp.Logout;
 using Nerves.Idp.Options;
 using Nerves.Idp.Security;
 using OpenIddict.Validation.AspNetCore;
@@ -23,6 +24,7 @@ public static class AuthEndpoints
         group.MapPost("/login", LoginAsync).RequireRateLimiting("login");
         group.MapPost("/mfa", MfaAsync).RequireRateLimiting("login");
         group.MapPost("/switch-account", SwitchAccountAsync).RequireRateLimiting("login");
+        group.MapPost("/logout", LogoutAsync);
 
         return app;
     }
@@ -277,6 +279,48 @@ public static class AuthEndpoints
                 legalEntityId,
             },
         });
+    }
+
+    /// <summary>
+    /// Signs the caller out: revokes every session of the subject, writes an
+    /// audit event and posts a logout token to configured relying parties.
+    /// </summary>
+    private static async Task<IResult> LogoutAsync(
+        SessionDirectory sessions,
+        AuditClient audit,
+        BackchannelLogoutDispatcher dispatcher,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        var authentication = await http.AuthenticateAsync(
+            OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+
+        if (!authentication.Succeeded || authentication.Principal is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var subject = authentication.Principal.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(subject))
+        {
+            return Results.Unauthorized();
+        }
+
+        await sessions.RevokeAllAsync(subject, "api logout", cancellationToken);
+
+        await audit.AppendAsync(
+            "auth.logout",
+            "account",
+            subject,
+            subject,
+            "success",
+            null,
+            cancellationToken);
+
+        var issuer = http.Request.Scheme + "://" + http.Request.Host + "/";
+        var delivered = await dispatcher.DispatchAsync(issuer, subject, cancellationToken);
+
+        return Results.Ok(new { loggedOut = true, backchannelDeliveries = delivered });
     }
 
     private static Guid? TryEntity(string legalEntityId) =>

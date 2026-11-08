@@ -76,7 +76,7 @@
 | 令牌签发 | ✅ 已实现 | ID / Access（含 sub、leid、name、email、permissions、authz_ver）/ Refresh |
 | 注销 | ✅ 已实现 | /connect/logout，同时撤销该账户全部会话 |
 | 用户信息端点 | ✅ 已实现 | /connect/userinfo 返回 sub/name/email/leid/permissions；无令牌 401 |
-| Back-Channel Logout | 🔭 v1.1 计划 | 未实现 |
+| Back-Channel Logout | ✅ 已实现 | POST /api/v1/auth/logout（Bearer）撤销全部会话并写审计；按配置向各 RP 的 backchannel_logout_uri 投递 RS256 签名的 logout_token（iss/aud/sub/iat/jti/events）；投递失败不阻断登出 |
 | 上游 SAML（SP） | 🔭 v1.1 计划 | — |
 
 ## SDK

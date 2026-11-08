@@ -18,7 +18,8 @@ public sealed class AuthorizationController(
     IOpenIddictScopeManager scopeManager,
     Nerves.Idp.Integration.AuthorizationDirectory authorization,
     Nerves.Idp.Integration.SessionDirectory sessions,
-    Nerves.Idp.Security.LoginTickets tickets) : Controller
+    Nerves.Idp.Security.LoginTickets tickets,
+    Nerves.Idp.Logout.BackchannelLogoutDispatcher backchannel) : Controller
 {
     [HttpGet("~/connect/authorize")]
     public async Task<IActionResult> Authorize()
@@ -204,6 +205,9 @@ public sealed class AuthorizationController(
         if (!string.IsNullOrEmpty(subject))
         {
             await sessions.RevokeAllAsync(subject, "user signed out", HttpContext.RequestAborted);
+
+            var issuer = Request.Scheme + "://" + Request.Host + "/";
+            await backchannel.DispatchAsync(issuer, subject, HttpContext.RequestAborted);
         }
 
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);

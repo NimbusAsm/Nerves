@@ -17,5 +17,6 @@
     <ProjectReference Include="..\..\src\Nerves.ServiceDefaults\Nerves.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\src\services\Nerves.Authorization\Nerves.Authorization.csproj" />
     <ProjectReference Include="..\..\src\services\Nerves.Audit\Nerves.Audit.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Idp\Nerves.Idp.csproj" />
   </ItemGroup>
 </Project>
