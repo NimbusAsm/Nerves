@@ -18,5 +18,6 @@
     <ProjectReference Include="..\..\src\services\Nerves.Authorization\Nerves.Authorization.csproj" />
     <ProjectReference Include="..\..\src\services\Nerves.Audit\Nerves.Audit.csproj" />
     <ProjectReference Include="..\..\src\services\Nerves.Idp\Nerves.Idp.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.ComplianceCn\Nerves.ComplianceCn.csproj" />
   </ItemGroup>
 </Project>
