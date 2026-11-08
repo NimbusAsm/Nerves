@@ -36,6 +36,9 @@ public static class BearerAuthentication
                 options.Authority = authority;
                 options.RequireHttpsMetadata = false;
                 options.Audience = audience;
+                options.RefreshOnIssuerKeyNotFound = true;
+                options.RefreshInterval = TimeSpan.FromMinutes(1);
+                options.AutomaticRefreshInterval = TimeSpan.FromMinutes(5);
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,

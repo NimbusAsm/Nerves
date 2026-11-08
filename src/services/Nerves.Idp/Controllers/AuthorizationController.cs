@@ -31,15 +31,14 @@ public sealed class AuthorizationController(
             return Forbid(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
-        var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        var userPrincipal = result.Succeeded ? result.Principal : null;
-        var realm = result.Principal?.GetClaim("realm") ?? "nerves";
+        // A presented ticket always wins over an existing cookie: that is what
+        // lets a client switch to another account of the same legal entity
+        // without prompting for credentials again.
+        var rawTicket = Request.Query["login_ticket"].ToString();
+        ClaimsPrincipal userPrincipal;
 
-        if (userPrincipal is null)
+        if (!string.IsNullOrEmpty(rawTicket))
         {
-            // Headless flow: the client's own login UI obtained a single-use
-            // ticket from POST /api/v1/auth/login and passed it here.
-            var rawTicket = Request.Query["login_ticket"].ToString();
             var ticket = await tickets.RedeemAsync(rawTicket, "login", HttpContext.RequestAborted);
             if (ticket is null)
             {
@@ -50,8 +49,6 @@ public sealed class AuthorizationController(
                 });
             }
 
-            realm = ticket.Realm;
-
             var cookieIdentity = new ClaimsIdentity(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 Claims.Name,
@@ -59,6 +56,8 @@ public sealed class AuthorizationController(
 
             cookieIdentity.AddClaim(new Claim(Claims.Subject, ticket.AccountId.ToString()));
             cookieIdentity.AddClaim(new Claim(Claims.Name, ticket.DisplayName));
+            cookieIdentity.AddClaim(new Claim("realm", ticket.Realm));
+
             if (!string.IsNullOrEmpty(ticket.Email))
             {
                 cookieIdentity.AddClaim(new Claim(Claims.Email, ticket.Email!));
@@ -69,14 +68,29 @@ public sealed class AuthorizationController(
                 cookieIdentity.AddClaim(new Claim("leid", ticket.LegalEntityId.Value.ToString()));
             }
 
-            cookieIdentity.AddClaim(new Claim("realm", ticket.Realm));
-
             userPrincipal = new ClaimsPrincipal(cookieIdentity);
+
             await HttpContext.SignInAsync(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 userPrincipal,
                 new AuthenticationProperties { IsPersistent = false });
         }
+        else
+        {
+            var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (!result.Succeeded || result.Principal is null)
+            {
+                return Unauthorized(new
+                {
+                    error = "login_required",
+                    message = "Sign in through /api/v1/auth/login and retry the authorization request.",
+                });
+            }
+
+            userPrincipal = result.Principal;
+        }
+
+        var realm = userPrincipal.GetClaim("realm") ?? "nerves";
 
         var identity = new ClaimsIdentity(
             OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,

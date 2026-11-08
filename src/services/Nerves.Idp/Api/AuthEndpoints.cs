@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Nerves.Idp.Integration;
 using Nerves.Idp.Options;
 using Nerves.Idp.Security;
+using OpenIddict.Validation.AspNetCore;
 
 namespace Nerves.Idp.Api;
 
@@ -20,6 +22,7 @@ public static class AuthEndpoints
 
         group.MapPost("/login", LoginAsync).RequireRateLimiting("login");
         group.MapPost("/mfa", MfaAsync).RequireRateLimiting("login");
+        group.MapPost("/switch-account", SwitchAccountAsync).RequireRateLimiting("login");
 
         return app;
     }
@@ -207,6 +210,75 @@ public static class AuthEndpoints
         });
     }
 
+    /// <summary>
+    /// Issues a new login ticket for another account owned by the same legal
+    /// entity, so the caller can start a new authorization without entering a
+    /// password again.
+    /// </summary>
+    private static async Task<IResult> SwitchAccountAsync(
+        [FromBody] SwitchAccountRequest request,
+        IdentityDirectory directory,
+        LoginTickets tickets,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        var authentication = await http.AuthenticateAsync(
+            OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
+
+        if (!authentication.Succeeded || authentication.Principal is null)
+        {
+            return Results.Unauthorized();
+        }
+
+        var legalEntityId = authentication.Principal.FindFirst("leid")?.Value;
+        if (string.IsNullOrEmpty(legalEntityId))
+        {
+            return Results.Problem(
+                "The current token has no legal entity claim.",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.AccountId) || !Guid.TryParse(request.AccountId, out var targetId))
+        {
+            return Results.Problem("accountId must be a UUID.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var target = await directory.GetAccountAsync(targetId.ToString(), cancellationToken);
+        if (target is null)
+        {
+            return Results.NotFound();
+        }
+
+        if (!string.Equals(target.LegalEntityId, legalEntityId, StringComparison.OrdinalIgnoreCase))
+        {
+            return Results.Problem(
+                "The account does not belong to the current legal entity.",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        var loginTicket = await tickets.IssueAsync(
+            target.Realm,
+            targetId,
+            Guid.Parse(legalEntityId),
+            target.DisplayName,
+            null,
+            "login",
+            cancellationToken);
+
+        return Results.Ok(new
+        {
+            loginTicket,
+            expiresInSeconds = (int)LoginTickets.Lifetime.TotalSeconds,
+            user = new
+            {
+                id = target.AccountId,
+                name = target.DisplayName,
+                email = string.Empty,
+                legalEntityId,
+            },
+        });
+    }
+
     private static Guid? TryEntity(string legalEntityId) =>
         Guid.TryParse(legalEntityId, out var id) ? id : null;
 
@@ -219,3 +291,6 @@ public sealed record LoginRequest(string Username, string Password, string? Real
 
 /// <summary>MFA challenge payload.</summary>
 public sealed record MfaRequest(string MfaTicket, string Code);
+
+/// <summary>Account switch payload.</summary>
+public sealed record SwitchAccountRequest(string AccountId);

@@ -85,7 +85,28 @@ builder.Services.AddOpenIddict()
 
         // In-memory keys are acceptable for the skeleton; production wiring to
         // certificates or a key store lands with the deployment milestone.
-        options.AddEphemeralEncryptionKey().AddEphemeralSigningKey();
+        options.AddEphemeralEncryptionKey();
+
+        if (builder.Environment.IsDevelopment())
+        {
+            // A machine-persisted development certificate keeps tokens valid
+            // across restarts; ephemeral keys would invalidate every token.
+            options.AddDevelopmentSigningCertificate();
+        }
+        else
+        {
+            var path = builder.Configuration["OpenIddict:SigningCertificatePath"];
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                throw new InvalidOperationException(
+                    "OpenIddict:SigningCertificatePath must point to a PFX file outside Development.");
+            }
+
+            var password = builder.Configuration["OpenIddict:SigningCertificatePassword"];
+            var certificate = System.Security.Cryptography.X509Certificates.X509CertificateLoader
+                .LoadPkcs12FromFile(path, password);
+            options.AddSigningCertificate(certificate);
+        }
         options.DisableAccessTokenEncryption();
 
         options.UseAspNetCore()
