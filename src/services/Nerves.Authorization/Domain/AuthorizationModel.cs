@@ -139,3 +139,68 @@ public sealed class SubjectVersion
 
     public void Bump() => Version++;
 }
+
+/// <summary>A named group of accounts that can receive roles as a unit.</summary>
+public sealed class Group
+{
+    private Group() => Realm = Code = Name = string.Empty;
+
+    private Group(Guid id, string realm, string code, string name, DateTimeOffset now)
+    {
+        Id = id;
+        Realm = realm;
+        Code = code;
+        Name = name;
+        CreatedAt = now;
+    }
+
+    public Guid Id { get; private set; }
+
+    public string Realm { get; private set; }
+
+    public string Code { get; private set; }
+
+    public string Name { get; private set; }
+
+    public DateTimeOffset CreatedAt { get; private set; }
+
+    public ICollection<GroupMember> Members { get; private set; } = new List<GroupMember>();
+
+    public static Group Create(string realm, string code, string name, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(realm);
+        ArgumentException.ThrowIfNullOrWhiteSpace(code);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return new Group(
+            Guid.CreateVersion7(now),
+            realm.Trim().ToLowerInvariant(),
+            code.Trim(),
+            name.Trim(),
+            now);
+    }
+
+    public void Rename(string name) => Name = name.Trim();
+}
+
+/// <summary>Join row between a group and an account.</summary>
+public sealed class GroupMember
+{
+    private GroupMember() { }
+
+    private GroupMember(Guid groupId, Guid accountId, DateTimeOffset now)
+    {
+        GroupId = groupId;
+        AccountId = accountId;
+        AddedAt = now;
+    }
+
+    public Guid GroupId { get; private set; }
+
+    public Guid AccountId { get; private set; }
+
+    public DateTimeOffset AddedAt { get; private set; }
+
+    public static GroupMember Create(Guid groupId, Guid accountId, DateTimeOffset now) =>
+        new(groupId, accountId, now);
+}

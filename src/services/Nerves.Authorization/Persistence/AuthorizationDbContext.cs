@@ -16,11 +16,32 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
 
     public DbSet<SubjectVersion> SubjectVersions => Set<SubjectVersion>();
 
+    public DbSet<Group> Groups => Set<Group>();
+
+    public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
         modelBuilder.HasDefaultSchema(Schema);
+
+        modelBuilder.Entity<Group>(builder =>
+        {
+            builder.ToTable("group");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Realm).HasMaxLength(64).IsRequired();
+            builder.Property(x => x.Code).HasMaxLength(128).IsRequired();
+            builder.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            builder.HasIndex(x => new { x.Realm, x.Code }).IsUnique();
+        });
+
+        modelBuilder.Entity<GroupMember>(builder =>
+        {
+            builder.ToTable("group_member");
+            builder.HasKey(x => new { x.GroupId, x.AccountId });
+            builder.HasIndex(x => x.AccountId);
+        });
 
         modelBuilder.Entity<Role>(builder =>
         {

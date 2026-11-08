@@ -37,6 +37,7 @@ app.MapOpenApi();
 app.MapNervesDefaults("nerves-authorization");
 app.MapGrpcService<AuthorizationGrpcService>();
 app.MapAuthorizationEndpoints();
+app.MapGroupEndpoints();
 
 app.Run();
 

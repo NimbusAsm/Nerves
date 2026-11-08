@@ -96,7 +96,7 @@ public static class RoleEndpoints
             db.RoleAssignments.Add(RoleAssignment.Create(id, subjectType, request.SubjectId, DateTimeOffset.UtcNow));
         }
 
-        await BumpAsync(db, request.SubjectId, cancellationToken);
+        await BumpSubjectAsync(db, subjectType, request.SubjectId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok();
     }
@@ -122,7 +122,7 @@ public static class RoleEndpoints
         }
 
         db.RoleAssignments.Remove(assignment);
-        await BumpAsync(db, request.SubjectId, cancellationToken);
+        await BumpSubjectAsync(db, subjectType, request.SubjectId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok();
     }
@@ -153,6 +153,30 @@ public static class RoleEndpoints
         db.Permissions.Add(permission);
         await db.SaveChangesAsync(cancellationToken);
         return Results.Created($"/api/v1/permissions/{permission.Id}", new { permission.Id, permission.Code });
+    }
+
+    private static async Task BumpSubjectAsync(
+        AuthorizationDbContext db,
+        SubjectType subjectType,
+        Guid subjectId,
+        CancellationToken cancellationToken)
+    {
+        await BumpAsync(db, subjectId, cancellationToken);
+
+        if (subjectType != SubjectType.Group)
+        {
+            return;
+        }
+
+        var members = await db.GroupMembers
+            .Where(x => x.GroupId == subjectId)
+            .Select(x => x.AccountId)
+            .ToListAsync(cancellationToken);
+
+        foreach (var member in members)
+        {
+            await BumpAsync(db, member, cancellationToken);
+        }
     }
 
     private static async Task BumpAsync(AuthorizationDbContext db, Guid subjectId, CancellationToken cancellationToken)

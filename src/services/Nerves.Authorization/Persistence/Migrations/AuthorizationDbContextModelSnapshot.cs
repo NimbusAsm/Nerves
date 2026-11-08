@@ -23,6 +23,56 @@ namespace Nerves.Authorization.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Nerves.Authorization.Domain.Group", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Realm")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Realm", "Code")
+                        .IsUnique();
+
+                    b.ToTable("group", "authz");
+                });
+
+            modelBuilder.Entity("Nerves.Authorization.Domain.GroupMember", b =>
+                {
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("AddedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("GroupId", "AccountId");
+
+                    b.HasIndex("AccountId");
+
+                    b.ToTable("group_member", "authz");
+                });
+
             modelBuilder.Entity("Nerves.Authorization.Domain.Permission", b =>
                 {
                     b.Property<Guid>("Id")
@@ -145,6 +195,15 @@ namespace Nerves.Authorization.Persistence.Migrations
                     b.ToTable("subject_version", "authz");
                 });
 
+            modelBuilder.Entity("Nerves.Authorization.Domain.GroupMember", b =>
+                {
+                    b.HasOne("Nerves.Authorization.Domain.Group", null)
+                        .WithMany("Members")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Nerves.Authorization.Domain.RolePermission", b =>
                 {
                     b.HasOne("Nerves.Authorization.Domain.Role", null)
@@ -152,6 +211,11 @@ namespace Nerves.Authorization.Persistence.Migrations
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Nerves.Authorization.Domain.Group", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("Nerves.Authorization.Domain.Role", b =>

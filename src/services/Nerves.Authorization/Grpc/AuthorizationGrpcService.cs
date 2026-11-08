@@ -58,6 +58,17 @@ public sealed class AuthorizationGrpcService(AuthorizationDbContext db) : Author
         if (Guid.TryParse(accountId, out var account)) subjects.Add(account);
         if (Guid.TryParse(legalEntityId, out var entity)) subjects.Add(entity);
 
+        // Group roles apply to every member.
+        if (account != Guid.Empty)
+        {
+            var groupIds = await db.GroupMembers
+                .Where(x => x.AccountId == account)
+                .Select(x => x.GroupId)
+                .ToListAsync(cancellationToken);
+
+            subjects.AddRange(groupIds);
+        }
+
         if (subjects.Count == 0)
         {
             return (new List<string>(), 0);
