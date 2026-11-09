@@ -43,9 +43,13 @@ jobs:
       - name: Lint protobuf
         run: $BUF lint
 
+      - name: Fetch base branch
+        if: github.event_name == 'pull_request'
+        run: git fetch origin main --depth=1
+
       - name: Check protobuf compatibility
         if: github.event_name == 'pull_request'
-        run: $BUF breaking --against '.git#branch=main'
+        run: $BUF breaking --against '.git#branch=origin/main'
 
   images:
     runs-on: ubuntu-latest
