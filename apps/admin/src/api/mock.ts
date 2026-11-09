@@ -840,6 +840,7 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
           baseDn: 'dc=example,dc=com',
           userFilter: '(uid={0})',
           mailAttribute: 'mail',
+          timeoutSeconds: 5,
           serviceAccount: false,
         },
         federation: [

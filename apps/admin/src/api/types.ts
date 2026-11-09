@@ -278,6 +278,7 @@ export interface IntegrationStatus {
     baseDn: string
     userFilter: string
     mailAttribute: string
+    timeoutSeconds: number
     serviceAccount: boolean
   }
   federation: Array<{

@@ -12,12 +12,23 @@ public sealed class IdpDbContext(DbContextOptions<IdpDbContext> options) : DbCon
 
     public DbSet<Nerves.Idp.Federation.FederationState> FederationStates => Set<Nerves.Idp.Federation.FederationState>();
 
+    public DbSet<Nerves.Idp.Domain.IntegrationSetting> IntegrationSettings => Set<Nerves.Idp.Domain.IntegrationSetting>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.UseOpenIddict();
+
+        modelBuilder.Entity<Nerves.Idp.Domain.IntegrationSetting>(builder =>
+        {
+            builder.ToTable("integration_setting");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Key).HasMaxLength(64).IsRequired();
+            builder.Property(x => x.PayloadJson).HasColumnType("text").IsRequired();
+            builder.HasIndex(x => x.Key).IsUnique();
+        });
 
         modelBuilder.Entity<Nerves.Idp.Federation.FederationState>(builder =>
         {

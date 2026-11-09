@@ -66,6 +66,7 @@ builder.Services.AddSingleton<LdapDirectory>();
 builder.Services.Configure<FederationOptions>(builder.Configuration.GetSection(FederationOptions.SectionName));
 builder.Services.AddSingleton<LogoutTokenIssuer>();
 builder.Services.AddSingleton<BackchannelLogoutDispatcher>();
+builder.Services.AddScoped<IntegrationSettingsStore>();
 builder.Services.AddHttpClient("backchannel-logout", client => client.Timeout = TimeSpan.FromSeconds(5));
 builder.Services.Configure<BackchannelLogoutOptions>(builder.Configuration.GetSection(BackchannelLogoutOptions.SectionName));
 
@@ -144,6 +145,14 @@ builder.Services.AddHostedService<OpenIddictClientSeeder>();
 var app = builder.Build();
 
 await app.MigrateNervesDatabaseAsync<IdpDbContext>();
+
+await using (var startupScope = app.Services.CreateAsyncScope())
+{
+    var store = startupScope.ServiceProvider.GetRequiredService<IntegrationSettingsStore>();
+    var ldapOptions = startupScope.ServiceProvider.GetRequiredService<
+        Microsoft.Extensions.Options.IOptions<LdapOptions>>().Value;
+    await store.ApplyAsync(ldapOptions, CancellationToken.None);
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

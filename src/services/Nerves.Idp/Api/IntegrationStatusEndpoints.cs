@@ -49,6 +49,7 @@ public static class IntegrationStatusEndpoints
                 baseDn = settings.BaseDn,
                 userFilter = settings.UserFilter,
                 mailAttribute = settings.MailAttribute,
+                timeoutSeconds = settings.TimeoutSeconds,
                 serviceAccount = !string.IsNullOrEmpty(settings.BindDn),
             },
             federation = federation.Value.Providers.Select(provider => new
