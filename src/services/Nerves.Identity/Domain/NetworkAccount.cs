@@ -162,6 +162,43 @@ public sealed class NetworkAccount
         return Result.Success();
     }
 
+    /// <summary>
+    /// Applies the attributes a directory owns (display name, email). The
+    /// username and every credential stay untouched so a locally managed
+    /// password is never overwritten by provisioning. A null argument leaves
+    /// the current value alone, so partial directory entries do not erase data.
+    /// </summary>
+    public Result ApplyDirectoryProfile(string? email, string? displayName, DateTimeOffset now)
+    {
+        var normalizedEmail = Normalize(email)?.ToLowerInvariant();
+        var normalizedDisplayName = Normalize(displayName);
+
+        if (normalizedEmail is not null && normalizedEmail.Length > 320)
+        {
+            return Result.Failure(Reason.Validation("email must not exceed 320 characters"));
+        }
+
+        if (normalizedDisplayName is not null && normalizedDisplayName.Length > 200)
+        {
+            return Result.Failure(Reason.Validation("display name must not exceed 200 characters"));
+        }
+
+        // A missing directory attribute means "not managed here": keep the
+        // local value instead of clearing it on every pass.
+        if (normalizedEmail is not null)
+        {
+            Email = normalizedEmail;
+        }
+
+        if (normalizedDisplayName is not null)
+        {
+            DisplayName = normalizedDisplayName;
+        }
+
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
     private static string? Normalize(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
