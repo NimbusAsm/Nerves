@@ -1,0 +1,22 @@
+{
+  "name": "@nerves/sample-node-bff",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nerves BFF sample: PKCE callback, server-side session, management API calls.",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node src/server.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "2.1.6",
+    "hono": "4.13.17"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "typescript": "7.0.2"
+  }
+}

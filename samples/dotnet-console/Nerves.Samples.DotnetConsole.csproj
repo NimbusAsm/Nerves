@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Nerves.Samples.DotnetConsole</RootNamespace>
+    <AssemblyName>Nerves.Samples.DotnetConsole</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <!--
+      Console sample: user-facing literals are not localised (CA1303), output culture is
+      irrelevant (CA1305), and this is an application rather than a reusable library
+      (CA2007 / CA1812 / CA1852 do not apply).
+    -->
+    <NoWarn>$(NoWarn);CA1303;CA1305;CA2007;CA1812;CA1852;CA1054;CA1062;CA1861;CA1002;CA2227;CA1031;IDE0058</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../sdk/dotnet/Nerves.Client/Nerves.Client.csproj" />
+  </ItemGroup>
+
+</Project>

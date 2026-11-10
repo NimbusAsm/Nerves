@@ -1,9 +1,11 @@
 # .NET 服务端接入
 
-::: warning 当前不可联调
-Nerves 的 OIDC 端点与 `Nerves.Client` SDK 都还未实现（🧭 v1.0 计划）。
-下面示例按目标契约编写，能编译的前提是你已有一个符合 OIDC 的 issuer；
-现在把它指向 Nerves 会失败。
+::: tip 可运行示例
+`samples/dotnet-console` 是一个可直接 `dotnet run` 的控制台程序：login API → OIDC + PKCE → 令牌 → userinfo → 网关管理 API。
+本页讲 ASP.NET Core 服务端 Web 的做法，两者共用同一套端点。
+
+Nerves 的 Discovery、`/connect/authorize`、`/connect/token`、`/connect/userinfo` 均已实现；
+接入前用 `curl {idp}/.well-known/openid-configuration` 核对你的部署版本。
 :::
 
 ## 场景

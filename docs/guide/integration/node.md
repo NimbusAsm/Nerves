@@ -1,8 +1,10 @@
 # Node.js / BFF 接入
 
-::: warning 当前不可联调
-Nerves 的 OIDC 端点尚未实现（🧭 v1.0 计划）。示例按目标契约编写；
-在 Nerves 交付 Discovery 之前，可以把 issuer 指向任意标准 OIDC 提供方验证代码。
+::: tip 可运行示例
+`samples/node-bff` 是一个可运行的 BFF：浏览器只拿 HttpOnly 会话 Cookie，令牌留在 Node 进程，回调在服务端完成。
+本页讲的是同一个思路的通用写法（`express-openid-connect`）。
+
+Nerves 的 OIDC 端点均已实现；若你的部署版本较旧，先核对 `/.well-known/openid-configuration`。
 :::
 
 ## 场景

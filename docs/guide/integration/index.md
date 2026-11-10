@@ -1,46 +1,96 @@
 # 接入概览
 
-::: warning 端点尚未实现
-Nerves 目前没有可用的 OIDC Discovery、令牌端点或管理 API（详见 [实现状态](/guide/status)）。
-本组页面按 **v1.0 目标契约**编写，用于提前评估接入方式；示例不能端到端联调。
-下面的 issuer、client id、audience 都是占位符。
-:::
+Nerves 的 IdP 已实现标准的 **Authorization Code + PKCE** 流程，且**不渲染任何登录页面**：
+登录 UI 由接入方自己实现，通过登录 API 取到一次性票据后再跳 `/connect/authorize`。
+这一页讲清楚三件事：选哪种接入方式、端点在哪、示例代码在哪。
+
+## 可运行示例（推荐从这里开始）
+
+仓库里的 `samples/` 有三个能直接跑起来的工程，每个都自带 README 与 `.env.example`：
+
+| 示例 | 形态 | 客户端类型 | 令牌放在哪 | 用到的 SDK |
+| --- | --- | --- | --- | --- |
+| `samples/dotnet-console` | 无头客户端 / CI 作业 | public + PKCE | 进程内存 | `Nerves.Client` |
+| `samples/node-bff` | BFF（浏览器只拿不透明 Cookie） | public + PKCE，回调在服务端 | Node 进程；浏览器只拿 HttpOnly Cookie | `fetch` |
+| `samples/vue-spa` | 单页应用 | public + PKCE | 浏览器内存 | `@nerves/sdk` |
+
+## 登录链路
+
+```text
+POST {idp}/api/v1/auth/login      {username, password}      → { loginTicket }
+GET  {idp}/connect/authorize      client_id, redirect_uri, scope, state,
+                                  code_challenge(S256), login_ticket
+                                                            → 302 {redirect_uri}?code=&state=
+POST {idp}/connect/token          authorization_code, code, redirect_uri,
+                                  client_id, code_verifier   → access / id / refresh
+GET  {idp}/connect/userinfo       Bearer access_token        → sub, name, email, leid
+GET  {gateway}/api/v1/*           Bearer access_token        → 管理 API
+```
+
+两个与多数 IdP 不同的点：
+
+1. **IdP 不渲染页面。** `/connect/authorize` 需要一个来自登录 API 的 `login_ticket`
+   （90 秒有效、一次性），因此控制台程序也能完成这个「交互式」流程。
+2. **PKCE 是强制的**（`RequireProofKeyForCodeExchange()`），机密客户端也一样；
+   不传 `code_verifier` 会在 `/connect/token` 失败。
 
 ## 选择接入方式
 
-| 你的应用 | 推荐流程 | 是否需要 client secret | 当前状态 |
+| 你的应用 | 推荐流程 | client secret | 状态 |
 | --- | --- | --- | --- |
-| 服务端 Web / BFF（.NET、Node、Java…） | Authorization Code | 是 | 🧭 v1.0 计划 |
-| 单页应用（SPA） | Authorization Code + PKCE | 否 | 🧭 v1.0 计划 |
-| 移动端（iOS / Android） | Authorization Code + PKCE（RFC 8252） | 否 | 🧭 v1.0 计划 |
+| 服务端 Web / BFF（.NET、Node、Java…） | Authorization Code（+ PKCE） | 可选 | ✅ 可用 |
+| 单页应用（SPA） | Authorization Code + PKCE | 否 | ✅ 可用（示例） |
+| 移动端（iOS / Android） | Authorization Code + PKCE（RFC 8252） | 否 | ✅ 可用（见[移动端](/guide/integration/mobile)） |
 | 服务 / 定时任务 | Client Credentials | 是 | 🧭 v1.0 计划 |
-| 已有企业 IdP | 上游 OIDC / LDAP 联邦 | 由 Nerves 作为 SP / 客户端 | 🧭 v1.0 计划（SAML 为 🔭 v1.1） |
+| 已有企业 IdP | 上游 OIDC / LDAP 联邦 | Nerves 作为 SP | ✅ 可用 |
 
-## 目标端点
+## 端点
 
-以 issuer `https://id.example.com` 为例（**占位符，不要照抄**）：
+以 issuer `https://id.example.com` 为例（**占位符**；本地开发是 `http://127.0.0.1:5101`）：
 
 | 端点 | 路径 |
 | --- | --- |
 | Discovery | `/.well-known/openid-configuration` |
-| JWKS | `/.well-known/jwks.json` |
+| JWKS | `/.well-known/jwks` |
 | 授权 | `/connect/authorize` |
 | 令牌 | `/connect/token` |
 | 用户信息 | `/connect/userinfo` |
-| 注销 | `/connect/endsession` / `/connect/logout` |
-| 撤销 | `/connect/revoke` |
-| 账户切换（扩展） | `/connect/switch-account` |
-| 管理 API | `/api/v1/*` |
+| 注销 | `/connect/logout`（同时撤销该账户全部会话） |
+| 登录（JSON） | `/api/v1/auth/login` |
+| 二次验证 | `/api/v1/auth/mfa`（TOTP / 恢复码 / Passkey） |
+| 管理 API | `/api/v1/*`（经网关） |
+
+能力与实现状态以 [实现状态](/guide/status) 为准。
+
+## 注册回调地址
+
+OIDC 要求 `redirect_uri` **逐字匹配**。开发环境由 `OpenIddictSeed`
+（`src/services/Nerves.Idp/appsettings.Development.json`）在启动时登记客户端：
+
+```json
+"OpenIddictSeed": {
+  "Enabled": true,
+  "AdminClientId": "nerves-admin",
+  "AdminRedirectUris": [
+    "http://127.0.0.1:5300/oidc-callback.html",
+    "http://127.0.0.1:4311/auth/callback",
+    "http://127.0.0.1:5178/auth/callback"
+  ]
+}
+```
+
+改完重启 IdP 即可（seeder 会 upsert）。生产环境不允许 seed
+（`ProductionGuards` 会拒绝），要走你自己的客户端注册流程。
 
 ## 令牌校验清单
 
 资源服务**本地验签**，不要每个请求都回源：
 
-1. 从 Discovery 获取 `jwks_uri`，缓存 JWKS 并按 `kid` 选择密钥；
-2. 校验签名算法在允许列表内（目标：`ES256` 为主，`RS256` 兼容）；
+1. 从 Discovery 取 `jwks_uri`，缓存 JWKS 并按 `kid` 选密钥；
+2. 校验签名算法在允许列表内（当前签发 `RS256`）；
 3. 校验 `iss`、`aud`、`exp`、`nbf`；允许不超过 60 秒时钟偏移；
 4. 不要仅解码 payload 就认为通过；
-5. 不要把 introspection 放进热路径（在 10^11 规模下不可行）；
+5. 不要把 introspection 放进热路径；
 6. 吊销依赖短 TTL + `token_ver` / `authz_ver`，不是逐请求查询。
 
 ## Claims 速查
@@ -50,37 +100,17 @@ Nerves 目前没有可用的 OIDC Discovery、令牌端点或管理 API（详见
 | `sub` | 网络账户 ID（默认身份） |
 | `leid` | 法律实体 ID（默认不下发，需要跨账户能力时申请） |
 | `realm` | 品牌 / 产品域 |
-| `amr` / `acr` | 认证方式 / 强度 |
-| `roles` / `perms` | 粗粒度授权 |
-| `authz_ver` | 授权版本 |
+| `name` / `email` | 展示用资料 |
+| `permissions` / `roles` | 授权快照与粗粒度角色 |
+| `authz_ver` | 授权版本（角色变更即递增） |
 | `token_ver` | 账户级令牌版本 |
-
-## 官方 SDK
-
-| 语言 | 状态 |
-| --- | --- |
-| .NET（`Nerves.Client`） | 🚧 `sdk/dotnet` 源码与测试已有；未发布 NuGet，管理 API 未实现 |
-| TypeScript（`@nerves/sdk`） | 🚧 `sdk/typescript` 源码已有；未发布 npm，管理 API 未实现 |
-| Python（`nerves-sdk`） | 🚧 `sdk/python` 源码与测试已有；未发布 PyPI，管理 API 未实现 |
-| Java / Go / PHP | 🔭 v1.1 计划 |
-
-SDK 只依赖管理 API 的 wire contract；在 `/api/v1` 交付前，它们可以构建和做 mock 测试，
-但不能对真实的 Nerves 服务端工作。
-
-在 SDK 交付前，请使用各语言成熟的 OIDC 客户端库；Nerves 遵循标准协议，不要求专用 SDK。
-
-## 多 realm 与多品牌
-
-- 用户名在 realm 内唯一；
-- 授权请求需要带上目标 realm（由 client 注册信息决定）；
-- 令牌中的 `realm` 用于资源服务做租户隔离，不能只信任请求头。
 
 ## 常见错误
 
-| 错误 | 后果 |
+| 现象 | 原因 |
 | --- | --- |
-| SPA 里保存 client secret | secret 泄露；SPA 必须使用 PKCE 公共客户端 |
-| 每请求调用 introspection | 热路径多一次 RTT，规模上不可接受 |
-| 解 payload 不验签 | 任意伪造令牌 |
-| 用 `localhost` 作为移动端 redirect | 真机无法回调；应使用自定义 scheme 或 loopback + PKCE |
-| 只看 `role` 名称不看作用域 | 跨组织越权 |
+| `/connect/authorize` 返回 401 `login_required` | 没带 `login_ticket`，或票据已用过/过期 |
+| 400 `invalid_redirect_uri` | 回调地址没有登记到该客户端 |
+| 400 `invalid_grant` | PKCE verifier 不匹配，或授权码已被使用 |
+| 403 调用管理 API | 账户缺少 `nerves:admin` 权限 |
+| 429 | 登录/令牌端点有固定窗口限流（login 10/min、token 30/min、authorize 120/min） |
