@@ -7,6 +7,7 @@ import type {
   CredentialType,
   IdDocumentType,
   LegalEntityType,
+  NotificationStatus,
   OrgRole,
   RoleScope,
   VerificationState,
@@ -121,6 +122,28 @@ export function useLabels() {
     }
   }
 
+  function notificationStatus(value: NotificationStatus): string {
+    switch (value) {
+      case 'pending':
+        return t('status.notification.pending')
+      case 'sent':
+        return t('status.notification.sent')
+      case 'failed':
+        return t('status.notification.failed')
+    }
+  }
+
+  function notificationTone(value: NotificationStatus): Tone {
+    switch (value) {
+      case 'pending':
+        return 'warning'
+      case 'sent':
+        return 'success'
+      case 'failed':
+        return 'danger'
+    }
+  }
+
   function auditResult(value: AuditResult): string {
     switch (value) {
       case 'success':
@@ -220,6 +243,8 @@ export function useLabels() {
     credentialType,
     auditResult,
     auditResultTone,
+    notificationStatus,
+    notificationTone,
     orgRole,
     roleScope,
     auditAction,

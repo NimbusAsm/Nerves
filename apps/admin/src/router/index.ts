@@ -123,6 +123,16 @@ export const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'notifications',
+        name: 'notifications',
+        component: () => import('@/views/notifications/NotificationListView.vue'),
+        meta: {
+          titleKey: 'notifications.title',
+          sectionKey: 'nav.sections.security',
+          permission: 'nerves:admin',
+        },
+      },
+      {
         path: 'integrations',
         name: 'integrations',
         component: () => import('@/views/integrations/IntegrationsView.vue'),

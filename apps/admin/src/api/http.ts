@@ -20,6 +20,9 @@ import type {
   LegalEntityQuery,
   LegalEntitySummary,
   LegalEntityTransition,
+  NotificationQuery,
+  NotificationRecord,
+  SendNotificationEmailInput,
   LoginInput,
   LoginResult,
   OrgMember,
@@ -292,6 +295,29 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
           sort: '-at',
         })}`,
       ),
+
+    listNotifications: (query: NotificationQuery) =>
+      request<CursorPage<NotificationRecord>>(
+        `/notifications${buildQuery({
+          limit: query.limit,
+          cursor: query.cursor,
+          status: query.status,
+          to: query.to,
+        })}`,
+      ),
+
+    getNotification: (id: string) =>
+      request<NotificationRecord>(`/notifications/${encodeURIComponent(id)}`),
+
+    sendNotificationEmail: (input: SendNotificationEmailInput) =>
+      request<NotificationRecord>('/notifications/email', {
+        method: 'POST',
+        body: {
+          to: input.to,
+          template: input.template,
+          values: input.values,
+        },
+      }),
   }
 }
 

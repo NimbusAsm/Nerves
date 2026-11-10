@@ -62,6 +62,7 @@ NERVES_API_URL=http://127.0.0.1:5280
 | `#/organizations` | 组织与成员：成员角色调整、添加/移除成员 | `org:organization:read` |
 | `#/roles` | 角色与权限：角色授权编辑 + 权限目录 | `authz:role:read` |
 | `#/audit` | 审计日志：时间/操作人/结果/动作过滤、事件详情、CSV 导出 | `audit:event:read` |
+| `#/notifications` | 通知中心：投递日志（状态过滤、收件人搜索、游标分页）+ 发送模板邮件、事件详情 | `nerves:admin` |
 | `#/applications` | 应用目录：列表、新建（client_id / 回调地址 / Logo / scopes）、详情 | `directory:application:read` |
 
 写操作另有权限门控（如 `identity:account:write`、`authz:role:write`、`audit:event:export`），
@@ -94,6 +95,9 @@ PATCH  /api/v1/roles/{id}                        { name, description, permission
 GET    /api/v1/applications
 POST   /api/v1/applications                      { name, clientId, redirectUris[], scopes[], logoUrl }
 GET    /api/v1/audit-events?limit&cursor&filter[from]&filter[to]&filter[result]&actor&action
+GET    /api/v1/notifications?limit&cursor&status&to   投递日志（status: pending|sent|failed，to 精确匹配）
+GET    /api/v1/notifications/{id}                     单条投递详情
+POST   /api/v1/notifications/email                    { to, template, values }（模板见下）
 ```
 
 - 列表统一返回 `{ items, nextCursor }`；游标对前端不透明，客户端保存游标栈实现"上一页"，不向服务端要 offset。
@@ -114,6 +118,20 @@ GET    /api/v1/audit-events?limit&cursor&filter[from]&filter[to]&filter[result]&
   以保留 `.vue` 文件类型检查，待上游支持 TS 7 再升级（这是目前唯一与 PLAN 版本表不一致的依赖）。
 - 图标库用 **`@lucide/vue` 1.70.0**（`lucide-vue-next` 1.0.0 已标记 deprecated，官方指向新包），
   其余版本与 PLAN 一致：Vue 3.5.45 / Vite 8.3.6 / Pinia 4.1.0 / Vue Router 5.4.0 / Tailwind 4.3.5 / Vitest 5.1.0。
+
+### 通知模板
+
+前端只认识通知服务内置的三个模板，占位符契约与后端 `EmailTemplateCatalog` 保持一致
+（`src/lib/notification-templates.ts`，单测会校验它与 i18n 键集同步）：
+
+| 模板 | 占位符 | 用途 |
+| --- | --- | --- |
+| `account.welcome` | `displayName` / `username` / `issuer` | 账户创建后的欢迎邮件 |
+| `account.password-reset` | `displayName` / `minutes` / `resetUrl` | 重置口令链接 |
+| `security.sign-in` | `displayName` / `device` / `occurredAt` | 新设备登录提醒 |
+
+表单在提交前会校验必填占位符并做去空格处理；服务端仍会再校验一次，
+未知模板或缺参数返回 400（界面直接展示 `detail`）。
 
 ## 目录结构
 
