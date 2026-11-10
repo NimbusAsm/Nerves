@@ -20,6 +20,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddNervesDefaults("nerves-identity");
 builder.Services.AddNervesProxyHeaders(builder.Configuration);
+builder.Services.AddNervesRateLimiting(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddGrpc();
@@ -104,6 +105,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 var app = builder.Build();
 
 app.UseNervesProxyHeaders();
+app.UseNervesRateLimiting();
 
 if (await app.MigrateNervesDatabaseAsync<IdentityDbContext>())
 {
