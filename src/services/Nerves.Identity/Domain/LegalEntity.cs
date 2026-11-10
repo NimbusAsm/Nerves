@@ -22,6 +22,7 @@ public sealed class LegalEntity
         DisplayName = displayName;
         RealName = realName;
         VerificationState = VerificationState.Pending;
+        Status = LegalEntityStatus.Active;
         CreatedAt = now;
         UpdatedAt = now;
     }
@@ -36,6 +37,11 @@ public sealed class LegalEntity
     public RealNameId RealName { get; private set; }
 
     public VerificationState VerificationState { get; private set; }
+
+    /// <summary>Invariant I6: disabling an entity disables all of its accounts.</summary>
+    public LegalEntityStatus Status { get; private set; }
+
+    public DateTimeOffset? DisabledAt { get; private set; }
 
     public DateTimeOffset? VerifiedAt { get; private set; }
 
@@ -94,6 +100,32 @@ public sealed class LegalEntity
 
         VerificationState = VerificationState.Rejected;
         ProviderReference = providerReference;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    public Result Disable(DateTimeOffset now)
+    {
+        if (Status == LegalEntityStatus.Disabled)
+        {
+            return Result.Failure(Reason.Conflict("legal entity is already disabled"));
+        }
+
+        Status = LegalEntityStatus.Disabled;
+        DisabledAt = now;
+        UpdatedAt = now;
+        return Result.Success();
+    }
+
+    public Result Enable(DateTimeOffset now)
+    {
+        if (Status != LegalEntityStatus.Disabled)
+        {
+            return Result.Failure(Reason.Conflict("only a disabled legal entity can be enabled"));
+        }
+
+        Status = LegalEntityStatus.Active;
+        DisabledAt = null;
         UpdatedAt = now;
         return Result.Success();
     }
