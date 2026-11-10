@@ -80,7 +80,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddDbContext<IdpDbContext>(options => options.UseNpgsql(connectionString));
 }
 
-builder.Services.AddSingleton<LoginThrottle>();
+builder.Services.AddScoped<LoginThrottle>();
 builder.Services.AddScoped<LoginTickets>();
 builder.Services.AddScoped<FederationStateStore>();
 builder.Services.Configure<LdapOptions>(builder.Configuration.GetSection(LdapOptions.SectionName));

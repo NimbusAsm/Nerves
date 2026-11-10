@@ -1,58 +1,82 @@
-using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
+using Microsoft.EntityFrameworkCore;
+using Nerves.Idp.Domain;
+using Nerves.Idp.Persistence;
 
 namespace Nerves.Idp.Security;
 
 /// <summary>
-/// In-memory login throttling: five failures within the window lock the
-/// identifier for the lockout duration. A distributed implementation backed by
-/// Redis replaces this when the service runs behind multiple replicas.
+/// Persistent login throttling shared by all IdP replicas: five failures inside
+/// fifteen minutes lock the identifier for fifteen minutes.
 /// </summary>
-public sealed class LoginThrottle
+public sealed class LoginThrottle(IdpDbContext db)
 {
     private const int MaxFailures = 5;
     private static readonly TimeSpan Window = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan Lockout = TimeSpan.FromMinutes(15);
 
-    private readonly ConcurrentDictionary<string, Attempt> _attempts = new(StringComparer.Ordinal);
-
-    public bool IsLocked(string identifier, DateTimeOffset now) =>
-        _attempts.TryGetValue(identifier, out var attempt) && attempt.LockedUntil > now;
-
-    public void RecordFailure(string identifier, DateTimeOffset now)
+    public async Task<bool> IsLockedAsync(string identifier, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        var attempt = _attempts.GetOrAdd(identifier, _ => new Attempt());
-        lock (attempt)
+        var hash = Hash(identifier);
+        var attempt = await db.LoginAttempts.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.IdentifierHash == hash, cancellationToken);
+
+        return attempt?.IsLocked(now) ?? false;
+    }
+
+    public async Task RecordFailureAsync(
+        string identifier,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var hash = Hash(identifier);
+        var attempt = await db.LoginAttempts
+            .FirstOrDefaultAsync(x => x.IdentifierHash == hash, cancellationToken);
+
+        if (attempt is null)
         {
-            if (attempt.LockedUntil > now)
-            {
-                return;
-            }
+            attempt = LoginAttempt.Create(hash, now);
+            db.LoginAttempts.Add(attempt);
+        }
 
-            if (now - attempt.FirstFailureAt > Window)
-            {
-                attempt.FirstFailureAt = now;
-                attempt.Count = 0;
-            }
+        attempt.RegisterFailure(now, MaxFailures, Window, Lockout);
 
-            attempt.Count++;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // Another replica inserted the same row first; retry once against it.
+            db.ChangeTracker.Clear();
+            var existing = await db.LoginAttempts
+                .FirstOrDefaultAsync(x => x.IdentifierHash == hash, cancellationToken);
 
-            if (attempt.Count >= MaxFailures)
+            if (existing is not null)
             {
-                attempt.LockedUntil = now.Add(Lockout);
-                attempt.Count = 0;
-                attempt.FirstFailureAt = now;
+                existing.RegisterFailure(now, MaxFailures, Window, Lockout);
+                await db.SaveChangesAsync(cancellationToken);
             }
         }
     }
 
-    public void Reset(string identifier) => _attempts.TryRemove(identifier, out _);
-
-    private sealed class Attempt
+    public async Task ResetAsync(string identifier, CancellationToken cancellationToken)
     {
-        public int Count { get; set; }
+        var hash = Hash(identifier);
+        var attempt = await db.LoginAttempts
+            .FirstOrDefaultAsync(x => x.IdentifierHash == hash, cancellationToken);
 
-        public DateTimeOffset FirstFailureAt { get; set; }
+        if (attempt is null)
+        {
+            return;
+        }
 
-        public DateTimeOffset LockedUntil { get; set; }
+        attempt.Reset();
+        await db.SaveChangesAsync(cancellationToken);
     }
+
+    private static string Hash(string identifier) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identifier.Trim().ToLowerInvariant())))
+            .ToLowerInvariant();
 }

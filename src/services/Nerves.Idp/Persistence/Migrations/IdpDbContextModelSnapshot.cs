@@ -49,6 +49,34 @@ namespace Nerves.Idp.Persistence.Migrations
                     b.ToTable("integration_setting", "idp");
                 });
 
+            modelBuilder.Entity("Nerves.Idp.Domain.LoginAttempt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Failures")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("FirstFailureAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdentifierHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("LockedUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdentifierHash")
+                        .IsUnique();
+
+                    b.ToTable("login_attempt", "idp");
+                });
+
             modelBuilder.Entity("Nerves.Idp.Domain.LoginTicket", b =>
                 {
                     b.Property<Guid>("Id")
