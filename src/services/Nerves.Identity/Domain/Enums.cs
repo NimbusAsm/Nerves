@@ -49,3 +49,13 @@ public enum AccountStatus
     Locked = 2,
     Disabled = 3,
 }
+
+/// <summary>Outcome of one verification attempt through a provider.</summary>
+public enum VerificationAttemptStatus
+{
+    Pending = 1,
+    Verified = 2,
+    Rejected = 3,
+    Expired = 4,
+    Failed = 5,
+}
