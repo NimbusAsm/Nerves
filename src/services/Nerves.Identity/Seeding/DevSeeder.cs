@@ -11,7 +11,8 @@ namespace Nerves.Identity.Seeding;
 public sealed class DevSeeder(
     IServiceProvider services,
     IOptions<DevSeedOptions> options,
-    ShardResolver shards) : IHostedService
+    ShardResolver shards,
+    Microsoft.Extensions.Hosting.IHostEnvironment environment) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -20,6 +21,9 @@ public sealed class DevSeeder(
         {
             return;
         }
+
+        Nerves.ServiceDefaults.ProductionGuards.RejectSeedOutsideDevelopment(
+            environment, seed.Enabled, seed.AllowInProduction, "DevSeed");
 
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();

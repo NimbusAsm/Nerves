@@ -8,7 +8,8 @@ namespace Nerves.Authorization.Seeding;
 /// <summary>Creates the management permission, role and assignments on startup.</summary>
 public sealed class AuthorizationDevSeeder(
     IServiceProvider services,
-    IOptions<DevSeedOptions> options) : IHostedService
+    IOptions<DevSeedOptions> options,
+    Microsoft.Extensions.Hosting.IHostEnvironment environment) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -17,6 +18,9 @@ public sealed class AuthorizationDevSeeder(
         {
             return;
         }
+
+        Nerves.ServiceDefaults.ProductionGuards.RejectSeedOutsideDevelopment(
+            environment, seed.Enabled, seed.AllowInProduction, "DevSeed");
 
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AuthorizationDbContext>();
