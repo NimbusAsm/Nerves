@@ -1,0 +1,112 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (v1.0.0)'
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: gateway
+            project: src/services/Nerves.Gateway/Nerves.Gateway.csproj
+            dll: Nerves.Gateway.dll
+          - name: idp
+            project: src/services/Nerves.Idp/Nerves.Idp.csproj
+            dll: Nerves.Idp.dll
+          - name: identity
+            project: src/services/Nerves.Identity/Nerves.Identity.csproj
+            dll: Nerves.Identity.dll
+          - name: session
+            project: src/services/Nerves.Session/Nerves.Session.csproj
+            dll: Nerves.Session.dll
+          - name: authorization
+            project: src/services/Nerves.Authorization/Nerves.Authorization.csproj
+            dll: Nerves.Authorization.dll
+          - name: audit
+            project: src/services/Nerves.Audit/Nerves.Audit.csproj
+            dll: Nerves.Audit.dll
+          - name: directory
+            project: src/services/Nerves.Directory/Nerves.Directory.csproj
+            dll: Nerves.Directory.dll
+          - name: compliance
+            project: src/services/Nerves.ComplianceCn/Nerves.ComplianceCn.csproj
+            dll: Nerves.ComplianceCn.dll
+          - name: notification
+            project: src/services/Nerves.Notification/Nerves.Notification.csproj
+            dll: Nerves.Notification.dll
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: version
+        name: Resolve version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        run: |
+          image="ghcr.io/${{ github.repository }}/${{ matrix.name }}"
+          docker build \
+            -f deploy/docker/Dockerfile \
+            --build-arg PROJECT=${{ matrix.project }} \
+            --build-arg ENTRY_DLL=${{ matrix.dll }} \
+            -t "$image:${{ steps.version.outputs.version }}" .
+          docker push "$image:${{ steps.version.outputs.version }}"
+
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: version
+        name: Resolve version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push admin
+        run: |
+          image="ghcr.io/${{ github.repository }}/admin"
+          docker build \
+            -f apps/admin/Dockerfile \
+            --build-arg VITE_USE_MOCK=false \
+            --build-arg VITE_API_BASE_URL=/api/v1 \
+            --build-arg VITE_IDP_URL=https://auth.example.com \
+            -t "$image:${{ steps.version.outputs.version }}" apps/admin
+          docker push "$image:${{ steps.version.outputs.version }}"
+
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Package chart
+        run: |
+          docker run --rm -v "$PWD/deploy/helm/nerves:/chart" -v "$PWD/dist:/dist" \
+            alpine/helm:3.16.4 package /chart --version "${GITHUB_REF_NAME#v}" --destination /dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nerves-chart
+          path: dist/*.tgz

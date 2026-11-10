@@ -34,3 +34,15 @@
 - 迁移只做加法，不重命名或删除列。
 - gRPC 破坏性变更必须通过 `buf breaking` 门禁并升 MAJOR。
 - REST 管理 API 的移除/改语义需在 CHANGELOG 标注并保留一个 MINOR 的弃用期。
+
+
+## Tag-driven release
+
+Pushing a tag such as v1.0.0 runs the release workflow:
+
+1. builds and pushes every service image and the admin image to GHCR, tagged
+   with the version (for example ghcr.io/nimbusasm/nerves/identity:1.0.0);
+2. packages the Helm chart as nerves-1.0.0.tgz and uploads it as an artifact.
+
+The workflow can also be started manually with a tag input. It does not deploy;
+deployment stays an explicit helm upgrade (see the checklist above).
