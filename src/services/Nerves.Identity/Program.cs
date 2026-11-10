@@ -32,6 +32,7 @@ builder.Services.AddSingleton<RecoveryCodes>();
 builder.Services.Configure<ShardingOptions>(builder.Configuration.GetSection(ShardingOptions.SectionName));
 builder.Services.AddSingleton<ShardResolver>();
 builder.Services.AddScoped<PasskeyService>();
+builder.Services.AddSingleton<Nerves.Identity.Integration.SessionClient>();
 builder.Services.AddSingleton<IFido2>(_ => new Fido2(new Fido2Configuration
 {
     RPID = "nerves.local",

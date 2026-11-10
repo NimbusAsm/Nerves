@@ -4,7 +4,6 @@ using Nerves.Identity.Domain;
 using Nerves.Identity.Integration;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
-
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Identity.Api;
@@ -186,22 +185,25 @@ public static class AccountEndpoints
     private static Task<IResult> DisableAsync(
         Guid id,
         IdentityDbContext db,
+        SessionClient sessions,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken) =>
-        TransitionAsync(id, db, audit, http, "account.disabled", static (account, now) => account.Disable(now), cancellationToken);
+        TransitionAsync(id, db, sessions, audit, http, "account.disabled", static (account, now) => account.Disable(now), cancellationToken);
 
     private static Task<IResult> LockAsync(
         Guid id,
         IdentityDbContext db,
+        SessionClient sessions,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken) =>
-        TransitionAsync(id, db, audit, http, "account.locked", static (account, now) => account.Lock(now), cancellationToken);
+        TransitionAsync(id, db, sessions, audit, http, "account.locked", static (account, now) => account.Lock(now), cancellationToken);
 
     private static async Task<IResult> TransitionAsync(
         Guid id,
         IdentityDbContext db,
+        SessionClient sessions,
         AuditClient audit,
         HttpContext http,
         string action,
@@ -221,6 +223,10 @@ public static class AccountEndpoints
         }
 
         await db.SaveChangesAsync(cancellationToken);
+
+        // Disabling an account must also kill its live sessions; otherwise a
+        // compromised session survives until it expires.
+        await sessions.RevokeAllAsync(account.Id.ToString(), action, cancellationToken);
 
         await audit.AppendAsync(
             action, "admin", null, "account", account.Id.ToString(), "success", http.TraceIdentifier, null, cancellationToken);
