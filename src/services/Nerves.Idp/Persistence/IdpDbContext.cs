@@ -14,12 +14,22 @@ public sealed class IdpDbContext(DbContextOptions<IdpDbContext> options) : DbCon
 
     public DbSet<Nerves.Idp.Domain.IntegrationSetting> IntegrationSettings => Set<Nerves.Idp.Domain.IntegrationSetting>();
 
+    public DbSet<Nerves.Idp.Domain.LoginAttempt> LoginAttempts => Set<Nerves.Idp.Domain.LoginAttempt>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.UseOpenIddict();
+
+        modelBuilder.Entity<Nerves.Idp.Domain.LoginAttempt>(builder =>
+        {
+            builder.ToTable("login_attempt");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.IdentifierHash).HasMaxLength(64).IsRequired();
+            builder.HasIndex(x => x.IdentifierHash).IsUnique();
+        });
 
         modelBuilder.Entity<Nerves.Idp.Domain.IntegrationSetting>(builder =>
         {

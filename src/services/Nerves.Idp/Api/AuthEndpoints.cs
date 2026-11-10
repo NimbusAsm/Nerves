@@ -50,7 +50,7 @@ public static class AuthEndpoints
         var realm = string.IsNullOrWhiteSpace(request.Realm) ? options.Value.DefaultRealm : request.Realm.Trim().ToLowerInvariant();
         var now = DateTimeOffset.UtcNow;
 
-        if (throttle.IsLocked(request.Username, now))
+        if (await throttle.IsLockedAsync(request.Username, now, cancellationToken))
         {
             return Results.Problem(
                 "Too many failed attempts. Try again in 15 minutes.",
@@ -61,7 +61,7 @@ public static class AuthEndpoints
 
         if (!check.Verified)
         {
-            throttle.RecordFailure(request.Username, now);
+            await throttle.RecordFailureAsync(request.Username, now, cancellationToken);
 
             await audit.AppendAsync(
                 "auth.login.failed",
@@ -78,7 +78,7 @@ public static class AuthEndpoints
                 statusCode: StatusCodes.Status401Unauthorized);
         }
 
-        throttle.Reset(request.Username);
+        await throttle.ResetAsync(request.Username, cancellationToken);
 
         if (await directory.HasActiveTotpAsync(check.AccountId, cancellationToken))
         {
