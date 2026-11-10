@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Prometheus;
 
 namespace Nerves.ServiceDefaults;
 
@@ -58,6 +59,8 @@ public static class ServiceDefaultsExtensions
         app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
 
         app.MapGet("/readyz", () => Results.Ok(new { status = "ready" }));
+        app.UseHttpMetrics();
+        app.MapMetrics();
 
         app.MapGet("/api/v1/meta", () => Results.Ok(new
         {

@@ -65,6 +65,7 @@
 | 上游 LDAP 联邦 | ✅ 已实现（基础） | POST /api/v1/auth/federation/ldap 用服务账号检索后二次绑定校验口令；按 mail 或 username 关联本地账户，成功签发登录票据，未关联 403；配置 Ldap:Enabled/Host/BaseDn/UserFilter |
 | 上游 OIDC 联邦 | ✅ 已实现（OIDC） | 配置多个上游提供方；POST /api/v1/auth/federation/start 返回授权 URL（state + PKCE），回调校验 state 单次使用并验签上游 id_token（JWKS + aud），按 email 关联本地账户后签发登录票据；未关联返回 403。LDAP 未实现 |
 | 网关路由 | ✅ 已实现 | 路由表内置于代码，下游地址由 Gateway:Services:* 配置（缺省回落本机开发端口），任意环境可直接接线 |
+| Prometheus 指标 | ✅ 已实现 | 所有服务暴露 GET /metrics（http_requests_received_total、dotnet_*、process_*）；由 MapNervesDefaults 统一挂载 |
 | 端到端冒烟 | ✅ 已实现 | scripts/e2e-smoke.sh 启动全部后端服务（独立端口段），walk 登录 API → OIDC → 令牌 → 网关管理 API；CI e2e 作业在 postgres service 上运行 |
 | 仅迁移模式 | ✅ 已实现 | Database:MigrateOnly=true 时服务应用迁移后以 0 退出，供 Kubernetes 迁移 Job 使用；默认仍由 MigrateOnStart 控制 |
 | 分片路由元数据 | ✅ 已实现（元数据层） | 账户→逻辑分片为纯函数（SHA-256 取模），routing_index 记录 shard 并建索引，ResolveIdentifier 返回分片；Identity 之外的数据面仍是单库，切换到多库需要部署级改造 |
