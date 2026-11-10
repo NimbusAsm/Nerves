@@ -17,6 +17,36 @@ PGHOST=<数据库主机> PGPORT=5432 PGUSER=nerves PGPASSWORD=<口令> PGDATABAS
 
 脚本产出 `*.dump`（pg_dump custom）、`*.keys.tar.gz` 与 `*.sha256`。
 
+## Helm 定时备份（可选）
+
+`deploy/helm/nerves` 默认不创建备份任务（`backup.enabled=false`）。生产集群若没有
+托管备份或 CloudNativePG 之类的 PITR 方案，可让 Chart 创建一个 CronJob：
+
+```yaml
+backup:
+  enabled: true
+  schedule: "0 2 * * *"   # 集群时区（多数集群为 UTC）
+  retentionDays: 7        # 本地与远端同时按此清理
+  persistence:
+    size: 20Gi            # 或 existingClaim 指向已有 PVC
+  # 可选：再用 rclone 上传到 S3 兼容对象存储
+  objectStorage:
+    enabled: true
+    remote: "s3:my-bucket/nerves-backup"
+    existingSecret: rclone-config   # 含 rclone.conf 的 Secret
+```
+
+行为说明：
+
+- initContainer 用 `postgres:<tag>` 跑 `pg_dump --format=custom --no-owner`，写入
+  `/backup/nerves-<UTC 时间戳>.dump` 并生成同名 `.sha256`；
+- `backup.retentionDays` 到期后由容器内的 `find -mtime` 清理；启用对象存储时
+  rclone 也会 `delete --min-age` 清理远端；
+- 使用外部数据库时必须显式给出 `backup.database.host/username/database` 与口令
+  Secret（Chart 用 `fail` 报错，不会静默跳过）；
+- **密钥包不在 CronJob 范围内**：`DataProtection` 密钥仍由 `scripts/backup.sh`
+  单独归档，二者要分开存放。
+
 ## 恢复
 
 1. 停止 identity 与 idp。
@@ -27,7 +57,8 @@ PGHOST=<数据库主机> PGPORT=5432 PGUSER=nerves PGPASSWORD=<口令> PGDATABAS
 
 ## 保留与验证
 
-- 每日全量 + 保留策略由备份系统决定，Nerves 不内置调度。
+- 每日全量 + 保留策略由备份系统决定；只有显式打开 `backup.enabled` 时 Chart 才会
+  创建 CronJob，默认仍由外部备份系统负责调度。
 - 每季度做一次恢复演练，并核对 `sha256sum -c`。
 
 ## 注意
