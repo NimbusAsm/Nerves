@@ -52,6 +52,11 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            {{- with $svc.grpcPort }}
+            - name: grpc
+              containerPort: {{ . }}
+              protocol: TCP
+            {{- end }}
           envFrom:
             - configMapRef:
                 name: {{ include "nerves.fullname" $ }}-config
@@ -70,6 +75,54 @@ spec:
                 secretKeyRef:
                   name: {{ include "nerves.natsSecretName" $ }}
                   key: {{ $.Values.nats.urlSecretKey }}
+            {{- end }}
+            - name: Kestrel__Endpoints__Http__Url
+              value: "http://0.0.0.0:8080"
+            {{- with $svc.grpcPort }}
+            - name: Kestrel__Endpoints__Grpc__Url
+              value: "http://0.0.0.0:{{ . }}"
+            - name: Kestrel__Endpoints__Grpc__Protocols
+              value: "Http2"
+            {{- end }}
+            {{- if or (eq $name "identity") (eq $name "idp") }}
+            - name: DataProtection__KeysDirectory
+              value: /var/lib/nerves/dp-keys
+            {{- end }}
+            {{- if and (ne $name "gateway") (ne $name "idp") }}
+            - name: Authentication__Authority
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "idp") }}:{{ (index $.Values.services "idp").port }}"
+            - name: Authentication__Issuer
+              value: {{ $.Values.config.publicIssuer | quote }}
+            - name: Authentication__Audience
+              value: {{ $.Values.config.audience | quote }}
+            {{- end }}
+            {{- if eq $name "idp" }}
+            - name: OpenIddict__Issuer
+              value: {{ $.Values.config.publicIssuer | quote }}
+            - name: Identity__GrpcAddress
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "identity") }}:{{ (index $.Values.services "identity").grpcPort }}"
+            - name: Session__GrpcAddress
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "session") }}:{{ (index $.Values.services "session").grpcPort }}"
+            - name: Authorization__GrpcAddress
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "authorization") }}:{{ (index $.Values.services "authorization").grpcPort }}"
+            - name: Audit__GrpcAddress
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "audit") }}:{{ (index $.Values.services "audit").grpcPort }}"
+            {{- end }}
+            {{- if eq $name "gateway" }}
+            - name: Gateway__Services__identity
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "identity") }}:{{ (index $.Values.services "identity").port }}/"
+            - name: Gateway__Services__session
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "session") }}:{{ (index $.Values.services "session").port }}/"
+            - name: Gateway__Services__authorization
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "authorization") }}:{{ (index $.Values.services "authorization").port }}/"
+            - name: Gateway__Services__audit
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "audit") }}:{{ (index $.Values.services "audit").port }}/"
+            - name: Gateway__Services__directory
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "directory") }}:{{ (index $.Values.services "directory").port }}/"
+            - name: Gateway__Services__compliance
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "compliance") }}:{{ (index $.Values.services "compliance").port }}/"
+            - name: Gateway__Services__idp
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "idp") }}:{{ (index $.Values.services "idp").port }}/"
             {{- end }}
             {{- range (default (list) $svc.extraEnv) }}
             - {{ toYaml . | nindent 14 }}
@@ -95,13 +148,18 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
-            - name: dotnet-data-protection
-              mountPath: /home/app/.aspnet
+            {{- if or (eq $name "identity") (eq $name "idp") }}
+            - name: dp-keys
+              mountPath: /var/lib/nerves/dp-keys
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
-        - name: dotnet-data-protection
-          emptyDir: {}
+        {{- if or (eq $name "identity") (eq $name "idp") }}
+        - name: dp-keys
+          persistentVolumeClaim:
+            claimName: {{ include "nerves.dpClaimName" (dict "root" $ "name" $name) }}
+        {{- end }}
       {{- with $svc.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

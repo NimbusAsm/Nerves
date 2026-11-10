@@ -18,6 +18,12 @@ spec:
       port: {{ $svc.port | default 80 }}
       targetPort: http
       protocol: TCP
+    {{- with $svc.grpcPort }}
+    - name: grpc
+      port: {{ . }}
+      targetPort: grpc
+      protocol: TCP
+    {{- end }}
   selector:
     {{- include "nerves.selectorLabels" (dict "root" $ "name" $name) | nindent 4 }}
 {{- end }}

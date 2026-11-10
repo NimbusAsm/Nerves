@@ -1,0 +1,44 @@
+{{- if .Values.migrations.enabled }}
+{{- range $name := .Values.migrations.services }}
+{{- $svc := index $.Values.services $name }}
+{{- if $svc.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "nerves.fullname" $ }}-{{ $name }}-migrate
+  labels:
+    {{- include "nerves.labels" (dict "root" $ "name" $name) | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ $.Values.migrations.backoffLimit }}
+  template:
+    metadata:
+      labels:
+        {{- include "nerves.selectorLabels" (dict "root" $ "name" $name) | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: migrate
+          image: {{ include "nerves.image" (dict "root" $ "name" $name "svc" $svc) | quote }}
+          imagePullPolicy: {{ include "nerves.pullPolicy" (dict "root" $ "svc" $svc) | quote }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "nerves.fullname" $ }}-config
+          env:
+            - name: ConnectionStrings__Default
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nerves.databaseSecretName" $ }}
+                  key: {{ $.Values.database.secretKey }}
+            - name: Database__MigrateOnly
+              value: "true"
+{{- end }}
+{{- end }}
+{{- end }}

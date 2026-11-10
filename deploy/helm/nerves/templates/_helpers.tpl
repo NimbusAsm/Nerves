@@ -178,3 +178,10 @@ fails the render with a readable message otherwise.
 {{- end -}}
 {{- end -}}
 {{- end -}}
+{{- define "nerves.dpClaimName" -}}
+{{- if .root.Values.dataProtection.existingClaim -}}
+{{- .root.Values.dataProtection.existingClaim -}}
+{{- else -}}
+{{- printf "%s-%s-dp-keys" (include "nerves.fullname" .root) .name -}}
+{{- end -}}
+{{- end -}}
