@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Nerves.Session.Persistence;
 
 namespace Nerves.Session.Integration;
@@ -10,7 +9,6 @@ public sealed class OutboxDispatcher(
     ILogger<OutboxDispatcher> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(5);
-    private const int BatchSize = 100;
 
     private static readonly Action<ILogger, Exception?> DispatchFailed =
         LoggerMessage.Define(LogLevel.Warning, new EventId(1, "OutboxDispatch"), "Outbox dispatch failed; will retry");
@@ -47,37 +45,8 @@ public sealed class OutboxDispatcher(
     private async Task DispatchBatchAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<Nerves.Session.Persistence.SessionDbContext>();
+        var store = scope.ServiceProvider.GetRequiredService<SessionStore>();
 
-        var pending = await db.OutboxEvents
-            .Where(x => x.DispatchedAt == null && x.Attempts < 10)
-            .OrderBy(x => x.OccurredAt)
-            .Take(BatchSize)
-            .ToListAsync(cancellationToken);
-
-        foreach (var item in pending)
-        {
-            try
-            {
-                await publisher.AppendAsync(
-                    item.Type,
-                    "system",
-                    null,
-                    item.TargetType,
-                    item.TargetId,
-                    "success",
-                    item.Payload,
-                    cancellationToken);
-
-                item.MarkDispatched(DateTimeOffset.UtcNow);
-            }
-            catch (Exception exception) when (exception is not OperationCanceledException)
-            {
-                item.MarkAttempt();
-                EventFailed(logger, item.Id, exception);
-            }
-        }
-
-        await db.SaveChangesAsync(cancellationToken);
+        _ = await store.DispatchOutboxAsync(publisher, cancellationToken);
     }
 }

@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Nerves.Session.Options;
 using Nerves.Session.Persistence;
@@ -50,23 +49,12 @@ public sealed class SessionExpiryWorker(
     private async Task SweepAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<SessionDbContext>();
-        var now = DateTimeOffset.UtcNow;
+        var store = scope.ServiceProvider.GetRequiredService<SessionStore>();
 
-        var expired = await db.Sessions
-            .Where(x => x.RevokedAt == null && (x.IdleExpiresAt <= now || x.AbsoluteExpiresAt <= now))
-            .Take(1000)
-            .ToListAsync(cancellationToken);
-
-        foreach (var session in expired)
+        var revoked = await store.SweepAsync(DateTimeOffset.UtcNow, cancellationToken);
+        if (revoked > 0)
         {
-            session.Revoke("expired", now);
-        }
-
-        if (expired.Count > 0)
-        {
-            await db.SaveChangesAsync(cancellationToken);
-            Swept(logger, expired.Count, null);
+            Swept(logger, revoked, null);
         }
     }
 }

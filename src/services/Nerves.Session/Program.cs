@@ -8,6 +8,7 @@ using Nerves.Session.Grpc;
 using Nerves.Session.Integration;
 using Nerves.Session.Options;
 using Nerves.Session.Persistence;
+using Nerves.Sharding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,11 +28,17 @@ builder.Services.AddHostedService<OutboxDispatcher>();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 
+builder.Services.Configure<SessionStoreOptions>(builder.Configuration.GetSection(SessionStoreOptions.SectionName));
+builder.Services.AddSingleton<ShardConnectionResolver>();
+builder.Services.AddSingleton<SessionStore>();
+builder.Services.AddSingleton<SessionMigrator>();
+builder.Services.AddHealthChecks().AddCheck<SessionStoreHealthCheck>("session-store");
+
+// Kept for design-time migrations and tests that resolve the context directly.
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<SessionDbContext>(options => options.UseNpgsql(connectionString));
-    builder.Services.AddHealthChecks().AddDbContextCheck<SessionDbContext>();
 }
 
 var app = builder.Build();
@@ -39,9 +46,17 @@ var app = builder.Build();
 app.UseNervesProxyHeaders();
 app.UseNervesRateLimiting();
 
-if (await app.MigrateNervesDatabaseAsync<SessionDbContext>())
+var migrateOnly = app.Configuration.GetValue("Database:MigrateOnly", false);
+var migrateOnStart = app.Configuration.GetValue("Database:MigrateOnStart", false);
+if (migrateOnly || migrateOnStart)
 {
-    return;
+    var migrator = app.Services.GetRequiredService<SessionMigrator>();
+    await migrator.MigrateAsync(CancellationToken.None);
+
+    if (migrateOnly)
+    {
+        return;
+    }
 }
 
 app.UseNervesSecurityHeaders();
