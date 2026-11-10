@@ -1,9 +1,13 @@
+using Microsoft.Extensions.Options;
 using Nerves.Contracts.Session.V1;
+using Nerves.Idp.Options;
 
 namespace Nerves.Idp.Integration;
 
 /// <summary>Creates and revokes interactive sessions through the session service.</summary>
-public sealed class SessionDirectory(SessionService.SessionServiceClient client)
+public sealed class SessionDirectory(
+    SessionService.SessionServiceClient client,
+    IOptions<SessionLifetimeOptions> lifetime)
 {
     public async Task<string?> CreateAsync(
         string accountId,
@@ -25,8 +29,8 @@ public sealed class SessionDirectory(SessionService.SessionServiceClient client)
                 IpHash = ipHash,
                 UserAgentHash = userAgentHash,
                 Amr = { amr },
-                IdleMinutes = 30,
-                AbsoluteHours = 12,
+                IdleMinutes = lifetime.Value.IdleMinutes,
+                AbsoluteHours = lifetime.Value.AbsoluteHours,
             },
             cancellationToken: cancellationToken);
 
