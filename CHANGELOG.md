@@ -21,6 +21,8 @@ First production-ready release of the unified account platform.
   streams, NDJSON archives and CSV/JSON export.
 - Notification service with email templates, delivery log and retrying worker.
 - LDAP directory sync that provisions and updates accounts idempotently, with a status endpoint.
+- Self-service password reset with single-use hashed tokens.
+- Pluggable real-name verification providers (manual/http) with asynchronous attempts.
 - Runtime OIDC application management API and a live admin catalogue.
 - Read-only console aggregation API and the nerves CLI (migrate/seed/doctor/shard reconcile).
 - Retention-policy enforcement and audit outboxes in session/authorization/directory/compliance.
