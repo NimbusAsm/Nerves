@@ -46,6 +46,9 @@ config:
   publicIssuer: "https://nerves.example.com/"
   # Audience placed on access tokens and required by resource services.
   audience: "nerves.api"
+  # Browser origins allowed to call the gateway and the IdP (the admin console).
+  adminOrigins:
+    - "https://nerves.example.com"
 
 # One entry per service. Every Nerves service listens on HTTP 8080 inside the
 # container and exposes /healthz, /readyz and /api/v1/meta.
@@ -269,6 +272,16 @@ dataProtection:
   size: 1Gi
   storageClass: ""
   existingClaim: ""
+
+# One-time bootstrap of OpenIddict clients. Production refuses the seeder unless
+# allowInProduction is true, so enable it for the first install, then set
+# enabled=false.
+seed:
+  enabled: false
+  allowInProduction: false
+  redirectUris: []
+  postLogoutRedirectUris: []
+  adminRedirectUris: []
 
 # Schema migrations run as pre-install/pre-upgrade Jobs in migrate-only mode.
 migrations:
