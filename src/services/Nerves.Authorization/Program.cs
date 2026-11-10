@@ -20,6 +20,7 @@ builder.Services.AddGrpc();
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 builder.Services.AddSingleton<PermissionCache>();
 builder.Services.AddScoped<CachedPermissions>();
+builder.Services.AddScoped<IntegrationSettingsStore>();
 builder.Services.AddSingleton<PdpClient>();
 builder.Services.Configure<PdpOptions>(builder.Configuration.GetSection(PdpOptions.SectionName));
 builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditOptions.SectionName));
@@ -41,6 +42,14 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 var app = builder.Build();
 
 await app.MigrateNervesDatabaseAsync<AuthorizationDbContext>();
+
+await using (var startupScope = app.Services.CreateAsyncScope())
+{
+    var store = startupScope.ServiceProvider.GetRequiredService<IntegrationSettingsStore>();
+    var pdp = startupScope.ServiceProvider.GetRequiredService<
+        Microsoft.Extensions.Options.IOptions<PdpOptions>>().Value;
+    await store.ApplyAsync(pdp, CancellationToken.None);
+}
 
 app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();

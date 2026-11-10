@@ -20,11 +20,22 @@ public sealed class AuthorizationDbContext(DbContextOptions<AuthorizationDbConte
 
     public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
 
+    public DbSet<IntegrationSetting> IntegrationSettings => Set<IntegrationSetting>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
 
         modelBuilder.HasDefaultSchema(Schema);
+
+        modelBuilder.Entity<IntegrationSetting>(builder =>
+        {
+            builder.ToTable("integration_setting");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Key).HasMaxLength(64).IsRequired();
+            builder.Property(x => x.PayloadJson).HasColumnType("text").IsRequired();
+            builder.HasIndex(x => x.Key).IsUnique();
+        });
 
         modelBuilder.Entity<Group>(builder =>
         {

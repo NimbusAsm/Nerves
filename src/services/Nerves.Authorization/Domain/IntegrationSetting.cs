@@ -1,0 +1,35 @@
+namespace Nerves.Authorization.Domain;
+
+/// <summary>
+/// Persisted integration section (currently the policy decision point) so an
+/// administrative change survives a restart.
+/// </summary>
+public sealed class IntegrationSetting
+{
+    private IntegrationSetting() => Key = PayloadJson = string.Empty;
+
+    private IntegrationSetting(Guid id, string key, string payloadJson, DateTimeOffset now)
+    {
+        Id = id;
+        Key = key;
+        PayloadJson = payloadJson;
+        UpdatedAt = now;
+    }
+
+    public Guid Id { get; private set; }
+
+    public string Key { get; private set; }
+
+    public string PayloadJson { get; private set; }
+
+    public DateTimeOffset UpdatedAt { get; private set; }
+
+    public static IntegrationSetting Create(string key, string payloadJson, DateTimeOffset now) =>
+        new(Guid.CreateVersion7(now), key, payloadJson, now);
+
+    public void Replace(string payloadJson, DateTimeOffset now)
+    {
+        PayloadJson = payloadJson;
+        UpdatedAt = now;
+    }
+}

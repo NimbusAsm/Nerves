@@ -73,6 +73,32 @@ namespace Nerves.Authorization.Persistence.Migrations
                     b.ToTable("group_member", "authz");
                 });
 
+            modelBuilder.Entity("Nerves.Authorization.Domain.IntegrationSetting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Key")
+                        .IsUnique();
+
+                    b.ToTable("integration_setting", "authz");
+                });
+
             modelBuilder.Entity("Nerves.Authorization.Domain.Permission", b =>
                 {
                     b.Property<Guid>("Id")

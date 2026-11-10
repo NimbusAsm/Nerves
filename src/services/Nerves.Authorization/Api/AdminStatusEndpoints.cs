@@ -36,6 +36,7 @@ public static class AdminStatusEndpoints
     private static async Task<IResult> PatchPdpAsync(
         [FromBody] PdpSettingsPatch patch,
         IOptions<PdpOptions> options,
+        IntegrationSettingsStore store,
         AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
@@ -66,6 +67,8 @@ public static class AdminStatusEndpoints
             }
         }
 
+        await store.SavePdpAsync(current, cancellationToken);
+
         await audit.AppendAsync(
             "admin.integration.pdp.updated",
             "admin",
@@ -81,7 +84,7 @@ public static class AdminStatusEndpoints
             timeoutSeconds = current.TimeoutSeconds,
             failOpen = current.FailOpen,
             tokenConfigured = !string.IsNullOrWhiteSpace(current.Token),
-            note = "The change applies to this process only and is lost on restart.",
+            note = "The change is persisted and applies after a restart.",
         });
     }
 }

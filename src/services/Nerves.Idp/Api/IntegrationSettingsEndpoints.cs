@@ -23,6 +23,7 @@ public static class IntegrationSettingsEndpoints
     private static async Task<IResult> PatchLdapAsync(
         [FromBody] LdapSettingsPatch patch,
         IOptionsMonitor<LdapOptions> options,
+        IntegrationSettingsStore store,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken)
@@ -51,6 +52,8 @@ public static class IntegrationSettingsEndpoints
         if (patch.UserFilter is not null) current.UserFilter = patch.UserFilter.Trim();
         if (patch.TimeoutSeconds is > 0 and <= 60) current.TimeoutSeconds = patch.TimeoutSeconds.Value;
 
+        await store.SaveLdapAsync(current, cancellationToken);
+
         await audit.AppendAsync(
             "admin.integration.ldap.updated",
             "admin",
@@ -69,7 +72,7 @@ public static class IntegrationSettingsEndpoints
             baseDn = current.BaseDn,
             userFilter = current.UserFilter,
             timeoutSeconds = current.TimeoutSeconds,
-            note = "The change applies to this process only and is lost on restart.",
+            note = "The change is persisted and applies after a restart.",
         });
     }
 

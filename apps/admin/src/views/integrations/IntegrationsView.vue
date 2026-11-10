@@ -50,7 +50,7 @@ function editLdap(): void {
     port: String(integration.value.ldap.port),
     baseDn: integration.value.ldap.baseDn,
     userFilter: integration.value.ldap.userFilter,
-    timeoutSeconds: '5',
+    timeoutSeconds: String(integration.value.ldap.timeoutSeconds),
   }
 }
 
