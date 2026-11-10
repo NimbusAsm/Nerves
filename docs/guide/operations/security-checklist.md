@@ -39,9 +39,13 @@
 - [ ] 镜像扫描（Trivy，HIGH/CRITICAL 阻断）保持开启。CI 用
   `--ignore-unfixed` + `deploy/security/trivyignore`（已复核的接受风险清单）：
   **只有新增的可修复漏洞会阻断**。修改该清单必须写理由，且**至少每季度复核一次**。
-- [ ] 基础镜像不要长期不动：当前 `apps/admin/Dockerfile` 用 `nginx:1.27-alpine`
-  （Alpine 3.21 已过厂商支持期），升级基础镜像后应同步删除清单中对应条目——
-  清单只应缩小，不应增长。
+- [ ] 基础镜像不要长期不动：当前 `apps/admin/Dockerfile` 用
+  `nginx:1.30-alpine-slim`（Alpine 3.24，仍在支持期），服务镜像用
+  `mcr.microsoft.com/dotnet/aspnet:10.0-noble`。升级基础镜像后应同步删除
+  `trivyignore` 中对应条目——清单只应缩小，不应增长（当前为空）。
+- [ ] 管理台基础镜像用 `nginx:1.30-alpine-slim`（tag 浮动以获取 Alpine 安全
+  更新），Dockerfile 注释里记录当前复核过的 digest；若部署策略要求不可变基础
+  镜像，再改为 digest 固定并在升级时同步 trivy 基线。
 - [ ] 每次 CI 产出 SBOM（Syft，CycloneDX）并作为 artifact 保留 30 天，
   发布前与镜像 digest 一起归档。
 - [ ] Dependabot 每周提交 NuGet / npm / pip / Actions 更新 PR，合并前看 CI。
