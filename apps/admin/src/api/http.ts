@@ -7,6 +7,8 @@ import type {
   AccountSummary,
   Application,
   ApplicationInput,
+  ApplicationPatch,
+  ApplicationQuery,
   AuditEvent,
   AuditQuery,
   CursorPage,
@@ -277,10 +279,55 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
     updateRole: (id: string, input: { name: string; description: string; permissions: string[] }) =>
       request<Role>(`/roles/${encodeURIComponent(id)}`, { method: 'PATCH', body: input }),
 
-    listApplications: () => request<Application[]>('/applications'),
+    listApplications: (query?: ApplicationQuery) =>
+      request<{ items: ApplicationDto[]; nextCursor: string | null }>(
+        `/admin/applications${buildQuery({
+          limit: query?.limit,
+          cursor: query?.cursor,
+          q: query?.q,
+        })}`,
+      ).then((page) => ({
+        items: page.items.map(toApplication),
+        nextCursor: page.nextCursor,
+      })),
+
+    getApplication: (id: string) =>
+      request<ApplicationDto>(`/admin/applications/${encodeURIComponent(id)}`).then(toApplication),
 
     createApplication: (input: ApplicationInput) =>
-      request<Application>('/applications', { method: 'POST', body: input }),
+      request<ApplicationDto>('/admin/applications', {
+        method: 'POST',
+        body: {
+          clientId: input.clientId,
+          displayName: input.name,
+          description: input.description,
+          logoUrl: input.logoUrl,
+          redirectUris: input.redirectUris,
+          postLogoutRedirectUris: input.postLogoutRedirectUris,
+          scopes: input.scopes,
+          enabled: input.enabled,
+        },
+      }).then(toApplication),
+
+    updateApplication: (id: string, patch: ApplicationPatch) =>
+      request<ApplicationDto>(`/admin/applications/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: {
+          displayName: patch.name,
+          description: patch.description,
+          logoUrl: patch.logoUrl,
+          redirectUris: patch.redirectUris,
+          postLogoutRedirectUris: patch.postLogoutRedirectUris,
+          scopes: patch.scopes,
+          enabled: patch.enabled,
+        },
+      }).then(toApplication),
+
+    deleteApplication: (id: string) =>
+      request<void>(`/admin/applications/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        allowEmpty: true,
+      }),
 
     listAuditEvents: (query: AuditQuery) =>
       request<CursorPage<AuditEvent>>(
@@ -318,6 +365,40 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
           values: input.values,
         },
       }),
+  }
+}
+
+/** Wire shape of a registered application (server-side names). */
+interface ApplicationDto {
+  id: string
+  clientId: string
+  displayName: string
+  description: string
+  logoUrl: string | null
+  redirectUris: string[]
+  postLogoutRedirectUris: string[]
+  scopes: string[]
+  status: 'active' | 'disabled'
+  builtIn: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+/** The console calls the display name `name`; map it at the boundary. */
+function toApplication(dto: ApplicationDto): Application {
+  return {
+    id: dto.id,
+    clientId: dto.clientId,
+    name: dto.displayName,
+    description: dto.description ?? '',
+    logoUrl: dto.logoUrl,
+    redirectUris: dto.redirectUris ?? [],
+    postLogoutRedirectUris: dto.postLogoutRedirectUris ?? [],
+    scopes: dto.scopes ?? [],
+    status: dto.status,
+    builtIn: dto.builtIn,
+    createdAt: dto.createdAt,
+    updatedAt: dto.updatedAt,
   }
 }
 

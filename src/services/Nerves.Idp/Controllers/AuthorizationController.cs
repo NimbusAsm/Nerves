@@ -20,6 +20,7 @@ public sealed class AuthorizationController(
     Nerves.Idp.Integration.AuthorizationDirectory authorization,
     Nerves.Idp.Integration.SessionDirectory sessions,
     Nerves.Idp.Security.LoginTickets tickets,
+    Nerves.Idp.Applications.ApplicationService applications,
     Nerves.Idp.Logout.BackchannelLogoutDispatcher backchannel) : Controller
 {
     [HttpGet("~/connect/authorize")]
@@ -32,6 +33,15 @@ public sealed class AuthorizationController(
         if (await applicationManager.FindByClientIdAsync(request.ClientId!) is null)
         {
             return Forbid(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+        }
+
+        if (await IsClientDisabledAsync(applications, request.ClientId, HttpContext.RequestAborted))
+        {
+            return BadRequest(new OpenIddictResponse
+            {
+                Error = Errors.UnauthorizedClient,
+                ErrorDescription = "This application has been disabled by an administrator.",
+            });
         }
 
         // A presented ticket always wins over an existing cookie: that is what
@@ -166,6 +176,15 @@ public sealed class AuthorizationController(
             });
         }
 
+        if (await IsClientDisabledAsync(applications, request.ClientId, HttpContext.RequestAborted))
+        {
+            return BadRequest(new OpenIddictResponse
+            {
+                Error = Errors.UnauthorizedClient,
+                ErrorDescription = "This application has been disabled by an administrator.",
+            });
+        }
+
         var result = await HttpContext.AuthenticateAsync(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         if (!result.Succeeded || result.Principal is null)
         {
@@ -217,6 +236,16 @@ public sealed class AuthorizationController(
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
         return SignOut(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
+    }
+
+    /// <summary>A disabled client is rejected before any token is issued.</summary>
+    private static async Task<bool> IsClientDisabledAsync(
+        Nerves.Idp.Applications.ApplicationService applications,
+        string? clientId,
+        CancellationToken cancellationToken)
+    {
+        return !string.IsNullOrWhiteSpace(clientId)
+               && await applications.IsDisabledAsync(clientId, cancellationToken);
     }
 
     private static IEnumerable<string> GetDestinations(Claim claim) =>

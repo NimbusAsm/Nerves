@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Nerves.Idp.Applications;
 using Nerves.Idp.Options;
 using OpenIddict.Abstractions;
 using static OpenIddict.Abstractions.OpenIddictConstants;
@@ -87,16 +88,33 @@ public sealed class OpenIddictClientSeeder(
             descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
         }
 
+        // Seeded clients get the same metadata an operator-registered
+        // application has, so the console shows a real creation time instead of
+        // the Unix epoch.
+        var seededAt = ApplicationMetadata.FormatTimestamp(DateTimeOffset.UtcNow);
+        descriptor.SetString(ApplicationMetadata.CreatedAtKey, seededAt);
+        descriptor.SetString(ApplicationMetadata.UpdatedAtKey, seededAt);
+
         if (existing is null)
         {
             await manager.CreateAsync(descriptor, cancellationToken);
             return;
         }
 
-        // Keep redirect URIs in sync so configuration changes take effect on restart.
+        // Keep redirect URIs in sync so configuration changes take effect on restart,
+        // but never discard what the console stored (description, logo, disabled
+        // flag, timestamps) or permissions an operator granted at runtime.
         await manager.PopulateAsync(descriptor, existing, cancellationToken);
         descriptor.RedirectUris.Clear();
         descriptor.PostLogoutRedirectUris.Clear();
+
+        var preservedProperties = new Dictionary<string, System.Text.Json.JsonElement>(
+            (await manager.GetPropertiesAsync(existing, cancellationToken)).ToDictionary(
+                pair => pair.Key,
+                pair => pair.Value,
+                StringComparer.Ordinal),
+            StringComparer.Ordinal);
+        var preservedPermissions = (await manager.GetPermissionsAsync(existing, cancellationToken)).ToHashSet(StringComparer.Ordinal);
 
         foreach (var uri in redirectUris)
         {
@@ -106,6 +124,25 @@ public sealed class OpenIddictClientSeeder(
         foreach (var uri in postLogoutRedirectUris)
         {
             descriptor.PostLogoutRedirectUris.Add(new Uri(uri));
+        }
+
+        foreach (var (key, value) in preservedProperties)
+        {
+            descriptor.Properties[key] = value;
+        }
+
+        // Backfill the timestamps once for clients registered before the
+        // metadata existed; an operator-set value always wins.
+        descriptor.Properties.TryAdd(
+            ApplicationMetadata.CreatedAtKey,
+            System.Text.Json.JsonSerializer.SerializeToElement(seededAt));
+        descriptor.Properties.TryAdd(
+            ApplicationMetadata.UpdatedAtKey,
+            System.Text.Json.JsonSerializer.SerializeToElement(seededAt));
+
+        foreach (var permission in preservedPermissions)
+        {
+            descriptor.Permissions.Add(permission);
         }
 
         await manager.UpdateAsync(existing, descriptor, cancellationToken);

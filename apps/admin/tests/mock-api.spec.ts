@@ -77,46 +77,69 @@ describe('mock API', () => {
   })
 
   it('validates applications before creating them', async () => {
-    const existing = await api.listApplications()
-    const existingClientId = existing[0]?.clientId ?? 'nerves-console'
+    const existing = await api.listApplications({ limit: 50 })
+    const existingClientId = existing.items[0]?.clientId ?? 'nerves-admin'
 
-    await expect(
-      api.createApplication({
-        name: '重复应用',
-        clientId: existingClientId,
-        description: '',
-        logoUrl: null,
-        redirectUris: ['https://app.example.com/callback'],
-        scopes: ['openid'],
-      }),
-    ).rejects.toMatchObject({ status: 409 })
-
-    await expect(
-      api.createApplication({
-        name: '坏回调',
-        clientId: 'bad-callback-app',
-        description: '',
-        logoUrl: null,
-        redirectUris: ['http://insecure.example.com/callback'],
-        scopes: ['openid'],
-      }),
-    ).rejects.toMatchObject({ status: 400 })
-
-    const created = await api.createApplication({
+    const input = {
       name: '新应用',
       clientId: 'new-portal',
       description: '用于测试',
       logoUrl: null,
       redirectUris: ['https://portal.example.com/oauth/callback'],
+      postLogoutRedirectUris: ['https://portal.example.com/'],
       scopes: ['openid', 'profile'],
-    })
+      enabled: true,
+    }
 
+    await expect(
+      api.createApplication({ ...input, name: '重复应用', clientId: existingClientId }),
+    ).rejects.toMatchObject({ status: 409 })
+
+    await expect(
+      api.createApplication({ ...input, clientId: 'bad-callback-app', redirectUris: ['http://insecure.example.com/callback'] }),
+    ).rejects.toMatchObject({ status: 400 })
+
+    await expect(
+      api.createApplication({ ...input, clientId: 'Bad_ID' }),
+    ).rejects.toMatchObject({ status: 400 })
+
+    await expect(
+      api.createApplication({ ...input, scopes: ['openid', 'admin'] }),
+    ).rejects.toMatchObject({ status: 400 })
+
+    const created = await api.createApplication(input)
     expect(created.clientId).toBe('new-portal')
-    const applications = await api.listApplications()
-    expect(applications.some((application) => application.id === created.id)).toBe(true)
+    expect(created.status).toBe('active')
+    expect(created.builtIn).toBe(false)
+
+    const applications = await api.listApplications({ limit: 50 })
+    expect(applications.items.some((application) => application.id === created.id)).toBe(true)
+
+    const detail = await api.getApplication(created.id)
+    expect(detail.postLogoutRedirectUris).toEqual(['https://portal.example.com/'])
+
+    const updated = await api.updateApplication(created.id, { enabled: false, name: '改名后的应用' })
+    expect(updated.status).toBe('disabled')
+    expect(updated.name).toBe('改名后的应用')
+
+    await expect(api.deleteApplication('nerves-admin')).rejects.toMatchObject({ status: 409 })
+    await api.deleteApplication(created.id)
+    await expect(api.getApplication(created.id)).rejects.toMatchObject({ status: 404 })
 
     const audit = await api.listAuditEvents({ limit: 20, action: 'application.created' })
     expect(audit.items.some((event) => event.targetId === created.id)).toBe(true)
+  })
+
+  it('searches applications by name and client id', async () => {
+    const byName = await api.listApplications({ q: '官网' })
+    expect(byName.items.length).toBeGreaterThan(0)
+    expect(byName.items.every((application) => application.name.includes('官网'))).toBe(true)
+
+    const byClientId = await api.listApplications({ q: 'nerves-admin' })
+    expect(byClientId.items.map((application) => application.clientId)).toContain('nerves-admin')
+
+    const missing = await api.listApplications({ q: 'no-such-application' })
+    expect(missing.items).toHaveLength(0)
   })
 
   it('keeps the dashboard statistics consistent with the dataset', async () => {

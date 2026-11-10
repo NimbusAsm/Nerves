@@ -26,6 +26,16 @@ public sealed class GatewayRoutesTests
     }
 
     [Fact]
+    public void Admin_application_management_is_proxied_to_the_idp()
+    {
+        var (routes, _) = GatewayRoutes.Build(Config([]));
+
+        var route = routes.Single(r => r.RouteId == "idp-applications");
+        route.ClusterId.ShouldBe("idp");
+        route.Match.Path.ShouldBe("/api/v1/admin/applications/{**catch-all}");
+    }
+
+    [Fact]
     public void Configured_addresses_override_the_defaults()
     {
         var (_, clusters) = GatewayRoutes.Build(Config(new()

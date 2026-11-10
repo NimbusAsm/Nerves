@@ -29,6 +29,7 @@ public static class GatewayRoutes
         ("scim-groups", 13, "authorization", "/scim/v2/Groups/{**catch-all}"),
         ("idp-admin", 14, "idp", "/api/v1/admin/integrations/{**catch-all}"),
         ("authz-admin", 15, "authorization", "/api/v1/admin/pdp"),
+        ("idp-applications", 17, "idp", "/api/v1/admin/applications/{**catch-all}"),
     ];
 
     private static readonly Dictionary<string, string> DefaultAddresses = new(StringComparer.Ordinal)

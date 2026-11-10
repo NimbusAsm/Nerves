@@ -177,16 +177,20 @@ export interface Permission {
 }
 
 export interface Application {
+  /** The client_id; registered applications are addressed by it. */
   id: string
+  clientId: string
   name: string
   description: string
-  clientId: string
   logoUrl: string | null
   redirectUris: string[]
+  postLogoutRedirectUris: string[]
   scopes: string[]
   status: ApplicationStatus
+  /** Clients provisioned from configuration; they cannot be deleted. */
+  builtIn: boolean
   createdAt: string
-  lastRotatedAt: string | null
+  updatedAt: string
 }
 
 export interface ApplicationInput {
@@ -195,7 +199,24 @@ export interface ApplicationInput {
   description: string
   logoUrl: string | null
   redirectUris: string[]
+  postLogoutRedirectUris: string[]
   scopes: string[]
+  enabled: boolean
+}
+
+/** Partial update: omitted fields stay unchanged on the server. */
+export interface ApplicationPatch {
+  name?: string
+  description?: string
+  logoUrl?: string | null
+  redirectUris?: string[]
+  postLogoutRedirectUris?: string[]
+  scopes?: string[]
+  enabled?: boolean
+}
+
+export interface ApplicationQuery extends CursorQuery {
+  q?: string
 }
 
 export interface LoginTrendPoint {
