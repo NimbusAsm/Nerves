@@ -71,6 +71,50 @@ jobs:
             echo "::endgroup::"
           done
 
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: nerves
+          POSTGRES_PASSWORD: nerves
+          POSTGRES_DB: nerves
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nerves -d nerves"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: End-to-end smoke
+        env:
+          E2E_DB_HOST: 127.0.0.1
+          E2E_DB_PORT: '5432'
+          E2E_DB_DATABASE: nerves
+          E2E_DB_USER: nerves
+          E2E_DB_PASSWORD: nerves
+          E2E_PORT_BASE: '5100'
+          E2E_LOG_DIR: ${{ runner.temp }}/e2e-logs
+        run: bash scripts/e2e-smoke.sh
+
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-logs
+          path: ${{ runner.temp }}/e2e-logs
+
   frontend:
     runs-on: ubuntu-latest
     steps:
