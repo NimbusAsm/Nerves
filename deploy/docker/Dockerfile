@@ -10,8 +10,10 @@ ARG PROJECT
 RUN dotnet publish "$PROJECT" -c Release -o /app --no-self-contained
 
 FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION} AS final
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgssapi-krb5-2 libldap2 \
+RUN apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30 \
+    && apt-get install -y --no-install-recommends \
+        -o Acquire::Retries=5 -o Acquire::http::Timeout=30 \
+        libgssapi-krb5-2 libldap2 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
