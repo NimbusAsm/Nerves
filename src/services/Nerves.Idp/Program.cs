@@ -22,6 +22,7 @@ var signingKey = new Nerves.Idp.Security.SigningKeyProvider(builder.Configuratio
 builder.Services.AddSingleton(signingKey);
 
 builder.AddNervesDefaults("nerves-idp");
+builder.Services.AddNervesProxyHeaders(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
@@ -164,6 +165,8 @@ builder.Services.AddSingleton<AuthorizationDirectory>();
 builder.Services.AddHostedService<OpenIddictClientSeeder>();
 
 var app = builder.Build();
+
+app.UseNervesProxyHeaders();
 
 if (await app.MigrateNervesDatabaseAsync<IdpDbContext>())
 {
