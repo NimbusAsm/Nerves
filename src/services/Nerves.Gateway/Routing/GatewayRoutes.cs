@@ -12,6 +12,9 @@ public static class GatewayRoutes
     [
         ("sessions-by-account", 1, "session", "/api/v1/accounts/{accountId}/sessions"),
         ("sessions", 2, "session", "/api/v1/sessions/{**catch-all}"),
+        ("groups", 17, "authorization", "/api/v1/groups/{**catch-all}"),
+        ("decisions", 18, "authorization", "/api/v1/decisions/{**catch-all}"),
+        ("events", 19, "identity", "/api/v1/events/{**catch-all}"),
         ("roles", 3, "authorization", "/api/v1/roles/{**catch-all}"),
         ("permissions", 4, "authorization", "/api/v1/permissions/{**catch-all}"),
         ("audit", 5, "audit", "/api/v1/audit-events/{**catch-all}"),
