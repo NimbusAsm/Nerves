@@ -34,3 +34,22 @@ PGHOST=<数据库主机> PGPORT=5432 PGUSER=nerves PGPASSWORD=<口令> PGDATABAS
 
 - 审计表是追加式哈希链，恢复后 `GET /api/v1/audit-events/verify` 应仍为 `valid: true`。
 - 密钥包与数据库备份应分开存放，且都需加密。
+
+
+## 恢复演练
+
+```bash
+./scripts/restore-drill.sh /backup/nerves
+```
+
+脚本会校验 sha256、把最新 dump 恢复到临时库 `nerves_restore_drill`、检查 7 个 schema
+与迁移历史行数，然后删除临时库（`KEEP=1` 可保留以便排查）。主机没有 pg 客户端时，
+用 `PSQL_CMD` / `PG_RESTORE_CMD` 指向容器：
+
+```bash
+PSQL_CMD="docker compose -f deploy/docker/docker-compose.yml exec -T postgres psql -U nerves" \
+PG_RESTORE_CMD="docker compose -f deploy/docker/docker-compose.yml exec -T postgres pg_restore -U nerves --no-owner --clean --if-exists" \
+./scripts/restore-drill.sh /backup/nerves
+```
+
+建议每月至少演练一次；失败即视为最高优先级事件。
