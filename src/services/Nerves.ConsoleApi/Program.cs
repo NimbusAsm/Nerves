@@ -11,6 +11,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddNervesDefaults("nerves-console");
 builder.Services.AddNervesProxyHeaders(builder.Configuration);
+builder.Services.AddNervesRateLimiting(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
@@ -42,6 +43,7 @@ builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 var app = builder.Build();
 
 app.UseNervesProxyHeaders();
+app.UseNervesRateLimiting();
 app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();

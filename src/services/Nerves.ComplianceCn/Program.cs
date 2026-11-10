@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddNervesDefaults("nerves-compliance-cn");
 builder.Services.AddNervesProxyHeaders(builder.Configuration);
+builder.Services.AddNervesRateLimiting(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<IdentityClient>();
@@ -36,6 +37,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 var app = builder.Build();
 
 app.UseNervesProxyHeaders();
+app.UseNervesRateLimiting();
 
 if (await app.MigrateNervesDatabaseAsync<ComplianceDbContext>())
 {

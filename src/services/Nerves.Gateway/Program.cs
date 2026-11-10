@@ -4,6 +4,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddNervesDefaults("nerves-gateway");
 builder.Services.AddNervesProxyHeaders(builder.Configuration);
+builder.Services.AddNervesRateLimiting(builder.Configuration);
 
 builder.Services.AddOpenApi();
 
@@ -23,6 +24,7 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 var app = builder.Build();
 
 app.UseNervesProxyHeaders();
+app.UseNervesRateLimiting();
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();

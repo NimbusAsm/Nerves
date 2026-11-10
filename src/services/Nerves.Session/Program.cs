@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddNervesDefaults("nerves-session");
 builder.Services.AddNervesProxyHeaders(builder.Configuration);
+builder.Services.AddNervesRateLimiting(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.Configure<SessionLifetimeOptions>(builder.Configuration.GetSection(SessionLifetimeOptions.SectionName));
@@ -36,6 +37,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 var app = builder.Build();
 
 app.UseNervesProxyHeaders();
+app.UseNervesRateLimiting();
 
 if (await app.MigrateNervesDatabaseAsync<SessionDbContext>())
 {
