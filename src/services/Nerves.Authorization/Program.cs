@@ -41,7 +41,10 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
-await app.MigrateNervesDatabaseAsync<AuthorizationDbContext>();
+if (await app.MigrateNervesDatabaseAsync<AuthorizationDbContext>())
+{
+    return;
+}
 
 await using (var startupScope = app.Services.CreateAsyncScope())
 {

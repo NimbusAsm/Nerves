@@ -63,6 +63,7 @@
 | 用户组 | ✅ 已实现 | 组 CRUD、成员增删、按组授予角色；权限解析展开组成员，成员变动递增版本使令牌刷新 |
 | 上游 LDAP 联邦 | ✅ 已实现（基础） | POST /api/v1/auth/federation/ldap 用服务账号检索后二次绑定校验口令；按 mail 或 username 关联本地账户，成功签发登录票据，未关联 403；配置 Ldap:Enabled/Host/BaseDn/UserFilter |
 | 上游 OIDC 联邦 | ✅ 已实现（OIDC） | 配置多个上游提供方；POST /api/v1/auth/federation/start 返回授权 URL（state + PKCE），回调校验 state 单次使用并验签上游 id_token（JWKS + aud），按 email 关联本地账户后签发登录票据；未关联返回 403。LDAP 未实现 |
+| 仅迁移模式 | ✅ 已实现 | Database:MigrateOnly=true 时服务应用迁移后以 0 退出，供 Kubernetes 迁移 Job 使用；默认仍由 MigrateOnStart 控制 |
 | 分片路由元数据 | ✅ 已实现（元数据层） | 账户→逻辑分片为纯函数（SHA-256 取模），routing_index 记录 shard 并建索引，ResolveIdentifier 返回分片；Identity 之外的数据面仍是单库，切换到多库需要部署级改造 |
 | SCIM 2.0 | ✅ 已实现（核心子集） | /scim/v2/Users（创建、筛选、PUT 停用、删除）由 Identity 提供；/scim/v2/Groups（创建、成员替换、删除、筛选）由 Authorization 提供；网关转发，需 nerves:admin |
 | 实名核验 Provider | 🧭 v1.0 计划 | 状态机已落地，Provider 抽象与流程未实现 |
