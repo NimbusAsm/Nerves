@@ -30,10 +30,13 @@ class FakeResponse:
         self.status_code = status_code
         if body is None:
             self.text = ""
+            self.content = b""
         elif isinstance(body, str):
             self.text = body
+            self.content = body.encode()
         else:
             self.text = json.dumps(body)
+            self.content = self.text.encode()
         self.headers = dict(headers or {})
         self.reason = reason
 
@@ -139,3 +142,64 @@ ROLE = {
     "createdAt": "2026-01-01T00:00:00Z",
     "updatedAt": "2026-01-01T00:00:00Z",
 }
+
+SESSION = {
+    "id": "0199a0c0-0000-7000-8000-000000000030",
+    "deviceId": "web-1",
+    "createdAt": "2026-01-01T00:00:00Z",
+    "lastSeenAt": "2026-01-02T00:00:00Z",
+    "absoluteExpiresAt": "2026-02-01T00:00:00Z",
+    "revoked": False,
+    "revokedReason": None,
+}
+
+GROUP = {
+    "id": "0199a0c0-0000-7000-8000-000000000050",
+    "realm": "default",
+    "code": "ops",
+    "name": "Operations",
+}
+
+CONSENT = {
+    "id": "0199a0c0-0000-7000-8000-000000000070",
+    "subjectId": "alice",
+    "purpose": "marketing",
+    "version": "v1",
+    "grantedAt": "2026-01-01T00:00:00Z",
+    "expiresAt": None,
+    "revokedAt": None,
+    "revocationReason": None,
+}
+
+NOTIFICATION = {
+    "id": "0199a0c0-0000-7000-8000-000000000090",
+    "to": "alice@example.com",
+    "template": "welcome",
+    "subject": "Welcome",
+    "status": "pending",
+    "attempts": 0,
+    "error": None,
+    "createdAt": "2026-01-01T00:00:00Z",
+    "sentAt": None,
+    "nextAttemptAt": None,
+}
+
+AUDIT_EVENT = {
+    "id": "0199a0c0-0000-7000-8000-000000000060",
+    "stream": "identity",
+    "sequence": 1,
+    "occurredAt": "2026-01-01T00:00:00Z",
+    "actorType": "admin",
+    "actorId": "admin",
+    "action": "account.created",
+    "targetType": "account",
+    "targetId": "x",
+    "result": "success",
+    "traceId": "t",
+    "hash": "h",
+}
+
+SESSION_ID = SESSION["id"]
+GROUP_ID = GROUP["id"]
+CONSENT_ID = CONSENT["id"]
+NOTIFICATION_ID = NOTIFICATION["id"]

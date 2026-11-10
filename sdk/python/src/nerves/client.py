@@ -7,8 +7,17 @@ from typing import Mapping
 import requests
 
 from .resources.accounts import AccountsResource
+from .resources.audit import AuditResource
+from .resources.compliance import ComplianceResource
+from .resources.decisions import DecisionsResource
+from .resources.events import EventsResource
+from .resources.groups import GroupsResource
 from .resources.legal_entities import LegalEntitiesResource
+from .resources.notifications import NotificationsResource
+from .resources.permissions import PermissionsResource
 from .resources.roles import RolesResource
+from .resources.sessions import SessionsResource
+from .resources.subjects import SubjectsResource
 from .transport import NervesClientOptions, Transport
 
 
@@ -49,6 +58,15 @@ class NervesClient:
         self.accounts = AccountsResource(self._transport)
         self.legal_entities = LegalEntitiesResource(self._transport)
         self.roles = RolesResource(self._transport)
+        self.permissions = PermissionsResource(self._transport)
+        self.groups = GroupsResource(self._transport)
+        self.decisions = DecisionsResource(self._transport)
+        self.sessions = SessionsResource(self._transport)
+        self.audit = AuditResource(self._transport)
+        self.compliance = ComplianceResource(self._transport)
+        self.subjects = SubjectsResource(self._transport)
+        self.notifications = NotificationsResource(self._transport)
+        self.events = EventsResource(self._transport)
 
     def close(self) -> None:
         """Closes the underlying session when the client owns it."""

@@ -181,3 +181,360 @@ class Role:
             created_at=_required_datetime(data.get("createdAt")),
             updated_at=_required_datetime(data.get("updatedAt")),
         )
+# ---- Operations models (sessions, authorization, audit, compliance, notification, events) ----
+
+
+@dataclass(frozen=True, slots=True)
+class SessionInfo:
+    """One login session returned by /api/v1/accounts/{id}/sessions."""
+
+    id: str
+    device_id: str
+    created_at: datetime
+    last_seen_at: datetime
+    absolute_expires_at: datetime
+    revoked: bool
+    revoked_reason: str | None
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "SessionInfo":
+        return cls(
+            id=str(data["id"]),
+            device_id=str(data.get("deviceId", "")),
+            created_at=_required_datetime(data.get("createdAt")),
+            last_seen_at=_required_datetime(data.get("lastSeenAt")),
+            absolute_expires_at=_required_datetime(data.get("absoluteExpiresAt")),
+            revoked=bool(data.get("revoked", False)),
+            revoked_reason=_optional(data.get("revokedReason")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class PermissionInfo:
+    """One permission code returned by /api/v1/permissions."""
+
+    id: str
+    code: str
+    description: str | None
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "PermissionInfo":
+        return cls(
+            id=str(data["id"]),
+            code=str(data.get("code", "")),
+            description=_optional(data.get("description")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class Group:
+    """A group of accounts returned by /api/v1/groups."""
+
+    id: str
+    realm: str
+    code: str
+    name: str
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "Group":
+        return cls(
+            id=str(data["id"]),
+            realm=str(data.get("realm", "")),
+            code=str(data.get("code", "")),
+            name=str(data.get("name", "")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class GroupDetail:
+    """A group plus its member count."""
+
+    id: str
+    realm: str
+    code: str
+    name: str
+    member_count: int
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "GroupDetail":
+        return cls(
+            id=str(data["id"]),
+            realm=str(data.get("realm", "")),
+            code=str(data.get("code", "")),
+            name=str(data.get("name", "")),
+            member_count=int(data.get("memberCount", 0)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class GroupMember:
+    """One group membership."""
+
+    account_id: str
+    added_at: datetime
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "GroupMember":
+        return cls(
+            account_id=str(data.get("accountId", "")),
+            added_at=_required_datetime(data.get("addedAt")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionResult:
+    """Result of one authorization decision."""
+
+    allowed: bool
+    reason: str | None
+    source: str
+    authorization_version: int
+    permission: str
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "DecisionResult":
+        return cls(
+            allowed=bool(data.get("allowed", False)),
+            reason=_optional(data.get("reason")),
+            source=str(data.get("source", "")),
+            authorization_version=int(data.get("authorizationVersion", 0)),
+            permission=str(data.get("permission", "")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class DecisionStats:
+    """Permission-cache statistics."""
+
+    entries: int
+    hits: int
+    misses: int
+    hit_rate: float
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "DecisionStats":
+        return cls(
+            entries=int(data.get("entries", 0)),
+            hits=int(data.get("hits", 0)),
+            misses=int(data.get("misses", 0)),
+            hit_rate=float(data.get("hitRate", 0.0)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AuditEvent:
+    """One append-only audit record."""
+
+    id: str
+    stream: str
+    sequence: int
+    occurred_at: datetime
+    actor_type: str
+    actor_id: str | None
+    action: str
+    target_type: str | None
+    target_id: str | None
+    result: str
+    trace_id: str | None
+    hash: str
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "AuditEvent":
+        return cls(
+            id=str(data["id"]),
+            stream=str(data.get("stream", "")),
+            sequence=int(data.get("sequence", 0)),
+            occurred_at=_required_datetime(data.get("occurredAt")),
+            actor_type=str(data.get("actorType", "")),
+            actor_id=_optional(data.get("actorId")),
+            action=str(data.get("action", "")),
+            target_type=_optional(data.get("targetType")),
+            target_id=_optional(data.get("targetId")),
+            result=str(data.get("result", "")),
+            trace_id=_optional(data.get("traceId")),
+            hash=str(data.get("hash", "")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class AuditVerifyResult:
+    """Result of verifying one audit stream."""
+
+    valid: bool
+    broken_at: str | None
+    reason: str | None
+    count: int
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "AuditVerifyResult":
+        return cls(
+            valid=bool(data.get("valid", False)),
+            broken_at=_optional(data.get("brokenAt")),
+            reason=_optional(data.get("reason")),
+            count=int(data.get("count", 0)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ConsentRecord:
+    """One consent record."""
+
+    id: str
+    subject_id: str
+    purpose: str
+    version: str
+    granted_at: datetime
+    expires_at: datetime | None
+    revoked_at: datetime | None
+    revocation_reason: str | None
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "ConsentRecord":
+        return cls(
+            id=str(data["id"]),
+            subject_id=str(data.get("subjectId", "")),
+            purpose=str(data.get("purpose", "")),
+            version=str(data.get("version", "")),
+            granted_at=_required_datetime(data.get("grantedAt")),
+            expires_at=_datetime(data.get("expiresAt")),
+            revoked_at=_datetime(data.get("revokedAt")),
+            revocation_reason=_optional(data.get("revocationReason")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RetentionPolicy:
+    """A retention policy for one data category."""
+
+    id: str
+    category: str
+    retention_days: int
+    legal_basis: str | None
+    updated_at: datetime
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "RetentionPolicy":
+        return cls(
+            id=str(data["id"]),
+            category=str(data.get("category", "")),
+            retention_days=int(data.get("retentionDays", 0)),
+            legal_basis=_optional(data.get("legalBasis")),
+            updated_at=_required_datetime(data.get("updatedAt")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ComplianceSummary:
+    """Aggregate counts for the compliance module."""
+
+    consents: int
+    active: int
+    revoked: int
+    retention_policies: int
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "ComplianceSummary":
+        return cls(
+            consents=int(data.get("consents", 0)),
+            active=int(data.get("active", 0)),
+            revoked=int(data.get("revoked", 0)),
+            retention_policies=int(data.get("retentionPolicies", 0)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class EraseResult:
+    """Result of an erasure request."""
+
+    request_id: str
+    subject_id: str
+    status: str
+    consent_revoked: int
+    account_disabled: bool
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "EraseResult":
+        return cls(
+            request_id=str(data.get("id", "")),
+            subject_id=str(data.get("subjectId", "")),
+            status=str(data.get("status", "")),
+            consent_revoked=int(data.get("consentRevoked", 0)),
+            account_disabled=bool(data.get("accountDisabled", False)),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class ErasureRecord:
+    """One recorded erasure request."""
+
+    id: str
+    status: str
+    reason: str
+    requested_at: datetime
+    completed_at: datetime | None
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "ErasureRecord":
+        return cls(
+            id=str(data["id"]),
+            status=str(data.get("status", "")),
+            reason=str(data.get("reason", "")),
+            requested_at=_required_datetime(data.get("requestedAt")),
+            completed_at=_datetime(data.get("completedAt")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class NotificationMessage:
+    """One queued or delivered notification."""
+
+    id: str
+    to: str
+    template: str
+    subject: str
+    status: str
+    attempts: int
+    error: str | None
+    created_at: datetime
+    sent_at: datetime | None
+    next_attempt_at: datetime | None
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "NotificationMessage":
+        return cls(
+            id=str(data["id"]),
+            to=str(data.get("to", "")),
+            template=str(data.get("template", "")),
+            subject=str(data.get("subject", "")),
+            status=str(data.get("status", "")),
+            attempts=int(data.get("attempts", 0)),
+            error=_optional(data.get("error")),
+            created_at=_required_datetime(data.get("createdAt")),
+            sent_at=_datetime(data.get("sentAt")),
+            next_attempt_at=_datetime(data.get("nextAttemptAt")),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class IdentityEvent:
+    """One identity domain event."""
+
+    id: str
+    type: str
+    account_id: str | None
+    legal_entity_id: str | None
+    payload: str
+    occurred_at: datetime
+    dispatched_at: datetime | None
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> "IdentityEvent":
+        return cls(
+            id=str(data["id"]),
+            type=str(data.get("type", "")),
+            account_id=_optional(data.get("accountId")),
+            legal_entity_id=_optional(data.get("legalEntityId")),
+            payload=str(data.get("payload", "")),
+            occurred_at=_required_datetime(data.get("occurredAt")),
+            dispatched_at=_datetime(data.get("dispatchedAt")),
+        )

@@ -26,17 +26,26 @@ export interface NervesClientOptions {
 
 /** Internal request description handed to {@link Transport}. */
 export interface RequestSpec {
-  method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   path: string;
   query?: readonly QueryParam[];
   body?: unknown;
   idempotencyKey?: string;
   ifMatch?: string;
+  /** Accept header override, e.g. for audit exports. */
+  accept?: string;
 }
 
 interface PagePayload<T> {
   items?: T[];
   nextCursor?: string | null;
+}
+
+/** A downloaded binary document, currently only the audit export. */
+export interface NervesFile {
+  bytes: Uint8Array;
+  contentType: string;
+  fileName: string | undefined;
 }
 
 /** Encodes a query string; brackets in filter names are percent-encoded. */
@@ -80,6 +89,15 @@ function parseProblem(response: Response, body: string): NervesApiError {
     },
     body,
   );
+}
+
+function parseFileName(disposition: string): string | undefined {
+  const star = /filename\*=UTF-8''([^;]+)/i.exec(disposition);
+  if (star?.[1] !== undefined) {
+    return decodeURIComponent(star[1]);
+  }
+  const plain = /filename="?([^";]+)"?/i.exec(disposition);
+  return plain?.[1];
 }
 
 /** HTTP transport shared by every builder. */
@@ -136,17 +154,33 @@ export class Transport {
     await this.#send(spec);
   }
 
+  /** Downloads a non-JSON document (audit export). */
+  async requestFile(spec: RequestSpec): Promise<NervesFile> {
+    const { bytes, response } = await this.#sendRaw(spec);
+    const disposition = response.headers.get('content-disposition') ?? '';
+    return {
+      bytes,
+      contentType: response.headers.get('content-type')?.split(';')[0]?.trim() ?? 'application/octet-stream',
+      fileName: parseFileName(disposition),
+    };
+  }
+
   #url(spec: RequestSpec): string {
     return `${this.#root}/${spec.path.replace(/^\/+/, '')}${buildQuery(spec.query ?? [])}`;
   }
 
   async #send(spec: RequestSpec): Promise<string> {
+    const { bytes } = await this.#sendRaw(spec);
+    return new TextDecoder().decode(bytes);
+  }
+
+  async #sendRaw(spec: RequestSpec): Promise<{ bytes: Uint8Array; response: Response }> {
     const url = this.#url(spec);
     const body = spec.body === undefined ? undefined : JSON.stringify(spec.body);
 
     for (let attempt = 0; ; attempt += 1) {
       const headers: Record<string, string> = {
-        accept: 'application/json',
+        accept: spec.accept ?? 'application/json',
         ...this.#headers,
       };
       if (body !== undefined) {
@@ -182,16 +216,18 @@ export class Transport {
         throw error;
       }
 
-      let text: string;
+      let bytes: Uint8Array;
       try {
-        text = await response.text();
+        bytes = new Uint8Array(await response.arrayBuffer());
       } finally {
         clearTimeout(timer);
       }
 
       if (response.ok) {
-        return text;
+        return { bytes, response };
       }
+
+      const text = new TextDecoder().decode(bytes);
 
       if (isRetryable(response.status) && attempt < this.#maxRetries) {
         const retryAfter = Number(response.headers.get('retry-after'));

@@ -160,6 +160,49 @@ class DeleteRoleBuilder:
         self._transport.request_void("DELETE", f"roles/{self.role_id}", if_match=self._if_match)
 
 
+@dataclass(frozen=True, slots=True)
+class AssignRoleBuilder:
+    """Builds POST /api/v1/roles/{id}/assign."""
+
+    _transport: Transport = field(repr=False, compare=False)
+    role_id: str
+    subject_type: str | None = None
+    subject_id: str | None = None
+    idempotency_key: str | None = None
+
+    def with_subject(self, subject_type: str, subject_id: str) -> "AssignRoleBuilder":
+        """Sets the subject kind: account, legalEntity or group."""
+        return replace(self, subject_type=subject_type, subject_id=str(subject_id))
+
+    def with_idempotency_key(self, idempotency_key: str) -> "AssignRoleBuilder":
+        """Overrides the generated idempotency key."""
+        return replace(self, idempotency_key=idempotency_key)
+
+    def send(self) -> None:
+        """Sends the request."""
+        self._send_to("assign")
+
+    def _send_to(self, action: str) -> None:
+        if not self.subject_type or not self.subject_id:
+            raise ValueError("with_subject() is required before send().")
+
+        self._transport.request_void(
+            "POST",
+            f"roles/{self.role_id}/{action}",
+            body={"subjectType": self.subject_type, "subjectId": self.subject_id},
+            idempotency_key=self.idempotency_key or str(uuid4()),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class RevokeRoleBuilder(AssignRoleBuilder):
+    """Builds POST /api/v1/roles/{id}/revoke."""
+
+    def send(self) -> None:
+        """Sends the request."""
+        self._send_to("revoke")
+
+
 class RolesResource:
     """Entry point for every role operation."""
 
@@ -180,3 +223,11 @@ class RolesResource:
 
     def delete(self, role_id: str) -> DeleteRoleBuilder:
         return DeleteRoleBuilder(self._transport, str(role_id))
+
+    def assign(self, role_id: str) -> AssignRoleBuilder:
+        """Starts a request that grants the role to a subject."""
+        return AssignRoleBuilder(self._transport, str(role_id))
+
+    def revoke(self, role_id: str) -> RevokeRoleBuilder:
+        """Starts a request that revokes the role from a subject."""
+        return RevokeRoleBuilder(self._transport, str(role_id))

@@ -96,3 +96,63 @@ export const role = {
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-01-01T00:00:00Z',
 } as const;
+export const SESSION_ID = '0199a0c0-0000-7000-8000-000000000030';
+export const GROUP_ID = '0199a0c0-0000-7000-8000-000000000050';
+export const CONSENT_ID = '0199a0c0-0000-7000-8000-000000000070';
+export const NOTIFICATION_ID = '0199a0c0-0000-7000-8000-000000000090';
+
+export const session = {
+  id: SESSION_ID,
+  deviceId: 'web-1',
+  createdAt: '2026-01-01T00:00:00Z',
+  lastSeenAt: '2026-01-02T00:00:00Z',
+  absoluteExpiresAt: '2026-02-01T00:00:00Z',
+  revoked: false,
+  revokedReason: null,
+} as const;
+
+export const group = {
+  id: GROUP_ID,
+  realm: 'default',
+  code: 'ops',
+  name: 'Operations',
+} as const;
+
+export const consent = {
+  id: CONSENT_ID,
+  subjectId: 'alice',
+  purpose: 'marketing',
+  version: 'v1',
+  grantedAt: '2026-01-01T00:00:00Z',
+  expiresAt: null,
+  revokedAt: null,
+  revocationReason: null,
+} as const;
+
+export const notification = {
+  id: NOTIFICATION_ID,
+  to: 'alice@example.com',
+  template: 'welcome',
+  subject: 'Welcome',
+  status: 'pending',
+  attempts: 0,
+  error: null,
+  createdAt: '2026-01-01T00:00:00Z',
+  sentAt: null,
+  nextAttemptAt: null,
+} as const;
+
+export const auditEvent = {
+  id: '0199a0c0-0000-7000-8000-000000000060',
+  stream: 'identity',
+  sequence: 1,
+  occurredAt: '2026-01-01T00:00:00Z',
+  actorType: 'admin',
+  actorId: 'admin',
+  action: 'account.created',
+  targetType: 'account',
+  targetId: 'x',
+  result: 'success',
+  traceId: 't',
+  hash: 'h',
+} as const;

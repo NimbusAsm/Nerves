@@ -21,4 +21,10 @@ public sealed class RolesResource
 
     /// <summary>Starts a delete request for one role.</summary>
     public RoleDeleteBuilder Delete(Guid id) => new(_api, id);
+
+    /// <summary>Starts a request that grants the role to a subject.</summary>
+    public RoleAssignBuilder Assign(Guid id) => new(_api, id);
+
+    /// <summary>Starts a request that revokes the role from a subject.</summary>
+    public RoleRevokeBuilder Revoke(Guid id) => new(_api, id);
 }

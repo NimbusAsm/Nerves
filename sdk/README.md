@@ -104,13 +104,36 @@ repeats a cursor forever).
 
 ## What is covered
 
-Each resource exposes create, get, list, update, and delete:
+| Resource | Entry point | HTTP collection | Notes |
+| --- | --- | --- | --- |
+| Accounts | `Accounts` / `accounts` | `/api/v1/accounts` | `forEntity` / `inRealm`; service accounts may omit the entity |
+| Legal entities | `LegalEntities` / `legal_entities` | `/api/v1/legal-entities` | document number is write-only; responses expose `realName.documentType` and `country` only |
+| Roles | `Roles` / `roles` | `/api/v1/roles` | permission codes as strings; `assign` / `revoke` take a subject |
+| Permissions | `Permissions` / `permissions` | `/api/v1/permissions` | list and create permission codes |
+| Groups | `Groups` / `groups` | `/api/v1/groups` | flat array response; members are listed, added and removed |
+| Decisions | `Decisions` / `decisions` | `/api/v1/decisions` | `check` and cache `stats` |
+| Sessions | `Sessions` / `sessions` | `/api/v1/accounts/{id}/sessions`, `/api/v1/sessions/{id}` | no pagination: the endpoint returns every session of one account |
+| Audit | `Audit` / `audit` | `/api/v1/audit-events` | cursor list, `verify`, and a binary `export` |
+| Compliance | `Compliance` / `compliance` | `/api/v1/compliance` | consents, retention policies and summary |
+| Subjects | `Subjects` / `subjects` | `/api/v1/compliance/subjects` | export, erase, erasure history |
+| Notifications | `Notifications` / `notifications` | `/api/v1/notifications` | templated email send, cursor list, detail |
+| Events | `Events` / `events` | `/api/v1/events` | incremental read via `since` / `accountId` / `limit` |
 
-| Resource | HTTP collection | Notes |
+Resources whose collection endpoint returns a plain JSON array (groups, permissions,
+consents, erasures, events, sessions) are documented as such: their builders return a
+`List<T>` instead of a cursor page and do not expose `filter` / `sort` / `cursor`.
+
+### Non-JSON downloads
+
+The audit export returns `text/csv` or `application/json` and is the only endpoint
+that does not answer with a JSON document. Each client returns a small file value
+instead of parsing a body:
+
+| Language | Type | Fields |
 | --- | --- | --- |
-| Accounts | `/api/v1/accounts` | `forEntity` / `inRealm`; service accounts may omit the entity |
-| Legal entities | `/api/v1/legal-entities` | document number is write-only; responses expose `realName.documentType` and `country` only |
-| Roles | `/api/v1/roles` | permission codes as strings |
+| .NET | `NervesFile` | `Content`, `ContentType`, `FileName` |
+| TypeScript | `NervesFile` | `bytes`, `contentType`, `fileName` |
+| Python | `DownloadedFile` | `content`, `content_type`, `file_name` |
 
 ## Build and test
 
