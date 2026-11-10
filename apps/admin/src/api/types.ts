@@ -12,6 +12,7 @@ export type ActorType = 'admin' | 'account' | 'system'
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer'
 export type RoleScope = 'global' | 'app' | 'org'
 export type ApplicationStatus = 'active' | 'disabled'
+export type NotificationStatus = 'pending' | 'sent' | 'failed'
 
 /** Cursor pagination contract. Never expose offsets to callers. */
 export interface CursorPage<T> {
@@ -328,3 +329,32 @@ export interface PdpSettingsPatch {
   failOpen?: boolean
   token?: string | null
 }
+
+/** One row of the notification service delivery log. */
+export interface NotificationRecord {
+  id: string
+  /** Normalised recipient address. */
+  to: string
+  template: string
+  subject: string
+  status: NotificationStatus
+  attempts: number
+  error: string | null
+  createdAt: string
+  sentAt: string | null
+  /** When the retry worker may attempt the next delivery. */
+  nextAttemptAt: string
+}
+
+export interface NotificationQuery extends CursorQuery {
+  status?: NotificationStatus | ''
+  /** Exact recipient filter, case-insensitive. */
+  to?: string
+}
+
+export interface SendNotificationEmailInput {
+  to: string
+  template: string
+  values: Record<string, string>
+}
+

@@ -1,4 +1,5 @@
 import { localDateKey } from '@/lib/format'
+import { missingTemplateValues, normalizeTemplateValues, NOTIFICATION_TEMPLATES } from '@/lib/notification-templates'
 import type { NervesApi } from './contract'
 import { ApiError } from './http'
 import type {
@@ -8,6 +9,10 @@ import type {
   PasskeyRegistration,
   PasskeyRegistrationResult,
   GroupMember,
+  NotificationQuery,
+  NotificationRecord,
+  NotificationStatus,
+  SendNotificationEmailInput,
   AccountDetail,
   AccountQuery,
   AccountStatus,
@@ -106,7 +111,7 @@ const PERMISSIONS: Permission[] = [
 
 const ALL_PERMISSION_CODES = PERMISSIONS.map((permission) => permission.code)
 
-const ADMIN_PERMISSIONS = ALL_PERMISSION_CODES
+const ADMIN_PERMISSIONS = [...ALL_PERMISSION_CODES, 'nerves:admin']
 const AUDITOR_PERMISSIONS = [
   'stats:read',
   'identity:account:read',
@@ -1196,6 +1201,59 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
         .sort((left, right) => right.at.localeCompare(left.at))
       return paginate(items, query)
     },
+
+    async listNotifications(query: NotificationQuery): Promise<CursorPage<NotificationRecord>> {
+      await delay()
+      const recipient = (query.to ?? '').trim().toLowerCase()
+      const items = state.notifications
+        .filter((notification) => {
+          if (query.status && notification.status !== query.status) return false
+          if (recipient && !notification.to.toLowerCase().includes(recipient)) return false
+          return true
+        })
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        .map(toNotificationRecord)
+      return paginate(items, query)
+    },
+
+    async getNotification(id: string): Promise<NotificationRecord> {
+      await delay()
+      const notification = state.notifications.find((item) => item.id === id)
+      if (!notification) throw new ApiError(404, '通知不存在', `未找到通知 ${id}。`)
+      return toNotificationRecord(notification)
+    },
+
+    async sendNotificationEmail(input: SendNotificationEmailInput): Promise<NotificationRecord> {
+      await delay()
+      const to = input.to.trim().toLowerCase()
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)) {
+        throw new ApiError(400, '参数校验失败', 'recipient address is not a valid email address')
+      }
+      const template = NOTIFICATION_TEMPLATES.find((item) => item.code === input.template)
+      if (!template) {
+        throw new ApiError(400, '参数校验失败', `unknown template ${input.template}`)
+      }
+      const missing = missingTemplateValues(input.template, input.values)
+      if (missing.length > 0) {
+        throw new ApiError(400, '参数校验失败', `missing template values: ${missing.join(', ')}`)
+      }
+      const now = clock()
+      const values = normalizeTemplateValues(input.values)
+      const notification: StateNotification = {
+        id: `ntf_${randomBase32(rand, 22)}`,
+        to,
+        template: input.template,
+        subject: renderMockSubject(input.template, values),
+        status: 'sent',
+        attempts: 0,
+        error: null,
+        createdAt: now.toISOString(),
+        sentAt: now.toISOString(),
+        nextAttemptAt: now.toISOString(),
+      }
+      state.notifications.push(notification)
+      return toNotificationRecord(notification)
+    },
   }
 }
 
@@ -1245,6 +1303,7 @@ interface MockState {
   members: OrgMember[]
   roles: Role[]
   applications: Application[]
+  notifications: StateNotification[]
 }
 
 interface AuditInput {
@@ -1656,7 +1715,71 @@ function seedState(context: { rand: () => number; now: Date }): MockState {
       updatedAt: daysBefore(now, index * 9 + 1).toISOString(),
     })),
     applications,
+    notifications: seedNotifications(rand, now),
   }
+}
+
+interface StateNotification {
+  id: string
+  to: string
+  template: string
+  subject: string
+  status: NotificationStatus
+  attempts: number
+  error: string | null
+  createdAt: string
+  sentAt: string | null
+  nextAttemptAt: string
+}
+
+function toNotificationRecord(notification: StateNotification): NotificationRecord {
+  return { ...notification }
+}
+
+function renderMockSubject(template: string, values: Record<string, string>): string {
+  const subjects: Record<string, string> = {
+    'account.welcome': `欢迎加入 ${values.displayName ?? '用户'}`,
+    'account.password-reset': '重置您的 Nerves 账户密码',
+    'security.sign-in': `新的登录：${values.device ?? '未知设备'}`,
+  }
+  return subjects[template] ?? template
+}
+
+function seedNotifications(rand: () => number, now: Date): StateNotification[] {
+  const seeds: Array<{
+    to: string
+    template: string
+    subject: string
+    status: NotificationStatus
+    attempts: number
+    error: string | null
+    minutesAgo: number
+  }> = [
+    { to: 'admin@nerves.example', template: 'account.welcome', subject: '欢迎加入 平台管理员', status: 'sent', attempts: 0, error: null, minutesAgo: 12 },
+    { to: 'zhang.wei@nerves.example', template: 'account.password-reset', subject: '重置您的 Nerves 账户密码', status: 'sent', attempts: 1, error: null, minutesAgo: 48 },
+    { to: 'liu.yang@nerves.example', template: 'security.sign-in', subject: '新的登录：Chrome 141 · macOS', status: 'pending', attempts: 0, error: null, minutesAgo: 3 },
+    { to: 'partner@example.com', template: 'security.sign-in', subject: '新的登录：Edge 141 · Windows 11', status: 'failed', attempts: 5, error: 'Failure sending mail.: Connection refused', minutesAgo: 180 },
+    { to: 'ops@nerves.example', template: 'account.welcome', subject: '欢迎加入 运维团队', status: 'sent', attempts: 0, error: null, minutesAgo: 600 },
+    { to: 'contractor@example.com', template: 'account.password-reset', subject: '重置您的 Nerves 账户密码', status: 'failed', attempts: 2, error: 'mailbox unavailable', minutesAgo: 1440 },
+    { to: 'chen.jing@nerves.example', template: 'account.welcome', subject: '欢迎加入 陈静', status: 'sent', attempts: 0, error: null, minutesAgo: 2880 },
+  ]
+
+  return seeds.map((seed) => {
+    const createdAt = new Date(now.getTime() - seed.minutesAgo * 60_000)
+    const sentAt = seed.status === 'sent' ? new Date(createdAt.getTime() + 1_000) : null
+    return {
+      id: `ntf_${randomBase32(rand, 22)}`,
+      to: seed.to,
+      template: seed.template,
+      subject: seed.subject,
+      status: seed.status,
+      attempts: seed.attempts,
+      error: seed.error,
+      createdAt: createdAt.toISOString(),
+      sentAt: sentAt?.toISOString() ?? null,
+      nextAttemptAt: createdAt.toISOString(),
+    }
+  })
 }
 
 function paginate<T>(items: readonly T[], query: CursorQuery): CursorPage<T> {

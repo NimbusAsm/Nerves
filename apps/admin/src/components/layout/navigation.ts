@@ -1,4 +1,15 @@
-import { AppWindow, Building, Cable, Landmark, LayoutDashboard, ScrollText, ShieldCheck, Users, UsersRound } from '@lucide/vue'
+import {
+  AppWindow,
+  Bell,
+  Building,
+  Cable,
+  Landmark,
+  LayoutDashboard,
+  ScrollText,
+  ShieldCheck,
+  Users,
+  UsersRound,
+} from '@lucide/vue'
 import type { Component } from 'vue'
 
 export interface NavItem {
@@ -45,6 +56,9 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     labelKey: 'nav.sections.security',
-    items: [{ name: 'audit', path: '/audit', labelKey: 'nav.audit', icon: ScrollText, permission: 'audit:event:read' }],
+    items: [
+      { name: 'audit', path: '/audit', labelKey: 'nav.audit', icon: ScrollText, permission: 'audit:event:read' },
+      { name: 'notifications', path: '/notifications', labelKey: 'nav.notifications', icon: Bell, permission: 'nerves:admin' },
+    ],
   },
 ]

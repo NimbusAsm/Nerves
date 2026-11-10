@@ -33,3 +33,27 @@ test('lists legal entities after signing in', async ({ page }) => {
   await expect(page.getByRole('heading').first()).toBeVisible()
   await expect(page.locator('table')).toBeVisible()
 })
+
+test('opens the notification center from the sidebar and sends a template email', async ({ page }) => {
+  await signIn(page)
+
+  // In-app navigation only: the access token lives in memory, so a full page
+  // load signs the console out and the sidebar disappears.
+  await page.getByRole('link', { name: /^通知$/ }).click()
+  await expect(page).toHaveURL(/\/notifications/)
+  await expect(page.getByRole('heading', { name: /^通知$/ })).toBeVisible()
+  await expect(page.locator('table')).toBeVisible()
+
+  await page.getByRole('button', { name: /发送通知/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.locator('#notification-to').fill('e2e@example.com')
+  await page.locator('#notification-value-displayName').fill('E2E 用户')
+  await page.locator('#notification-value-username').fill('e2e.user')
+  await page.locator('#notification-value-issuer').fill('https://nerves.example.com/')
+  await page.getByRole('dialog').getByRole('button', { name: /^发送$/ }).click()
+
+  // The dialog only closes once the API accepted the message, and the toast is
+  // short-lived, so assert on the refreshed delivery log instead.
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('table')).toContainText('e2e@example.com')
+})

@@ -20,6 +20,9 @@ import type {
   LegalEntityQuery,
   LegalEntitySummary,
   LegalEntityTransition,
+  NotificationQuery,
+  NotificationRecord,
+  SendNotificationEmailInput,
   LoginInput,
   LoginResult,
   OrgMember,
@@ -292,6 +295,29 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
           sort: '-at',
         })}`,
       ),
+
+    listNotifications: (query: NotificationQuery) =>
+      request<CursorPage<NotificationRecord>>(
+        `/notifications${buildQuery({
+          limit: query.limit,
+          cursor: query.cursor,
+          status: query.status,
+          to: query.to,
+        })}`,
+      ),
+
+    getNotification: (id: string) =>
+      request<NotificationRecord>(`/notifications/${encodeURIComponent(id)}`),
+
+    sendNotificationEmail: (input: SendNotificationEmailInput) =>
+      request<NotificationRecord>('/notifications/email', {
+        method: 'POST',
+        body: {
+          to: input.to,
+          template: input.template,
+          values: input.values,
+        },
+      }),
   }
 }
 
@@ -320,7 +346,12 @@ function createRequester(
         method: options.method ?? 'GET',
         headers,
         body: options.body === undefined ? undefined : JSON.stringify(options.body),
-        credentials: 'include',
+        // The console authenticates with a Bearer token held in memory and has no
+        // session cookie to send. `include` also forces the browser to require
+        // Access-Control-Allow-Credentials, which the gateway does not grant, so
+        // every cross-origin call would fail. Use `omit` until a BFF with cookies
+        // (and a matching CORS policy) replaces the token flow.
+        credentials: 'omit',
       })
     } catch (cause) {
       throw new ApiError(0, '网络错误', cause instanceof Error ? cause.message : '无法连接到管理 API。')

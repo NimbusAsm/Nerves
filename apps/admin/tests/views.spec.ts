@@ -10,6 +10,7 @@ import { createAppRouter } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import AccountListView from '@/views/accounts/AccountListView.vue'
 import LoginView from '@/views/LoginView.vue'
+import NotificationListView from '@/views/notifications/NotificationListView.vue'
 import OrganizationListView from '@/views/organizations/OrganizationListView.vue'
 import { authContext, freshPinia, testApi } from './helpers'
 
@@ -155,5 +156,53 @@ describe('views', () => {
 
     const after = await api.listOrganizationMembers(organization.id)
     expect(after.find((item) => item.id === member.id)?.orgRole).toBe(target)
+  })
+
+  it('lists notifications and sends one from the notification center', async () => {
+    const pinia = freshPinia()
+    setApi(testApi())
+    await useAuthStore().login('admin', 'nerves2026')
+    const api = getApi()
+
+    const router = createAppRouter(() => ({ isAuthenticated: true, hasPermission: () => true }), createMemoryHistory())
+    await router.push('/notifications')
+    await router.isReady()
+
+    // The send dialog teleports to <body>; stabilise it in-tree for assertions.
+    const wrapper = mount(NotificationListView, {
+      global: { plugins: [pinia, i18n, router], stubs: { teleport: true } },
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('通知')
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBeGreaterThan(1)
+    expect(wrapper.text()).toContain('partner@example.com')
+
+    await wrapper.findAll('select')[0]?.setValue('failed')
+    // The list reload is debounced to keep typing cheap; wait past the window.
+    await new Promise((resolve) => setTimeout(resolve, 350))
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('liu.yang@nerves.example')
+    expect(wrapper.text()).toContain('partner@example.com')
+
+    const sendButton = wrapper.findAll('button').find((button) => button.text().includes('发送通知'))
+    expect(sendButton).toBeDefined()
+    await sendButton?.trigger('click')
+    await flushPromises()
+
+    await wrapper.find('#notification-to').setValue('new-recipient@example.com')
+    await wrapper.find('#notification-value-displayName').setValue('新用户')
+    await wrapper.find('#notification-value-username').setValue('new.user')
+    await wrapper.find('#notification-value-issuer').setValue('https://nerves.example.com/')
+
+    const submit = wrapper.findAll('button').find((button) => button.text() === '发送')
+    expect(submit).toBeDefined()
+    await submit?.trigger('click')
+    await flushPromises()
+
+    const page = await api.listNotifications({ limit: 20, to: 'new-recipient@example.com' })
+    expect(page.items).toHaveLength(1)
+    expect(page.items[0]?.status).toBe('sent')
   })
 })

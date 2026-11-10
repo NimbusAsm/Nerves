@@ -18,6 +18,9 @@ import type {
   LegalEntityQuery,
   LegalEntitySummary,
   LegalEntityTransition,
+  NotificationQuery,
+  NotificationRecord,
+  SendNotificationEmailInput,
   LoginInput,
   LoginResult,
   OrgMember,
@@ -96,4 +99,9 @@ export interface NervesApi {
   createApplication(input: ApplicationInput): Promise<Application>
 
   listAuditEvents(query: AuditQuery): Promise<CursorPage<AuditEvent>>
+
+  /** Delivery log of the notification service, newest first. */
+  listNotifications(query: NotificationQuery): Promise<CursorPage<NotificationRecord>>
+  getNotification(id: string): Promise<NotificationRecord>
+  sendNotificationEmail(input: SendNotificationEmailInput): Promise<NotificationRecord>
 }

@@ -62,6 +62,7 @@ NERVES_API_URL=http://127.0.0.1:5280
 | `#/organizations` | 组织与成员：成员角色调整、添加/移除成员 | `org:organization:read` |
 | `#/roles` | 角色与权限：角色授权编辑 + 权限目录 | `authz:role:read` |
 | `#/audit` | 审计日志：时间/操作人/结果/动作过滤、事件详情、CSV 导出 | `audit:event:read` |
+| `#/notifications` | 通知中心：投递日志（状态过滤、收件人搜索、游标分页）+ 发送模板邮件、事件详情 | `nerves:admin` |
 | `#/applications` | 应用目录：列表、新建（client_id / 回调地址 / Logo / scopes）、详情 | `directory:application:read` |
 
 写操作另有权限门控（如 `identity:account:write`、`authz:role:write`、`audit:event:export`），
@@ -94,6 +95,9 @@ PATCH  /api/v1/roles/{id}                        { name, description, permission
 GET    /api/v1/applications
 POST   /api/v1/applications                      { name, clientId, redirectUris[], scopes[], logoUrl }
 GET    /api/v1/audit-events?limit&cursor&filter[from]&filter[to]&filter[result]&actor&action
+GET    /api/v1/notifications?limit&cursor&status&to   投递日志（status: pending|sent|failed，to 精确匹配）
+GET    /api/v1/notifications/{id}                     单条投递详情
+POST   /api/v1/notifications/email                    { to, template, values }（模板见下）
 ```
 
 - 列表统一返回 `{ items, nextCursor }`；游标对前端不透明，客户端保存游标栈实现"上一页"，不向服务端要 offset。
@@ -105,15 +109,32 @@ GET    /api/v1/audit-events?limit&cursor&filter[from]&filter[to]&filter[result]&
 
 ### 与 PLAN §9.2 的差异（需要 Lead 确认）
 
-- 登录按任务约定用 `POST /api/v1/auth/login` 返回 `{ token, user }`，HTTP 层带 `Authorization: Bearer`。
-  PLAN §9.2 要求管理面板走 **会话 Cookie + CSRF**；本实现同时发送 `credentials: include`，
-  但目前没有 CSRF token 交换。切生产前应改为 BFF：登录态进 HttpOnly Cookie、增加 CSRF 校验与刷新机制。
-  改动只涉及 `src/api/http.ts` 与 `src/api/session-storage.ts`，页面不受影响。
+- 登录走 IdP 的授权码 + PKCE，访问令牌**只存内存**；HTTP 层带 `Authorization: Bearer`
+  并使用 `credentials: 'omit'`。PLAN §9.2 要求管理面板走 **会话 Cookie + CSRF**；当前网关的
+  CORS 策略只放行 `Access-Control-Allow-Origin`、不返回 `Access-Control-Allow-Credentials`，
+  浏览器端 `credentials: 'include'` 会被 CORS 直接拒绝（实测 `TypeError: Failed to fetch`），
+  而控制台本来也没有会话 Cookie。切生产时应改为 BFF：登录态进 HttpOnly Cookie、
+  网关补发 `Access-Control-Allow-Credentials: true` 并加 CSRF 校验与刷新机制。
+  改动仍只涉及 `src/api/http.ts` 与会话存储，页面不受影响。
 - PLAN §6.2 指定 TypeScript 7.0.2；实测 **vue-tsc 3.3.14（Volar）要求 typescript <7**，
   TS 7 的原生编译器不再导出 `lib/tsc`，`vue-tsc` 直接崩溃。因此本包锁 **TypeScript 5.9.3**
   以保留 `.vue` 文件类型检查，待上游支持 TS 7 再升级（这是目前唯一与 PLAN 版本表不一致的依赖）。
 - 图标库用 **`@lucide/vue` 1.70.0**（`lucide-vue-next` 1.0.0 已标记 deprecated，官方指向新包），
   其余版本与 PLAN 一致：Vue 3.5.45 / Vite 8.3.6 / Pinia 4.1.0 / Vue Router 5.4.0 / Tailwind 4.3.5 / Vitest 5.1.0。
+
+### 通知模板
+
+前端只认识通知服务内置的三个模板，占位符契约与后端 `EmailTemplateCatalog` 保持一致
+（`src/lib/notification-templates.ts`，单测会校验它与 i18n 键集同步）：
+
+| 模板 | 占位符 | 用途 |
+| --- | --- | --- |
+| `account.welcome` | `displayName` / `username` / `issuer` | 账户创建后的欢迎邮件 |
+| `account.password-reset` | `displayName` / `minutes` / `resetUrl` | 重置口令链接 |
+| `security.sign-in` | `displayName` / `device` / `occurredAt` | 新设备登录提醒 |
+
+表单在提交前会校验必填占位符并做去空格处理；服务端仍会再校验一次，
+未知模板或缺参数返回 400（界面直接展示 `detail`）。
 
 ## 目录结构
 
