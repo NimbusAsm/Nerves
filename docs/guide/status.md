@@ -49,6 +49,7 @@
 | MFA：Passkey | ✅ 已实现 | WebAuthn 注册/认证（Fido2NetLib）：challenge 单次使用并持久化，凭据 Data Protection 加密、签名计数递增校验；管理台账户详情可登记/移除通行密钥 |
 | 账户切换 | ✅ 已实现 | 同一法人名下账户可凭当前 Bearer 令牌调用 /api/v1/auth/switch-account 换取新登录票据（不重输口令）；跨法人 403。实测新令牌 sub 为目标账户、leid 不变 |
 | 上游联邦：OIDC / LDAP | 🧭 v1.0 计划 | — |
+| 分片重算工具 | ✅ 已实现 | Sharding:Recompute（可 DryRun）重算 routing_index.Shard 并输出分布；幂等，供扩容前校验 |
 | 领域事件 outbox | ✅ 已实现 | 实名状态变更在同一事务写入 outbox，每个账户一条 realname.changed；后台每 5s 投递审计并标记 dispatched，失败重试；GET /api/v1/events 增量拉取 |
 | 口令轮换 | ✅ 已实现 | POST /api/v1/accounts/{id}/password：强度≥12 位、禁止与旧口令相同；替换凭据并撤销全部会话，写审计 account.password-changed |
 | 法人实体停用 | ✅ 已实现 | POST /api/v1/legal-entities/{id}/disable 停用实体并连带停用名下全部账户、撤销各自会话（I6）；/enable 恢复实体状态 |
