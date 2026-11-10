@@ -1,8 +1,8 @@
 # 移动端接入
 
-::: warning 当前不可联调
-Nerves 的 OIDC 端点尚未实现（🧭 v1.0 计划）。示例按 RFC 8252（OAuth 2.0 for
-Native Apps）编写；在 Nerves 交付 IdP 之前，可用于对接其它标准 OIDC 提供方。
+::: tip 示例状态
+Nerves 的 OIDC 端点（授权码 + PKCE）已实现，本页按 RFC 8252 描述原生应用接入方式；
+仓库里暂未提供 Android / iOS 的可运行示例（`samples/` 目前覆盖控制台、BFF 与 SPA）。
 :::
 
 ## 原则

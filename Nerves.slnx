@@ -20,6 +20,9 @@
     <Project Path="src/services/Nerves.Notification/Nerves.Notification.csproj" />
     <Project Path="src/services/Nerves.Session/Nerves.Session.csproj" />
   </Folder>
+  <Folder Name="/samples/">
+    <Project Path="samples/dotnet-console/Nerves.Samples.DotnetConsole.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Nerves.Identity.UnitTests/Nerves.Identity.UnitTests.csproj" />
     <Project Path="tests/Nerves.IntegrationTests/Nerves.IntegrationTests.csproj" />

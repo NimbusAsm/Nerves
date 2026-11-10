@@ -1,8 +1,11 @@
 # 单页应用（SPA）接入
 
-::: warning 当前不可联调
-Nerves 的 OIDC 端点尚未实现（🧭 v1.0 计划）。以下为 v1.0 目标形态；
-现在只能把 issuer 指向其它标准 OIDC 提供方来验证前端代码。
+::: tip 可运行示例
+`samples/vue-spa` 是一个可运行的 Vue 3 SPA：PKCE + 令牌只存内存 + 用 `@nerves/sdk` 调管理 API；
+`node tools/flow-check.ts` 可以在没有浏览器的情况下验证同一份前端代码。
+
+Nerves 的 OIDC 端点均已实现。CORS 方面，示例用 Vite 代理保持同源；生产可把 SPA 源站加进 `Cors:AdminOrigins`，
+或改用 BFF 把令牌留在服务端。
 :::
 
 ## 场景

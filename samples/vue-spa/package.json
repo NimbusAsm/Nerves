@@ -1,0 +1,21 @@
+{
+  "name": "@nerves/sample-vue-spa",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nerves SPA sample: authorization code + PKCE, tokens in memory, @nerves/sdk for the management API.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "flow-check": "node tools/flow-check.ts"
+  },
+  "dependencies": {
+    "@nerves/sdk": "file:../../sdk/typescript",
+    "vue": "3.5.45"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "6.0.10",
+    "vite": "8.3.7"
+  }
+}
