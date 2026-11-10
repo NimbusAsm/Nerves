@@ -20,6 +20,7 @@ First production-ready release of the unified account platform.
 - Directory service (organizations, invitations), audit service with hash-chained
   streams, NDJSON archives and CSV/JSON export.
 - Notification service with email templates, delivery log and retrying worker.
+- LDAP directory sync that provisions and updates accounts idempotently, with a status endpoint.
 - Compliance.CN service: consent records, retention policies, data subject export
   and erasure.
 - Identity domain-event outbox with incremental `/api/v1/events` reads and durable
