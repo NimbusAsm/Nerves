@@ -28,10 +28,11 @@
 | 集成状态页 | ✅ 已实现 | 管理台新增「集成」页：LDAP（启用/主机/BaseDN/过滤器）、OIDC 联邦提供方、PDP（启用/端点/超时/fail-open）；数据来自 IdP /api/v1/admin/integrations 与 Authorization /api/v1/admin/pdp，只读 |
 | 管理后台（Vue 3） | ✅ 已实现 | 11 个页面（含用户组、集成）、mock/live 切换、中英 i18n、35 个测试 |
 | 管理后台 live 模式 | ✅ 已实现 | VITE_USE_MOCK=false 走 OIDC 授权码 + PKCE（登录 API 取票 → 跳 IdP → 回调换令牌），令牌仅存内存 |
-| 管理聚合层（console-api） | 🧭 v1.0 计划 | 目前由网关按路径转发，未做响应聚合 |
+| 应用注册管理 | ✅ 已实现 | IdP `/api/v1/admin/applications` CRUD（OpenIddict 运行时生效、停用即拒授权），管理台应用目录接真实 API；内置客户端禁止删除，写操作审计 |
+| 管理聚合层（console-api） | ✅ 已实现 | Nerves.ConsoleApi（5109）只读聚合：overview / account detail / entity detail；并发调用、单依赖失败降级为 warnings，指标与健康检查齐全；compose 与 Helm 已接入 |
 | 管理台通知中心 | ✅ 已实现 | 投递日志（游标分页、状态/收件人过滤、详情）、按模板发送（占位符动态表单）；API 走网关 `/api/v1/notifications`；credentials=omit（Bearer 内存令牌，无 Cookie） |
-| 通知服务（notification） | ✅ 已实现 | Email 投递与投递日志（游标分页、状态/收件人过滤）；模板渲染与占位符校验；失败指数退避重试；SMTP 可关闭（no-op）；经网关 `/api/v1/notifications` 就绪 |
-| CLI（迁移 / 初始化 / 诊断） | 🧭 v1.0 计划 | 当前迁移使用 dotnet ef |
+| 通知服务（notification） | ✅ 已实现 | Email/SMS 双通道（默认 no-op）；模板与投递日志；指数退避重试；可选消费 identity 事件（默认关闭，事件 id 幂等）；经网关 `/api/v1/notifications` |
+| CLI（迁移 / 初始化 / 诊断） | ✅ 已实现 | tools/Nerves.Cli（dotnet tool，命令 `nerves`）：db migrate、seed、doctor、shard reconcile、version，退出码 0/1/2 |
 
 ## 身份、认证与会话
 
@@ -51,6 +52,7 @@
 | 账户切换 | ✅ 已实现 | 同一法人名下账户可凭当前 Bearer 令牌调用 /api/v1/auth/switch-account 换取新登录票据（不重输口令）；跨法人 403。实测新令牌 sub 为目标账户、leid 不变 |
 | LDAP 目录同步 | ✅ 已实现 | Ldap:Sync 配置（Enabled/IntervalMinutes/BaseDn/Filter/AttributeMap）；后台按间隔同步用户到 identity（新 gRPC UpsertDirectoryAccount，realm+username 优先、email 次之，幂等且不改口令/不删除）；GET /api/v1/admin/directory-sync/status 返回最近一次统计；审计 directory.sync.completed |
 | 会话生命周期 | ✅ 已实现 | `Session:IdleMinutes / AbsoluteHours / ExpirySweepSeconds` 可配；IdP Cookie 不滑动且带 Max-Age；session 服务定期把过期会话标记为 expired |
+| 保留策略执行 | ✅ 已实现 | Compliance RetentionWorker（默认关闭）：按 retention_policy 删除到期同意书、erasure 先匿名化后删除，无变化不写审计 |
 | 分片重算工具 | ✅ 已实现 | Sharding:Recompute（可 DryRun）重算 routing_index.Shard 并输出分布；幂等，供扩容前校验 |
 | 领域事件 outbox | ✅ 已实现 | 实名状态变更在同一事务写入 outbox，每个账户一条 realname.changed；后台每 5s 投递审计并标记 dispatched，失败重试；GET /api/v1/events 增量拉取 |
 | 口令轮换 | ✅ 已实现 | POST /api/v1/accounts/{id}/password：强度≥12 位、禁止与旧口令相同；替换凭据并撤销全部会话，写审计 account.password-changed |
@@ -78,6 +80,7 @@
 | Prometheus 指标 | ✅ 已实现 | 所有服务暴露 GET /metrics（http_requests_received_total、dotnet_*、process_*）；由 MapNervesDefaults 统一挂载 |
 | 端到端冒烟 | ✅ 已实现 | scripts/e2e-smoke.sh 启动全部后端服务（独立端口段），walk 登录 API → OIDC → 令牌 → 网关管理 API；CI e2e 作业在 postgres service 上运行 |
 | 仅迁移模式 | ✅ 已实现 | Database:MigrateOnly=true 时服务应用迁移后以 0 退出，供 Kubernetes 迁移 Job 使用；默认仍由 MigrateOnStart 控制 |
+| 分片基础设施库 | ✅ 已实现（库） | src/Nerves.Sharding：账号→分片映射、分片连接解析、逐分片迁移执行器；业务服务接线未做，多库部署仍需后续改造 |
 | 分片路由元数据 | ✅ 已实现（元数据层） | 账户→逻辑分片为纯函数（SHA-256 取模），routing_index 记录 shard 并建索引，ResolveIdentifier 返回分片；Identity 之外的数据面仍是单库，切换到多库需要部署级改造 |
 | SCIM 2.0 | ✅ 已实现（核心子集） | /scim/v2/Users（创建、筛选、PUT 停用、删除）由 Identity 提供；/scim/v2/Groups（创建、成员替换、删除、筛选）由 Authorization 提供；网关转发，需 nerves:admin |
 | 实名核验 Provider | 🧭 v1.0 计划 | 状态机已落地，Provider 抽象与流程未实现 |
