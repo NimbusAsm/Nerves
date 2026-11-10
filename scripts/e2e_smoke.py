@@ -101,6 +101,9 @@ def main():
 
     status, _, _ = call(f"{GATEWAY}/api/v1/stats")
     expect(status, 401, "gateway without a token")
+
+    status, _, _ = call(f"{GATEWAY}/api/v1/notifications")
+    expect(status, 401, "gateway notifications without a token")
     print("e2e smoke passed")
 
 

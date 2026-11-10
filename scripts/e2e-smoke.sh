@@ -32,6 +32,7 @@ authorization_port=$((base + 4))
 audit_port=$((base + 5))
 directory_port=$((base + 6))
 compliance_port=$((base + 7))
+notification_port=$((base + 8))
 gateway_port=$((base + 0))
 
 identity_grpc=$((base + 102))
@@ -116,6 +117,7 @@ start_service Nerves.Authorization "${authorization_port}" "${authorization_grpc
 start_service Nerves.Audit "${audit_port}" "${audit_grpc}"
 start_service Nerves.Directory "${directory_port}" "${directory_grpc}"
 start_service Nerves.ComplianceCn "${compliance_port}"
+start_service Nerves.Notification "${notification_port}"
 start_service Nerves.Gateway "${gateway_port}"
 start_service Nerves.Idp "${idp_port}"
 
@@ -138,6 +140,7 @@ wait_for "${authorization_port}" Authorization
 wait_for "${audit_port}" Audit
 wait_for "${directory_port}" Directory
 wait_for "${compliance_port}" ComplianceCn
+wait_for "${notification_port}" Notification
 wait_for "${idp_port}" Idp
 wait_for "${gateway_port}" Gateway
 
