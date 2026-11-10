@@ -20,6 +20,7 @@ public static class AccountEndpoints
         group.MapGet("/{id:guid}", GetAsync);
         group.MapPost("/{id:guid}/disable", DisableAsync);
         group.MapPost("/{id:guid}/lock", LockAsync);
+        group.MapPost("/{id:guid}/password", ChangePasswordAsync);
 
         return group;
     }
@@ -180,6 +181,70 @@ public static class AccountEndpoints
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         return account is null ? Results.NotFound() : Results.Ok(ToResponse(account));
+    }
+
+    private static async Task<IResult> ChangePasswordAsync(
+        Guid id,
+        ChangePasswordRequest request,
+        IdentityDbContext db,
+        IPasswordHasher hasher,
+        SessionClient sessions,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (account is null)
+        {
+            return Results.NotFound();
+        }
+
+        var validation = PasswordPolicy.Validate(request.NewPassword);
+        if (validation.IsFailure)
+        {
+            return Results.Problem(validation.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var credentials = await db.AccountCredentials
+            .Where(x => x.AccountId == id)
+            .ToListAsync(cancellationToken);
+
+        var current = credentials.FirstOrDefault(x => x.Type == CredentialType.Password);
+        if (current is not null)
+        {
+            if (hasher.Verify(request.NewPassword!, current.Secret))
+            {
+                return Results.Problem(
+                    "the new password must differ from the current one",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            credentials.Remove(current);
+            db.AccountCredentials.Remove(current);
+        }
+
+        var credentialResult = AccountCredential.Create(
+            id, CredentialType.Password, hasher.Hash(request.NewPassword!), Pbkdf2PasswordHasher.Algorithm, now);
+
+        if (credentialResult.IsFailure)
+        {
+            return Results.Problem(credentialResult.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        db.AccountCredentials.Add(credentialResult.Value);
+        await db.SaveChangesAsync(cancellationToken);
+
+        // A rotated password invalidates every existing session.
+        await sessions.RevokeAllAsync(id.ToString(), "account.password-changed", cancellationToken);
+
+        await audit.AppendAsync(
+            "account.password-changed", "admin", null, "account", id.ToString(), "success",
+            http.TraceIdentifier, null, cancellationToken);
+
+        return Results.Ok(new { accountId = id });
     }
 
     private static Task<IResult> DisableAsync(
