@@ -193,3 +193,15 @@ docker build -f apps/admin/Dockerfile -t nerves-admin \
 The image serves the SPA on port 8080 with /healthz, SPA fallback and the
 static /oidc-callback.html. The redirect URI is derived from the browser origin,
 so register https://<admin-host>/oidc-callback.html on the nerves-admin client.
+
+
+## Browser end-to-end
+
+```bash
+# backend + console running (see deploy/docker/README.md)
+pnpm exec playwright install chromium
+pnpm test:e2e
+```
+
+The spec signs in through the real IdP (PKCE) and asserts the console loads and
+that no token is left in localStorage. CI runs it in the admin-e2e workflow.
