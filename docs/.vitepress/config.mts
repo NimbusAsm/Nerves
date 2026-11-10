@@ -40,6 +40,7 @@ export default defineConfig({
           { text: '实现状态', link: '/guide/status' },
           { text: '快速开始', link: '/guide/quickstart' },
           { text: '版本与路线图', link: '/guide/roadmap' },
+          { text: '发布流程', link: '/guide/releases' },
         ],
       },
       {
