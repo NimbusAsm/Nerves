@@ -63,6 +63,40 @@ namespace Nerves.ComplianceCn.Persistence.Migrations
                     b.ToTable("consent", "compliance");
                 });
 
+            modelBuilder.Entity("Nerves.ComplianceCn.Domain.ErasureRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("SubjectId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SubjectId");
+
+                    b.ToTable("erasure_request", "compliance");
+                });
+
             modelBuilder.Entity("Nerves.ComplianceCn.Domain.RetentionPolicy", b =>
                 {
                     b.Property<Guid>("Id")

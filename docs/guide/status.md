@@ -70,6 +70,7 @@
 | 分片路由元数据 | ✅ 已实现（元数据层） | 账户→逻辑分片为纯函数（SHA-256 取模），routing_index 记录 shard 并建索引，ResolveIdentifier 返回分片；Identity 之外的数据面仍是单库，切换到多库需要部署级改造 |
 | SCIM 2.0 | ✅ 已实现（核心子集） | /scim/v2/Users（创建、筛选、PUT 停用、删除）由 Identity 提供；/scim/v2/Groups（创建、成员替换、删除、筛选）由 Authorization 提供；网关转发，需 nerves:admin |
 | 实名核验 Provider | 🧭 v1.0 计划 | 状态机已落地，Provider 抽象与流程未实现 |
+| 数据主体导出/删除 | ✅ 已实现 | GET /api/v1/compliance/subjects/{id}/export 返回账户资料、同意书与留存策略；POST .../erase 创建删除请求、撤销全部有效同意书并停用账户；identity 新增 DisableAccount gRPC |
 | Compliance.CN | ✅ 已实现（基础） | 同意书授予/查询/撤销（撤销幂等）、留存策略按类别 upsert、汇总统计；schema compliance；经网关 /api/v1/compliance/* 暴露，需 nerves:admin |
 | 审计（事件、哈希链、检索、校验） | ✅ 已实现 | 每流 SHA-256 链；account.created / locked / disabled、auth.login.succeeded / failed；/api/v1/audit-events 与 /verify |
 | 授权变更审计 | ✅ 已实现 | 角色创建/授予/撤销、分组创建/删除、成员增删均写入审计（authz.role.* / authz.group.*），经 gRPC 尽力投递，不影响主操作 |

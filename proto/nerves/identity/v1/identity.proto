@@ -13,6 +13,7 @@ service IdentityService {
   rpc HasActiveTotp(HasActiveTotpRequest) returns (HasActiveTotpResponse);
   rpc VerifyMfa(VerifyMfaRequest) returns (VerifyMfaResponse);
   rpc ResolveIdentifier(ResolveIdentifierRequest) returns (ResolveIdentifierResponse);
+  rpc DisableAccount(DisableAccountRequest) returns (DisableAccountResponse);
   rpc HasActivePasskey(HasActivePasskeyRequest) returns (HasActivePasskeyResponse);
   rpc StartPasskeyAssertion(StartPasskeyAssertionRequest) returns (StartPasskeyAssertionResponse);
   rpc CompletePasskeyAssertion(CompletePasskeyAssertionRequest) returns (CompletePasskeyAssertionResponse);
@@ -128,4 +129,14 @@ message CompletePasskeyAssertionRequest {
 
 message CompletePasskeyAssertionResponse {
   bool valid = 1;
+}
+
+message DisableAccountRequest {
+  string account_id = 1;
+  // Free-form reason recorded by the caller.
+  string reason = 2;
+}
+
+message DisableAccountResponse {
+  bool disabled = 1;
 }
