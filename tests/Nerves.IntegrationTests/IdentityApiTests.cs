@@ -31,6 +31,9 @@ public sealed class IdentityApiTests : IAsyncLifetime
             builder.UseEnvironment("Testing");
             builder.UseSetting("ConnectionStrings:Default", _postgres.GetConnectionString());
             builder.UseSetting("DevSeed:Enabled", "false");
+            builder.UseSetting(
+                "DataProtection:KeysDirectory",
+                Path.Combine(Path.GetTempPath(), "nerves-it-keys-" + Guid.NewGuid().ToString("N")));
             builder.UseSetting("Security:IdentifierHashKey", Convert.ToBase64String(new byte[32]));
             builder.UseSetting("Kestrel:Endpoints", string.Empty);
             builder.ConfigureTestServices(services =>

@@ -89,8 +89,11 @@ services:
       Session__GrpcAddress: http://session:5203
       Authorization__GrpcAddress: http://authorization:5204
       Audit__GrpcAddress: http://audit:5205
+      DataProtection__KeysDirectory: /var/lib/nerves/dp-keys
       Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
     ports: ["5101:8080"]
+    volumes:
+      - idp-keys:/var/lib/nerves/dp-keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,10 +121,13 @@ services:
       Authentication__Audience: nerves.api
       Database__MigrateOnStart: "true"
       Authentication__Issuer: http://127.0.0.1:5101/
+      DataProtection__KeysDirectory: /var/lib/nerves/dp-keys
       Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
       Kestrel__Endpoints__Grpc__Url: http://0.0.0.0:5202
       Kestrel__Endpoints__Grpc__Protocols: Http2
     ports: ["5102:8080", "5202:5202"]
+    volumes:
+      - identity-keys:/var/lib/nerves/dp-keys
 
   session:
     <<: *service
@@ -227,3 +233,5 @@ services:
 volumes:
   pgdata:
   audit-archive:
+  identity-keys:
+  idp-keys:
