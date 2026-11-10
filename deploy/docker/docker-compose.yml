@@ -35,6 +35,23 @@ services:
       timeout: 3s
       retries: 20
 
+  admin:
+    <<: *service
+    profiles: ["admin"]
+    build:
+      context: ../../apps/admin
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://127.0.0.1:5100/api/v1
+        VITE_IDP_URL: http://127.0.0.1:5101
+        VITE_OIDC_CLIENT_ID: nerves-admin
+        VITE_USE_MOCK: "false"
+    environment: {}
+    ports: ["5300:8080"]
+    depends_on:
+      gateway:
+        condition: service_healthy
+
   gateway:
     <<: *service
     build:
