@@ -19,6 +19,7 @@ First production-ready release of the unified account platform.
   SCIM 2.0 users/groups endpoints.
 - Directory service (organizations, invitations), audit service with hash-chained
   streams, NDJSON archives and CSV/JSON export.
+- Notification service with email templates, delivery log and retrying worker.
 - Compliance.CN service: consent records, retention policies, data subject export
   and erasure.
 - Identity domain-event outbox with incremental `/api/v1/events` reads and durable
@@ -27,6 +28,7 @@ First production-ready release of the unified account platform.
 - Prometheus metrics, OpenTelemetry export, health and readiness probes.
 - Admin console (Vue 3) container image with OIDC PKCE login.
 - Multi-language SDKs: .NET, TypeScript, Python.
+- Release runbook, restore-drill script and OpenAPI archiving.
 - Helm chart (9 services, migration jobs, PVCs), Docker Compose stack, and
   operations runbooks (backup/restore, key rotation, upgrade, security checklist).
 
