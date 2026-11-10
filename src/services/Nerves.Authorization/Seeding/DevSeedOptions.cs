@@ -10,6 +10,9 @@ public sealed class DevSeedOptions
 
     public bool Enabled { get; set; }
 
+    /// <summary>Explicit opt-in for non-Development environments.</summary>
+    public bool AllowInProduction { get; set; }
+
     public string Realm { get; set; } = "nerves";
 
     public string RoleCode { get; set; } = "portal-admin";

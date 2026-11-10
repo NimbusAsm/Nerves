@@ -11,7 +11,8 @@ namespace Nerves.Idp.Integration;
 /// </summary>
 public sealed class OpenIddictClientSeeder(
     IServiceProvider services,
-    IOptions<OpenIddictSeedOptions> options) : IHostedService
+    IOptions<OpenIddictSeedOptions> options,
+    Microsoft.Extensions.Hosting.IHostEnvironment environment) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -20,6 +21,9 @@ public sealed class OpenIddictClientSeeder(
         {
             return;
         }
+
+        Nerves.ServiceDefaults.ProductionGuards.RejectSeedOutsideDevelopment(
+            environment, seed.Enabled, seed.AllowInProduction, "OpenIddictSeed");
 
         await using var scope = services.CreateAsyncScope();
         var manager = scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>();

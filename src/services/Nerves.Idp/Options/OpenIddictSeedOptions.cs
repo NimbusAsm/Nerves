@@ -7,6 +7,9 @@ public sealed class OpenIddictSeedOptions
 
     public bool Enabled { get; set; }
 
+    /// <summary>Explicit opt-in for non-Development environments.</summary>
+    public bool AllowInProduction { get; set; }
+
     public string ClientId { get; set; } = "nerves-demo";
 
     public string DisplayName { get; set; } = "Nerves demo client";
