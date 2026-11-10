@@ -132,6 +132,14 @@ fails the render with a readable message otherwise.
 {{- fail "at least one service must be enabled" -}}
 {{- end -}}
 
+{{- $sharedKeys := .Values.dataProtection.existingClaim -}}
+{{- range $name := list "identity" "idp" -}}
+{{- $svc := index $.Values.services $name -}}
+{{- if and $svc.enabled (gt (int (default 1 $svc.replicaCount)) 1) (not $sharedKeys) -}}
+{{- fail (printf "services.%s.replicaCount > 1 needs a shared key ring: set dataProtection.existingClaim to a ReadWriteMany claim (see the chart README)" $name) -}}
+{{- end -}}
+{{- end -}}
+
 {{- if and .Values.ingress.enabled (not .Values.services.gateway.enabled) -}}
 {{- fail "ingress.enabled requires services.gateway.enabled" -}}
 {{- end -}}
