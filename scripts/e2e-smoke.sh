@@ -92,6 +92,7 @@ start_service() {
       "Gateway__Services__audit=http://127.0.0.1:${audit_port}/"
       "Gateway__Services__directory=http://127.0.0.1:${directory_port}/"
       "Gateway__Services__compliance=http://127.0.0.1:${compliance_port}/"
+      "Gateway__Services__notification=http://127.0.0.1:${notification_port}/"
       "Gateway__Services__idp=http://127.0.0.1:${idp_port}/"
     )
   fi
