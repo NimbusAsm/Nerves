@@ -31,3 +31,14 @@ remain valid when the browser reaches the IdP through the published port.
 
 Use deploy/helm/nerves. Migrations run from a dedicated job there, the signing
 key comes from OpenIddict__SigningCertificatePath, and dev seeding is off.
+
+
+## Full stack with the admin console
+
+```bash
+docker compose --profile admin up -d --build
+```
+
+The admin image is built from apps/admin with VITE_API_BASE_URL and VITE_IDP_URL
+pointing at the local gateway and IdP, and is served on http://127.0.0.1:5300/.
+The profile keeps it out of the default `up` so backend-only runs stay fast.
