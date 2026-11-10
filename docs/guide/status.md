@@ -66,6 +66,7 @@
 | 上游 OIDC 联邦 | ✅ 已实现（OIDC） | 配置多个上游提供方；POST /api/v1/auth/federation/start 返回授权 URL（state + PKCE），回调校验 state 单次使用并验签上游 id_token（JWKS + aud），按 email 关联本地账户后签发登录票据；未关联返回 403。LDAP 未实现 |
 | 网关路由 | ✅ 已实现 | 路由表内置于代码，下游地址由 Gateway:Services:* 配置（缺省回落本机开发端口），任意环境可直接接线 |
 | 运维文档 | ✅ 已实现 | 备份与恢复、密钥轮换、升级与回滚、上线安全检查四篇，并提供 scripts/backup.sh（pg_dump + 密钥包 + 校验和） |
+| 反向代理支持 | ✅ 已实现 | 所有服务启用 ForwardedHeaders（X-Forwarded-Proto/For），IdP issuer 随 https 头切换；默认只信任 loopback，Proxy:TrustAll 显式放开 |
 | Prometheus 指标 | ✅ 已实现 | 所有服务暴露 GET /metrics（http_requests_received_total、dotnet_*、process_*）；由 MapNervesDefaults 统一挂载 |
 | 端到端冒烟 | ✅ 已实现 | scripts/e2e-smoke.sh 启动全部后端服务（独立端口段），walk 登录 API → OIDC → 令牌 → 网关管理 API；CI e2e 作业在 postgres service 上运行 |
 | 仅迁移模式 | ✅ 已实现 | Database:MigrateOnly=true 时服务应用迁移后以 0 退出，供 Kubernetes 迁移 Job 使用；默认仍由 MigrateOnStart 控制 |

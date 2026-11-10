@@ -9,6 +9,7 @@ using Nerves.ServiceDefaults.Security;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.AddNervesDefaults("nerves-audit");
+builder.Services.AddNervesProxyHeaders(builder.Configuration);
 
 builder.Services.AddOpenApi();
 builder.Services.AddGrpc();
@@ -26,6 +27,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 }
 
 var app = builder.Build();
+
+app.UseNervesProxyHeaders();
 
 if (await app.MigrateNervesDatabaseAsync<AuditDbContext>())
 {
