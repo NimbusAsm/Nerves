@@ -132,6 +132,10 @@ builder.Services.AddOpenIddict()
 
         options.DisableAccessTokenEncryption();
 
+        // Reference refresh tokens are rotated; zero leeway makes a reused
+        // token an error instead of silently issuing a new pair.
+        options.SetRefreshTokenReuseLeeway(TimeSpan.Zero);
+
         options.UseAspNetCore()
             .DisableTransportSecurityRequirement()
             .EnableAuthorizationEndpointPassthrough()
