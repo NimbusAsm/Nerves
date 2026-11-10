@@ -63,6 +63,7 @@ export default defineConfig({
             { text: '备份与恢复', link: '/guide/operations/backup-restore' },
             { text: '密钥轮换', link: '/guide/operations/key-rotation' },
             { text: '升级与回滚', link: '/guide/operations/upgrade' },
+            { text: 'LDAP 目录同步', link: '/guide/operations/ldap-sync' },
             { text: '上线安全检查', link: '/guide/operations/security-checklist' },
           ],
         },

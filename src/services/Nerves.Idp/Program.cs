@@ -92,6 +92,14 @@ builder.Services.AddScoped<LoginTickets>();
 builder.Services.AddScoped<FederationStateStore>();
 builder.Services.Configure<LdapOptions>(builder.Configuration.GetSection(LdapOptions.SectionName));
 builder.Services.AddSingleton<LdapDirectory>();
+builder.Services.Configure<DirectorySyncOptions>(
+    builder.Configuration.GetSection(DirectorySyncOptions.SectionName));
+builder.Services.AddSingleton<DirectorySyncState>();
+builder.Services.AddSingleton<IDirectorySearch, LdapDirectorySearch>();
+builder.Services.AddSingleton<IDirectoryAccountWriter, DirectoryAccountWriter>();
+builder.Services.AddSingleton<IDirectorySyncAudit, DirectorySyncAudit>();
+builder.Services.AddSingleton<IDirectorySyncRunner, DirectorySyncRunner>();
+builder.Services.AddHostedService<DirectorySyncWorker>();
 builder.Services.Configure<FederationOptions>(builder.Configuration.GetSection(FederationOptions.SectionName));
 builder.Services.AddSingleton<LogoutTokenIssuer>();
 builder.Services.AddSingleton<BackchannelLogoutDispatcher>();
@@ -210,6 +218,7 @@ app.MapAuthEndpoints();
 app.MapFederationEndpoints();
 app.MapIntegrationStatusEndpoints();
 app.MapIntegrationSettingsEndpoints();
+app.MapDirectorySyncEndpoints();
 
 app.Run();
 

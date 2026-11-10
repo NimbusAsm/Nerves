@@ -4,6 +4,7 @@ using Nerves.Contracts.Identity.V1;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
+using Nerves.Identity.Sharding;
 
 namespace Nerves.Identity.Grpc;
 
@@ -13,6 +14,7 @@ public sealed class IdentityGrpcService(
     IPasswordHasher passwordHasher,
     PasskeyService passkeys,
     IIdentifierHasher identifierHasher,
+    ShardResolver shards,
     TotpService totp,
     TotpSecretProtector protector) : IdentityService.IdentityServiceBase
 {
@@ -302,5 +304,158 @@ public sealed class IdentityGrpcService(
 
         await dbContext.SaveChangesAsync(context.CancellationToken);
         return new DisableAccountResponse { Disabled = true };
+    }
+
+    public override async Task<UpsertDirectoryAccountResponse> UpsertDirectoryAccount(
+        UpsertDirectoryAccountRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var realm = string.IsNullOrWhiteSpace(request.Realm) ? "nerves" : request.Realm.Trim().ToLowerInvariant();
+        var username = request.Username?.Trim();
+        var email = DirectoryAccountPlanner.NormalizeEmail(request.Email);
+
+        if (string.IsNullOrWhiteSpace(username) || username.Length > 64)
+        {
+            return new UpsertDirectoryAccountResponse { FailureCode = "invalid_username" };
+        }
+
+        if (email is not null && email.Length > 320)
+        {
+            return new UpsertDirectoryAccountResponse { FailureCode = "invalid_email" };
+        }
+
+        var byUsername = await dbContext.NetworkAccounts
+            .FirstOrDefaultAsync(
+                x => x.Realm == realm && x.Username == username,
+                context.CancellationToken);
+
+        NetworkAccount? byEmail = null;
+        if (email is not null)
+        {
+            // Email is deployment-wide unique, so a match means the same person
+            // already has an account that the directory now describes.
+            byEmail = await dbContext.NetworkAccounts
+                .FirstOrDefaultAsync(x => x.Email == email, context.CancellationToken);
+        }
+
+        var candidateIds = new[] { byUsername?.Id, byEmail?.Id }
+            .Where(x => x is not null)
+            .Select(x => x!.Value)
+            .ToArray();
+
+        var emailTaken = email is not null
+            && await dbContext.NetworkAccounts.AnyAsync(
+                x => x.Email == email && !candidateIds.Contains(x.Id),
+                context.CancellationToken);
+
+        var plan = DirectoryAccountPlanner.Plan(
+            byUsername,
+            byEmail,
+            email,
+            request.DisplayName,
+            emailTaken);
+
+        var now = DateTimeOffset.UtcNow;
+
+        if (plan.Action == DirectoryAccountAction.EmailConflict)
+        {
+            return new UpsertDirectoryAccountResponse
+            {
+                FailureCode = "email_conflict",
+                AccountId = byUsername?.Id.ToString() ?? string.Empty,
+            };
+        }
+
+        if (plan.Account is not null)
+        {
+            var update = plan.Account.ApplyDirectoryProfile(plan.Email, plan.DisplayName, now);
+            if (update.IsFailure)
+            {
+                return new UpsertDirectoryAccountResponse
+                {
+                    FailureCode = "invalid_profile",
+                    AccountId = plan.Account.Id.ToString(),
+                };
+            }
+
+            if (plan.Action == DirectoryAccountAction.Update)
+            {
+                await dbContext.SaveChangesAsync(context.CancellationToken);
+            }
+
+            return new UpsertDirectoryAccountResponse
+            {
+                Created = false,
+                Updated = plan.Action == DirectoryAccountAction.Update,
+                AccountId = plan.Account.Id.ToString(),
+            };
+        }
+
+        // A directory account is provisioned by an organisation, which is what
+        // AccountType.Managed means. Such an account still needs a legal entity,
+        // so provisioning creates a placeholder entity it can be anchored to.
+        var placeholder = LegalEntity.Create(
+            LegalEntityType.Other,
+            $"{username} ({realm})",
+            RealNameId.Create(
+                IdDocumentType.Other,
+                identifierHasher.Hash("directory", realm, request.DirectoryId.Length > 0 ? request.DirectoryId : username),
+                "CN").Value,
+            now);
+
+        if (placeholder.IsFailure)
+        {
+            return new UpsertDirectoryAccountResponse { FailureCode = "invalid_directory_id" };
+        }
+
+        var created = NetworkAccount.Create(
+            placeholder.Value.Id,
+            realm,
+            username,
+            email,
+            null,
+            DirectoryAccountPlanner.Normalize(request.DisplayName),
+            AccountType.Managed,
+            now);
+
+        if (created.IsFailure)
+        {
+            return new UpsertDirectoryAccountResponse { FailureCode = "invalid_account" };
+        }
+
+        var accountId = created.Value.Id;
+        dbContext.LegalEntities.Add(placeholder.Value);
+        dbContext.NetworkAccounts.Add(created.Value);
+        dbContext.RoutingIndex.Add(RoutingIndexEntry.Create(
+            identifierHasher.Hash("username", realm, username),
+            "username",
+            realm,
+            accountId,
+            placeholder.Value.Id,
+            shards.Resolve(accountId),
+            now));
+
+        if (email is not null)
+        {
+            dbContext.RoutingIndex.Add(RoutingIndexEntry.Create(
+                identifierHasher.Hash("email", realm, email),
+                "email",
+                realm,
+                accountId,
+                placeholder.Value.Id,
+                shards.Resolve(accountId),
+                now));
+        }
+
+        await dbContext.SaveChangesAsync(context.CancellationToken);
+
+        return new UpsertDirectoryAccountResponse
+        {
+            Created = true,
+            Updated = false,
+            AccountId = accountId.ToString(),
+        };
     }
 }

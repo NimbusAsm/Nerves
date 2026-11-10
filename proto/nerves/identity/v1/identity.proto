@@ -17,6 +17,9 @@ service IdentityService {
   rpc HasActivePasskey(HasActivePasskeyRequest) returns (HasActivePasskeyResponse);
   rpc StartPasskeyAssertion(StartPasskeyAssertionRequest) returns (StartPasskeyAssertionResponse);
   rpc CompletePasskeyAssertion(CompletePasskeyAssertionRequest) returns (CompletePasskeyAssertionResponse);
+  // Creates or refreshes an account provisioned from an external directory.
+  // Idempotent on realm + username, then on email. Never touches credentials.
+  rpc UpsertDirectoryAccount(UpsertDirectoryAccountRequest) returns (UpsertDirectoryAccountResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -139,4 +142,24 @@ message DisableAccountRequest {
 
 message DisableAccountResponse {
   bool disabled = 1;
+}
+
+message UpsertDirectoryAccountRequest {
+  // Realm the account belongs to; defaults to the identity service default.
+  string realm = 1;
+  string username = 2;
+  string email = 3;
+  string display_name = 4;
+  // Stable identifier of the directory entry (usually the DN), kept for audit.
+  string directory_id = 5;
+}
+
+message UpsertDirectoryAccountResponse {
+  // True when this call created the account.
+  bool created = 1;
+  // True when an existing account had display name or email changed.
+  bool updated = 2;
+  string account_id = 3;
+  // Empty on success; otherwise a stable machine-readable code.
+  string failure_code = 4;
 }
