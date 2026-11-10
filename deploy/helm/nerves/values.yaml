@@ -385,6 +385,21 @@ ingress:
           pathType: Prefix
   tls: []
 
+# The admin console ships as its own image and can be exposed on a host that is
+# separate from the gateway. Disabled by default; enabling it requires
+# services.admin.enabled.
+admin:
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: admin.nerves.localhost
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
 # Horizontal pod autoscalers are created only for the services listed below.
 autoscaling:
   enabled: false
@@ -452,6 +467,69 @@ postgresql:
     limits:
       cpu: "1"
       memory: 1Gi
+
+# Scheduled PostgreSQL backups. Disabled by default: most production clusters use
+# a managed backup service, CloudNativePG or a volume snapshot policy instead.
+# When enabled, a CronJob runs pg_dump into a persistent volume (and optionally
+# uploads the archives with rclone) and prunes archives older than retentionDays.
+backup:
+  enabled: false
+  # Five-field cron, evaluated in the cluster time zone (UTC on most clusters).
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  # Archives older than this are deleted locally and (when enabled) remotely.
+  retentionDays: 7
+  image:
+    repository: postgres
+    # Empty follows postgresql.image.tag so the dump client matches the server.
+    tag: ""
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+  persistence:
+    # Store the archives on a PVC. When false, objectStorage must be enabled:
+    # an emptyDir archive disappears with the pod.
+    enabled: true
+    existingClaim: ""
+    size: 8Gi
+    storageClass: ""
+    accessModes:
+      - ReadWriteOnce
+    annotations: {}
+  objectStorage:
+    enabled: false
+    # rclone destination, e.g. s3:my-bucket/nerves-backup
+    remote: ""
+    image:
+      repository: rclone/rclone
+      tag: "1.76.0"
+      pullPolicy: IfNotPresent
+    # Secret holding an rclone.conf; without it rclone falls back to its
+    # environment-based backends (see the rclone docs).
+    existingSecret: ""
+  database:
+    # Empty values follow the bundled PostgreSQL. When postgresql.enabled is
+    # false, host, username, database and existingSecret are required.
+    host: ""
+    port: ""
+    username: ""
+    database: ""
+    # Secret with the database password. Defaults to the chart-managed
+    # database secret and its postgres-password key.
+    existingSecret: ""
+    passwordSecretKey: postgres-password
+  podAnnotations: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
 
 nats:
   # Bundled single-node NATS JetStream. Production should run a 3+ node cluster
