@@ -157,3 +157,15 @@ E2E_COMPLIANCE="http://127.0.0.1:${compliance_port}" \
   python3 "${repo_root}/scripts/e2e_smoke.py"
 
 echo "== smoke passed"
+
+# Optional post-smoke probes. Both run while the stack is still up and both are
+# report-only: a failing load probe must not turn a green e2e run red.
+if [[ -n "${E2E_COLLECT_OPENAPI:-}" ]]; then
+  echo "== collecting OpenAPI documents into ${E2E_COLLECT_OPENAPI}"
+  "${repo_root}/scripts/collect-openapi.sh" "${E2E_COLLECT_OPENAPI}" || true
+fi
+
+if [[ -n "${E2E_LOAD_SMOKE_URL:-}" ]]; then
+  echo "== load smoke against ${E2E_LOAD_SMOKE_URL}"
+  "${repo_root}/scripts/load-smoke.sh" "${E2E_LOAD_SMOKE_URL}" "${E2E_LOAD_SMOKE_DURATION:-30s}" || true
+fi
