@@ -47,12 +47,31 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
-builder.Services.AddRateLimiter(options => options.AddFixedWindowLimiter("login", limiter =>
+builder.Services.AddRateLimiter(options =>
 {
-    limiter.PermitLimit = 10;
-    limiter.Window = TimeSpan.FromMinutes(1);
-    limiter.QueueLimit = 0;
-}));
+    options.AddFixedWindowLimiter("login", limiter =>
+    {
+        limiter.PermitLimit = 10;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("token", limiter =>
+    {
+        limiter.PermitLimit = 30;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+
+    options.AddFixedWindowLimiter("authorize", limiter =>
+    {
+        limiter.PermitLimit = 120;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))
