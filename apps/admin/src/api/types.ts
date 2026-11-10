@@ -89,6 +89,8 @@ export interface SessionInfo {
   absoluteExpiresAt: string
 }
 
+export type LegalEntityStatus = 'active' | 'disabled'
+
 export interface LegalEntitySummary {
   id: string
   displayName: string
@@ -97,9 +99,17 @@ export interface LegalEntitySummary {
   /** Document kind only; the digest is never part of the list projection. */
   idDocType: IdDocumentType
   verificationState: VerificationState
+  status: LegalEntityStatus
   verifiedAt: string | null
   accountCount: number
   createdAt: string
+}
+
+export interface LegalEntityTransition {
+  id: string
+  status: LegalEntityStatus
+  disabledAccounts: number
+  revokedSessions: number
 }
 
 export interface LegalEntityDetail extends LegalEntitySummary {

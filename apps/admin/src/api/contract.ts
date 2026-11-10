@@ -17,6 +17,7 @@ import type {
   LegalEntityDetail,
   LegalEntityQuery,
   LegalEntitySummary,
+  LegalEntityTransition,
   LoginInput,
   LoginResult,
   OrgMember,
@@ -54,6 +55,11 @@ export interface NervesApi {
   listLegalEntities(query: LegalEntityQuery): Promise<CursorPage<LegalEntitySummary>>
   getLegalEntity(id: string): Promise<LegalEntityDetail>
   listLegalEntityAccounts(id: string, query: CursorQuery): Promise<CursorPage<AccountSummary>>
+  verifyLegalEntity(id: string, providerReference?: string): Promise<LegalEntityDetail>
+  rejectLegalEntity(id: string, providerReference?: string): Promise<LegalEntityDetail>
+  expireLegalEntity(id: string): Promise<LegalEntityDetail>
+  disableLegalEntity(id: string): Promise<LegalEntityTransition>
+  enableLegalEntity(id: string): Promise<LegalEntityTransition>
 
   startPasskeyRegistration(accountId: string): Promise<PasskeyRegistration>
   completePasskeyRegistration(

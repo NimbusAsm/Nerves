@@ -19,6 +19,7 @@ import type {
   LegalEntityDetail,
   LegalEntityQuery,
   LegalEntitySummary,
+  LegalEntityTransition,
   LoginInput,
   LoginResult,
   OrgMember,
@@ -155,6 +156,36 @@ export function createHttpApi(options: HttpApiOptions = {}): NervesApi {
           sort: '-createdAt',
         })}`,
       ),
+
+    verifyLegalEntity: (id: string, providerReference?: string) =>
+      request<LegalEntityDetail>('/legal-entities/' + encodeURIComponent(id) + '/verify', {
+        method: 'POST',
+        body: { providerReference: providerReference ?? null },
+      }),
+
+    rejectLegalEntity: (id: string, providerReference?: string) =>
+      request<LegalEntityDetail>('/legal-entities/' + encodeURIComponent(id) + '/reject', {
+        method: 'POST',
+        body: { providerReference: providerReference ?? null },
+      }),
+
+    expireLegalEntity: (id: string) =>
+      request<LegalEntityDetail>('/legal-entities/' + encodeURIComponent(id) + '/expire', {
+        method: 'POST',
+        body: {},
+      }),
+
+    disableLegalEntity: (id: string) =>
+      request<LegalEntityTransition>('/legal-entities/' + encodeURIComponent(id) + '/disable', {
+        method: 'POST',
+        body: {},
+      }),
+
+    enableLegalEntity: (id: string) =>
+      request<LegalEntityTransition>('/legal-entities/' + encodeURIComponent(id) + '/enable', {
+        method: 'POST',
+        body: {},
+      }),
 
     startPasskeyRegistration: (accountId) =>
       request<PasskeyRegistration>(
