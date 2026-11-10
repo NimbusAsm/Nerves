@@ -122,7 +122,7 @@ export default {
     closeMenu: '关闭菜单',
     modeMock: '模拟数据',
     modeLive: '实时 API',
-    footer: 'Nerves 账户中心 · v0.1.0',
+    footer: 'Nerves 账户中心 · v1.0.0',
     userMenu: '账户菜单',
   },
   auth: {
@@ -307,6 +307,17 @@ export default {
     verifiedHint: '实名核验通过，可正常使用账户服务。',
     rejectedHint: '核验未通过，请补充材料后重新提交。',
     expiredHint: '实名信息已过期，需要重新核验。',
+status: {
+      active: '正常',
+      disabled: '已停用',
+    },
+    actions: {
+      verify: '核验通过',
+      reject: '驳回',
+      expire: '标记过期',
+      disable: '停用实体',
+      enable: '恢复实体',
+    },
     backToList: '返回法人列表',
   },
   orgs: {

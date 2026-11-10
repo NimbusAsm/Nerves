@@ -122,7 +122,7 @@ export default {
     closeMenu: 'Close menu',
     modeMock: 'Mock data',
     modeLive: 'Live API',
-    footer: 'Nerves Account Center · v0.1.0',
+    footer: 'Nerves Account Center · v1.0.0',
     userMenu: 'Account menu',
   },
   auth: {
@@ -307,6 +307,17 @@ export default {
     verifiedHint: 'Verification passed; account services are available.',
     rejectedHint: 'Verification failed. Resubmit with corrected material.',
     expiredHint: 'Verification expired and must be repeated.',
+status: {
+      active: 'Active',
+      disabled: 'Disabled',
+    },
+    actions: {
+      verify: 'Approve',
+      reject: 'Reject',
+      expire: 'Mark expired',
+      disable: 'Disable entity',
+      enable: 'Enable entity',
+    },
     backToList: 'Back to entities',
   },
   orgs: {

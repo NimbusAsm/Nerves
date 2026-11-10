@@ -548,6 +548,7 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
     country: entity.country,
     idDocType: entity.idDocType,
     verificationState: entity.verificationState,
+    status: entity.status,
     verifiedAt: entity.verifiedAt,
     accountCount: state.accounts.filter((account) => account.legalEntityId === entity.id).length,
     createdAt: entity.createdAt,
@@ -767,6 +768,39 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
         .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
         .map(entitySummary)
       return paginate(items, query)
+    },
+
+    async verifyLegalEntity(id: string, providerReference?: string): Promise<LegalEntityDetail> {
+      const entity = requireEntity(id)
+      entity.verificationState = 'verified'
+      entity.verifiedAt = new Date().toISOString()
+      entity.providerRef = providerReference ?? null
+      return this.getLegalEntity(id)
+    },
+
+    async rejectLegalEntity(id: string, providerReference?: string): Promise<LegalEntityDetail> {
+      const entity = requireEntity(id)
+      entity.verificationState = 'rejected'
+      entity.providerRef = providerReference ?? null
+      return this.getLegalEntity(id)
+    },
+
+    async expireLegalEntity(id: string): Promise<LegalEntityDetail> {
+      const entity = requireEntity(id)
+      entity.verificationState = 'expired'
+      return this.getLegalEntity(id)
+    },
+
+    async disableLegalEntity(id: string): Promise<{ id: string; status: 'active' | 'disabled'; disabledAccounts: number; revokedSessions: number }> {
+      const entity = requireEntity(id)
+      entity.status = 'disabled'
+      return { id, status: 'disabled', disabledAccounts: 0, revokedSessions: 0 }
+    },
+
+    async enableLegalEntity(id: string): Promise<{ id: string; status: 'active' | 'disabled'; disabledAccounts: number; revokedSessions: number }> {
+      const entity = requireEntity(id)
+      entity.status = 'active'
+      return { id, status: 'active', disabledAccounts: 0, revokedSessions: 0 }
     },
 
     async getLegalEntity(id: string): Promise<LegalEntityDetail> {
@@ -1192,6 +1226,7 @@ interface StateEntity {
   entityType: LegalEntityType
   country: string
   idDocType: IdDocumentType
+  status: 'active' | 'disabled' 
   idDocDigest: string
   verificationState: VerificationState
   verifiedAt: string | null
@@ -1264,6 +1299,7 @@ function seedState(context: { rand: () => number; now: Date }): MockState {
       country: seedEntity.country,
       idDocType: seedEntity.idDocType,
       idDocDigest: `hmac-sha256:${randomHex(rand, 32)}`,
+      status: 'active',
       verificationState: seedEntity.verificationState,
       verifiedAt: verifiedAt?.toISOString() ?? null,
       providerRef: seedEntity.providerRef,

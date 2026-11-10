@@ -29,6 +29,23 @@ const accounts = useCursorList<AccountSummary>(({ limit, cursor }) =>
   api.listLegalEntityAccounts(entityId.value, { limit, cursor }),
 )
 
+const acting = ref(false)
+const actionError = ref<string | null>(null)
+
+/** Runs a lifecycle action and refreshes the entity afterwards. */
+async function runAction(action: () => Promise<unknown>): Promise<void> {
+  acting.value = true
+  actionError.value = null
+  try {
+    await action()
+    await load()
+  } catch (cause) {
+    actionError.value = describeError(cause)
+  } finally {
+    acting.value = false
+  }
+}
+
 const hintKey = computed(() => {
   switch (entity.value?.verificationState) {
     case 'verified':
@@ -72,8 +89,56 @@ onMounted(load)
         <Badge v-if="entity" :tone="labels.verificationTone(entity.verificationState)" size="md">
           {{ labels.verificationState(entity.verificationState) }}
         </Badge>
+        <Badge v-if="entity" :tone="entity.status === 'active' ? 'success' : 'danger'" size="md">
+          {{ entity.status === 'active' ? $t('entities.status.active') : $t('entities.status.disabled') }}
+        </Badge>
       </template>
     </PageHeader>
+
+    <div
+      v-if="entity"
+      class="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-ink-900/10 bg-white px-4 py-3"
+    >
+      <Button
+        v-if="entity.verificationState === 'pending'"
+        :disabled="acting"
+        @click="runAction(() => api.verifyLegalEntity(entityId))"
+      >
+        {{ $t('entities.actions.verify') }}
+      </Button>
+      <Button
+        v-if="entity.verificationState === 'pending'"
+        variant="ghost"
+        :disabled="acting"
+        @click="runAction(() => api.rejectLegalEntity(entityId))"
+      >
+        {{ $t('entities.actions.reject') }}
+      </Button>
+      <Button
+        v-if="entity.verificationState === 'verified'"
+        variant="ghost"
+        :disabled="acting"
+        @click="runAction(() => api.expireLegalEntity(entityId))"
+      >
+        {{ $t('entities.actions.expire') }}
+      </Button>
+      <Button
+        v-if="entity.status === 'active'"
+        variant="danger"
+        :disabled="acting"
+        @click="runAction(() => api.disableLegalEntity(entityId))"
+      >
+        {{ $t('entities.actions.disable') }}
+      </Button>
+      <Button
+        v-if="entity.status === 'disabled'"
+        :disabled="acting"
+        @click="runAction(() => api.enableLegalEntity(entityId))"
+      >
+        {{ $t('entities.actions.enable') }}
+      </Button>
+      <span v-if="actionError" class="text-sm text-red-600" role="alert">{{ actionError }}</span>
+    </div>
 
     <div
       v-if="error"
