@@ -26,6 +26,8 @@ builder.AddNervesDefaults("nerves-idp");
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
+builder.Services.AddNervesDataProtection(builder.Configuration, builder.Environment);
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
