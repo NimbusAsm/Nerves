@@ -20,7 +20,10 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
-await app.MigrateNervesDatabaseAsync<ComplianceDbContext>();
+if (await app.MigrateNervesDatabaseAsync<ComplianceDbContext>())
+{
+    return;
+}
 
 app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();

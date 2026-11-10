@@ -27,7 +27,10 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 
 var app = builder.Build();
 
-await app.MigrateNervesDatabaseAsync<AuditDbContext>();
+if (await app.MigrateNervesDatabaseAsync<AuditDbContext>())
+{
+    return;
+}
 
 app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();

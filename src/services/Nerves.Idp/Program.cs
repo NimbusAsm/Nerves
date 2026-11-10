@@ -146,7 +146,10 @@ builder.Services.AddHostedService<OpenIddictClientSeeder>();
 
 var app = builder.Build();
 
-await app.MigrateNervesDatabaseAsync<IdpDbContext>();
+if (await app.MigrateNervesDatabaseAsync<IdpDbContext>())
+{
+    return;
+}
 
 await using (var startupScope = app.Services.CreateAsyncScope())
 {
