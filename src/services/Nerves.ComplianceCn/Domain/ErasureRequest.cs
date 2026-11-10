@@ -29,8 +29,11 @@ public sealed class ErasureRequest
 
     public string Status { get; private set; }
 
-    public static ErasureRequest Create(string subjectId, string reason, DateTimeOffset now) =>
-        new(Guid.CreateVersion7(now), subjectId, reason, now);
+    public static ErasureRequest Create(string subjectId, string reason, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(subjectId);
+        return new ErasureRequest(Guid.CreateVersion7(now), subjectId, reason, now);
+    }
 
     public void Complete(DateTimeOffset now)
     {
@@ -43,4 +46,19 @@ public sealed class ErasureRequest
         Status = "failed";
         CompletedAt = now;
     }
+
+    /// <summary>
+    /// Replaces the subject identifier with a constant marker. CompletedAt is
+    /// reset so the record survives one more full retention window before the
+    /// sweep deletes it.
+    /// </summary>
+    public void Anonymize(DateTimeOffset now)
+    {
+        SubjectId = AnonymizedSubject;
+        Reason = string.Empty;
+        Status = "anonymized";
+        CompletedAt = now;
+    }
+
+    public const string AnonymizedSubject = "anonymized";
 }

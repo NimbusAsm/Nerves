@@ -45,7 +45,6 @@ public static class RoleEndpoints
     private static async Task<IResult> CreateRoleAsync(
         CreateRoleRequest request,
         AuthorizationDbContext db,
-        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         if (await db.Roles.AnyAsync(x => x.Realm == request.Realm && x.Code == request.Code, cancellationToken))
@@ -73,13 +72,15 @@ public static class RoleEndpoints
 
         await db.SaveChangesAsync(cancellationToken);
 
-        await audit.AppendAsync(
+        AddAudit(db,
             "authz.role.created",
             "admin",
             "role",
             role.Id.ToString(),
             "{\"code\":\"" + role.Code + "\"}",
             cancellationToken);
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/v1/roles/{role.Id}", new { role.Id, role.Realm, role.Code, role.Name });
     }
@@ -88,7 +89,6 @@ public static class RoleEndpoints
         Guid id,
         AssignRoleRequest request,
         AuthorizationDbContext db,
-        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         if (!Enum.TryParse<SubjectType>(request.SubjectType, ignoreCase: true, out var subjectType))
@@ -111,13 +111,15 @@ public static class RoleEndpoints
         await BumpSubjectAsync(db, subjectType, request.SubjectId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        await audit.AppendAsync(
+        AddAudit(db,
             "authz.role.assigned",
             "admin",
             subjectType.ToString().ToLowerInvariant(),
             request.SubjectId.ToString(),
             "{\"roleId\":\"" + id + "\"}",
             cancellationToken);
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Ok();
     }
@@ -126,7 +128,6 @@ public static class RoleEndpoints
         Guid id,
         AssignRoleRequest request,
         AuthorizationDbContext db,
-        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         if (!Enum.TryParse<SubjectType>(request.SubjectType, ignoreCase: true, out var subjectType))
@@ -147,13 +148,15 @@ public static class RoleEndpoints
         await BumpSubjectAsync(db, subjectType, request.SubjectId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        await audit.AppendAsync(
+        AddAudit(db,
             "authz.role.revoked",
             "admin",
             subjectType.ToString().ToLowerInvariant(),
             request.SubjectId.ToString(),
             "{\"roleId\":\"" + id + "\"}",
             cancellationToken);
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Ok();
     }
@@ -184,6 +187,26 @@ public static class RoleEndpoints
         db.Permissions.Add(permission);
         await db.SaveChangesAsync(cancellationToken);
         return Results.Created($"/api/v1/permissions/{permission.Id}", new { permission.Id, permission.Code });
+    }
+
+
+    private static void AddAudit(
+        AuthorizationDbContext db,
+        string action,
+        string actorId,
+        string? targetType,
+        string? targetId,
+        string? detailJson,
+        CancellationToken cancellationToken)
+    {
+        _ = actorId;
+        _ = cancellationToken;
+        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
+            action,
+            targetType,
+            targetId,
+            detailJson ?? "{}",
+            DateTimeOffset.UtcNow));
     }
 
     private static async Task BumpSubjectAsync(

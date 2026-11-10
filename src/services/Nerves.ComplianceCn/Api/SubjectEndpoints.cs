@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Nerves.ComplianceCn.Domain;
 using Nerves.ComplianceCn.Integration;
 using Nerves.ComplianceCn.Persistence;
 using Nerves.ServiceDefaults.Security;
@@ -71,6 +72,12 @@ public static class SubjectEndpoints
         var now = DateTimeOffset.UtcNow;
         var request = Domain.ErasureRequest.Create(subjectId, body?.Reason ?? string.Empty, now);
         db.ErasureRequests.Add(request);
+        db.OutboxEvents.Add(OutboxEvent.Create(
+            "compliance.erasure.requested",
+            "account",
+            subjectId,
+            "{}",
+            now));
 
         var active = await db.Consents
             .Where(x => x.SubjectId == subjectId && x.RevokedAt == null)
@@ -94,6 +101,13 @@ public static class SubjectEndpoints
         {
             request.Fail(now);
         }
+
+        db.OutboxEvents.Add(OutboxEvent.Create(
+            "compliance.erasure.completed",
+            "account",
+            subjectId,
+            "{\"status\":\"" + request.Status + "\"}",
+            now));
 
         await db.SaveChangesAsync(cancellationToken);
 

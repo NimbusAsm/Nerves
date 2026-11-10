@@ -71,6 +71,13 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
         }
 
         session.Revoke(request.Reason, DateTimeOffset.UtcNow);
+        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
+            "session.revoked",
+            "session",
+            session.Id.ToString(),
+            "{\"reason\":\"" + request.Reason.Replace("\"", "'", StringComparison.Ordinal) + "\"}",
+            DateTimeOffset.UtcNow));
+
         await db.SaveChangesAsync(context.CancellationToken);
         return new RevokeSessionResponse { Revoked = true };
     }
@@ -93,6 +100,13 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
         {
             session.Revoke(request.Reason, now);
         }
+
+        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
+            "session.account_revoked",
+            "account",
+            accountId.ToString(),
+            "{\"revoked\":" + sessions.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}",
+            now));
 
         await db.SaveChangesAsync(context.CancellationToken);
         return new RevokeAccountSessionsResponse { Revoked = sessions.Count };

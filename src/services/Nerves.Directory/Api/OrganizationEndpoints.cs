@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Nerves.Directory.Domain;
+using Nerves.Directory.Integration;
 using Nerves.Directory.Persistence;
 using Nerves.ServiceDefaults.Security;
 
@@ -74,6 +75,8 @@ public static class OrganizationEndpoints
         }
 
         db.Organizations.Add(organization);
+        AddAudit(db, "directory.organization.created", "organization", organization.Id.ToString(),
+            "{\"slug\":\"" + organization.Slug + "\"}");
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/v1/organizations/{organization.Id}", ToResponse(organization));
@@ -122,6 +125,8 @@ public static class OrganizationEndpoints
 
         var membership = Membership.Create(id, request.AccountId, request.Role, DateTimeOffset.UtcNow);
         db.Memberships.Add(membership);
+        AddAudit(db, "directory.member.added", "account", request.AccountId.ToString(),
+            "{\"organizationId\":\"" + id + "\"}");
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created(
@@ -144,6 +149,8 @@ public static class OrganizationEndpoints
         }
 
         membership.Remove();
+        AddAudit(db, "directory.member.removed", "account", accountId.ToString(),
+            "{\"organizationId\":\"" + id + "\"}");
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok();
     }
@@ -166,6 +173,8 @@ public static class OrganizationEndpoints
 
         var invitation = Invitation.Create(id, emailHash, request.Role, tokenHash, DateTimeOffset.UtcNow, TimeSpan.FromDays(7));
         db.Invitations.Add(invitation);
+        AddAudit(db, "directory.invitation.created", "organization", id.ToString(),
+            "{\"role\":\"" + invitation.Role + "\"}");
         await db.SaveChangesAsync(cancellationToken);
 
         // The raw token is returned exactly once; only its hash is stored.
@@ -202,9 +211,27 @@ public static class OrganizationEndpoints
         }
 
         db.Memberships.Add(Membership.Create(invitation.OrganizationId, request.AccountId, invitation.Role, now));
+        AddAudit(db, "directory.invitation.accepted", "account", request.AccountId.ToString(),
+            "{\"organizationId\":\"" + invitation.OrganizationId + "\"}");
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Ok(new { invitation.OrganizationId, request.AccountId, invitation.Role });
+    }
+
+
+    private static void AddAudit(
+        DirectoryDbContext db,
+        string action,
+        string? targetType,
+        string? targetId,
+        string detailJson)
+    {
+        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
+            action,
+            targetType,
+            targetId,
+            detailJson,
+            DateTimeOffset.UtcNow));
     }
 
     private static string Sha256(string value) =>

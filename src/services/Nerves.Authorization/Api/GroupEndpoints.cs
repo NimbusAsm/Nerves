@@ -48,7 +48,6 @@ public static class GroupEndpoints
     private static async Task<IResult> CreateAsync(
         CreateGroupRequest request,
         AuthorizationDbContext db,
-        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         if (await db.Groups.AnyAsync(
@@ -62,13 +61,15 @@ public static class GroupEndpoints
         db.Groups.Add(group);
         await db.SaveChangesAsync(cancellationToken);
 
-        await audit.AppendAsync(
+        AddAudit(db,
             "authz.group.created",
             "admin",
             "group",
             group.Id.ToString(),
             "{\"code\":\"" + group.Code + "\"}",
             cancellationToken);
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/v1/groups/{group.Id}", new { group.Id, group.Realm, group.Code, group.Name });
     }
@@ -91,7 +92,6 @@ public static class GroupEndpoints
     private static async Task<IResult> DeleteAsync(
         Guid id,
         AuthorizationDbContext db,
-        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         var group = await db.Groups.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -111,13 +111,15 @@ public static class GroupEndpoints
 
         await db.SaveChangesAsync(cancellationToken);
 
-        await audit.AppendAsync(
+        AddAudit(db,
             "authz.group.deleted",
             "admin",
             "group",
             id.ToString(),
             null,
             cancellationToken);
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Ok();
     }
@@ -140,7 +142,6 @@ public static class GroupEndpoints
         Guid id,
         AddGroupMemberRequest request,
         AuthorizationDbContext db,
-        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         if (!await db.Groups.AnyAsync(x => x.Id == id, cancellationToken))
@@ -158,13 +159,15 @@ public static class GroupEndpoints
         await BumpAsync(db, request.AccountId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        await audit.AppendAsync(
+        AddAudit(db,
             "authz.group.member_added",
             "admin",
             "account",
             request.AccountId.ToString(),
             "{\"groupId\":\"" + id + "\"}",
             cancellationToken);
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/v1/groups/{id}/members", new { groupId = id, request.AccountId });
     }
@@ -173,7 +176,6 @@ public static class GroupEndpoints
         Guid id,
         Guid accountId,
         AuthorizationDbContext db,
-        AuthorizationAuditClient audit,
         CancellationToken cancellationToken)
     {
         var member = await db.GroupMembers.FirstOrDefaultAsync(
@@ -189,7 +191,7 @@ public static class GroupEndpoints
         await BumpAsync(db, accountId, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
 
-        await audit.AppendAsync(
+        AddAudit(db,
             "authz.group.member_removed",
             "admin",
             "account",
@@ -197,7 +199,29 @@ public static class GroupEndpoints
             "{\"groupId\":\"" + id + "\"}",
             cancellationToken);
 
+        await db.SaveChangesAsync(cancellationToken);
+
         return Results.Ok();
+    }
+
+
+    private static void AddAudit(
+        AuthorizationDbContext db,
+        string action,
+        string actorId,
+        string? targetType,
+        string? targetId,
+        string? detailJson,
+        CancellationToken cancellationToken)
+    {
+        _ = actorId;
+        _ = cancellationToken;
+        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
+            action,
+            targetType,
+            targetId,
+            detailJson ?? "{}",
+            DateTimeOffset.UtcNow));
     }
 
     private static async Task BumpAsync(AuthorizationDbContext db, Guid subjectId, CancellationToken cancellationToken)

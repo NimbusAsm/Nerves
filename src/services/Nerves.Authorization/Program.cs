@@ -28,7 +28,8 @@ builder.Services.Configure<AuditOptions>(builder.Configuration.GetSection(AuditO
 var auditAddress = builder.Configuration["Audit:GrpcAddress"] ?? "http://127.0.0.1:5205";
 builder.Services.AddSingleton(_ => new Nerves.Contracts.Audit.V1.AuditService.AuditServiceClient(
     Grpc.Net.Client.GrpcChannel.ForAddress(auditAddress)));
-builder.Services.AddSingleton<AuthorizationAuditClient>();
+builder.Services.AddSingleton<IAuditPublisher, AuditPublisher>();
+builder.Services.AddHostedService<OutboxDispatcher>();
 builder.Services.AddHttpClient("pdp", client => client.Timeout = TimeSpan.FromSeconds(3));
 builder.Services.Configure<DevSeedOptions>(builder.Configuration.GetSection(DevSeedOptions.SectionName));
 builder.Services.AddHostedService<AuthorizationDevSeeder>();

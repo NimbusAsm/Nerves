@@ -97,6 +97,45 @@ namespace Nerves.ComplianceCn.Persistence.Migrations
                     b.ToTable("erasure_request", "compliance");
                 });
 
+            modelBuilder.Entity("Nerves.ComplianceCn.Domain.OutboxEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("DispatchedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("OccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TargetId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TargetType")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DispatchedAt", "OccurredAt");
+
+                    b.ToTable("outbox_event", "compliance");
+                });
+
             modelBuilder.Entity("Nerves.ComplianceCn.Domain.RetentionPolicy", b =>
                 {
                     b.Property<Guid>("Id")
