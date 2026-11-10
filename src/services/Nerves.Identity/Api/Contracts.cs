@@ -1,6 +1,8 @@
 namespace Nerves.Identity.Api;
 
 /// <summary>Request body for creating a network account.</summary>
+public sealed record ChangePasswordRequest(string? NewPassword);
+
 public sealed record CreateAccountRequest(
     Guid? LegalEntityId,
     string Realm,
