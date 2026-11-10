@@ -21,7 +21,8 @@ public sealed class GatewayRoutesTests
         routes.ShouldContain(r => r.ClusterId == "directory");
         routes.ShouldContain(r => r.ClusterId == "compliance");
         routes.ShouldContain(r => r.ClusterId == "idp");
-        clusters.Count.ShouldBe(7);
+        routes.ShouldContain(r => r.ClusterId == "notification");
+        clusters.Count.ShouldBe(8);
     }
 
     [Fact]
