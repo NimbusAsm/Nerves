@@ -21,19 +21,19 @@ public enum DeliveryOutcome
 /// of persistence so it can be unit tested with a fake sender; the dispatcher
 /// owns the database round trip.
 /// </summary>
-public sealed class DeliveryAttemptRunner(IEmailSender sender, ILogger<DeliveryAttemptRunner> logger)
+public sealed class DeliveryAttemptRunner(MessageSenderRouter senders, ILogger<DeliveryAttemptRunner> logger)
 {
-    private static readonly Action<ILogger, Guid, string, int, Exception?> AttemptFailed =
-        LoggerMessage.Define<Guid, string, int>(
+    private static readonly Action<ILogger, Guid, string, string, int, Exception?> AttemptFailed =
+        LoggerMessage.Define<Guid, string, string, int>(
             LogLevel.Warning,
-            new EventId(2, "EmailDeliveryFailed"),
-            "email delivery failed: id={NotificationId} error={Error} attempts={Attempts}");
+            new EventId(2, "NotificationDeliveryFailed"),
+            "notification delivery failed: id={NotificationId} channel={Channel} error={Error} attempts={Attempts}");
 
-    private static readonly Action<ILogger, Guid, Exception?> DeliveryExhausted =
-        LoggerMessage.Define<Guid>(
+    private static readonly Action<ILogger, Guid, string, Exception?> DeliveryExhausted =
+        LoggerMessage.Define<Guid, string>(
             LogLevel.Error,
-            new EventId(3, "EmailDeliveryExhausted"),
-            "email delivery exhausted its retries: id={NotificationId}");
+            new EventId(3, "NotificationDeliveryExhausted"),
+            "notification delivery exhausted its retries: id={NotificationId} channel={Channel}");
 
     public async Task<DeliveryOutcome> DeliverAsync(
         NotificationMessage message,
@@ -46,9 +46,7 @@ public sealed class DeliveryAttemptRunner(IEmailSender sender, ILogger<DeliveryA
 
         try
         {
-            await sender.SendAsync(
-                new EmailSendRequest(message.To, message.Subject, message.Body),
-                cancellationToken);
+            await senders.SendAsync(message, cancellationToken);
 
             message.MarkSent(now);
             return DeliveryOutcome.Sent;
@@ -61,11 +59,17 @@ public sealed class DeliveryAttemptRunner(IEmailSender sender, ILogger<DeliveryA
         {
             var error = Describe(exception);
             message.RecordFailure(error, now, policy);
-            AttemptFailed(logger, message.Id, error, message.Attempts, exception);
+            AttemptFailed(
+                logger,
+                message.Id,
+                message.Channel.ToWire(),
+                error,
+                message.Attempts,
+                exception);
 
             if (message.Status == NotificationStatus.Failed)
             {
-                DeliveryExhausted(logger, message.Id, null);
+                DeliveryExhausted(logger, message.Id, message.Channel.ToWire(), null);
                 return DeliveryOutcome.Failed;
             }
 

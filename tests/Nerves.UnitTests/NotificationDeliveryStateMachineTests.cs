@@ -21,8 +21,8 @@ public sealed class NotificationDeliveryStateMachineTests
             "正文",
             Now);
 
-    private static DeliveryAttemptRunner Runner(IEmailSender sender) =>
-        new(sender, NullLogger<DeliveryAttemptRunner>.Instance);
+    private static DeliveryAttemptRunner Runner(params IMessageSender[] senders) =>
+        new(new MessageSenderRouter(senders), NullLogger<DeliveryAttemptRunner>.Instance);
 
     [Fact]
     public async Task A_sender_that_accepts_the_message_marks_it_sent()
@@ -126,7 +126,7 @@ public sealed class NotificationDeliveryStateMachineTests
         DeliveryAttemptRunner.Describe(new InvalidOperationException("   ")).ShouldBe("delivery failed");
     }
 
-    private sealed class FakeSender : IEmailSender
+    private sealed class FakeSender : IMessageSender
     {
         private readonly Exception? _failure;
         private readonly int _failuresBeforeSuccess;
@@ -139,9 +139,11 @@ public sealed class NotificationDeliveryStateMachineTests
             _failuresBeforeSuccess = failuresBeforeSuccess;
         }
 
+        public NotificationChannel Channel => NotificationChannel.Email;
+
         public int Calls { get; private set; }
 
-        public Task SendAsync(EmailSendRequest request, CancellationToken cancellationToken)
+        public Task SendAsync(MessageSendRequest request, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(request);
 
