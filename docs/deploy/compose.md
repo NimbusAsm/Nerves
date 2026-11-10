@@ -9,11 +9,15 @@
 | 服务 | 端口 | 说明 |
 | --- | --- | --- |
 | gateway | 5100 → 8080 | 边缘入口 |
-| idp | 5101 → 8080 | OIDC（当前空壳） |
-| identity | 5102 → 8080 | 身份（当前空壳） |
-| session | 5103 → 8080 | 会话（当前空壳） |
-| authorization | 5104 → 8080 | 授权（当前空壳） |
-| directory | 5105 → 8080 | 目录（当前空壳） |
+| idp | 5101 → 8080 | OIDC |
+| identity | 5102 → 8080 | 身份与账户 |
+| session | 5103 → 8080 | 会话 |
+| authorization | 5104 → 8080 | 授权（RBAC / PDP） |
+| audit | 5105 → 8080 | 审计事件流 |
+| directory | 5106 → 8080 | 组织与邀请 |
+| compliance | 5107 → 8080 | 合规（同意与保留策略） |
+| notification | 5108 → 8080 | 邮件投递与投递日志 |
+| console | 5109 → 8080 | 控制台只读聚合层（[说明](/guide/operations/console-api)） |
 | postgres | `127.0.0.1:55440` | PostgreSQL 18.6-alpine |
 | nats | 4222 / 8222 | NATS 2.15.2-alpine + JetStream |
 

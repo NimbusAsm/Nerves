@@ -68,6 +68,12 @@ for s in $SERVICES; do
     -t "ghcr.io/nimbusasm/nerves/${s}:${TAG}" .
 done
 
+# The console aggregation layer lives in Nerves.ConsoleApi, so build it explicitly.
+docker build -f deploy/docker/Dockerfile \
+  --build-arg PROJECT=src/services/Nerves.ConsoleApi/Nerves.ConsoleApi.csproj \
+  --build-arg ENTRY_DLL=Nerves.ConsoleApi.dll \
+  -t "ghcr.io/nimbusasm/nerves/console:${TAG}" .
+
 # Kind（集群名按实际修改）
 for s in $SERVICES; do
   kind load docker-image "ghcr.io/nimbusasm/nerves/${s}:${TAG}" --name nerves
@@ -281,8 +287,8 @@ helm test nerves -n nerves
 
 | Resource | Count | Notes |
 | --- | --- | --- |
-| Deployments | 10 | gateway, idp, identity, session, authorization, directory, audit, compliance, notification, admin |
-| Services | 10 | 12 with bundled PostgreSQL and NATS |
+| Deployments | 11 | gateway, idp, identity, session, authorization, directory, audit, compliance, notification, console, admin |
+| Services | 11 | 13 with bundled PostgreSQL and NATS |
 | gRPC service ports | 5 | identity, session, authorization, directory, audit (8081) |
 | Migration Jobs | 8 | pre-install/pre-upgrade, Database__MigrateOnly=true |
 | PVCs | 2 | data protection key rings for identity and idp |
@@ -290,6 +296,8 @@ helm test nerves -n nerves
 Wiring uses environment variables:
 
 * Gateway__Services__<cluster> points the gateway at each service.
+* Console__Services__<name> points the console aggregation layer at identity,
+  session, authorization, audit and compliance.
 * Identity__GrpcAddress, Session__GrpcAddress, Authorization__GrpcAddress and
   Audit__GrpcAddress point the IdP at the gRPC listeners.
 * Authentication__Authority, Authentication__Issuer and Authentication__Audience

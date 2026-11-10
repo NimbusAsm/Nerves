@@ -14,6 +14,7 @@
     <Project Path="src/services/Nerves.Audit/Nerves.Audit.csproj" />
     <Project Path="src/services/Nerves.Authorization/Nerves.Authorization.csproj" />
     <Project Path="src/services/Nerves.ComplianceCn/Nerves.ComplianceCn.csproj" />
+    <Project Path="src/services/Nerves.ConsoleApi/Nerves.ConsoleApi.csproj" />
     <Project Path="src/services/Nerves.Directory/Nerves.Directory.csproj" />
     <Project Path="src/services/Nerves.Gateway/Nerves.Gateway.csproj" />
     <Project Path="src/services/Nerves.Identity/Nerves.Identity.csproj" />
@@ -23,6 +24,9 @@
   </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/dotnet-console/Nerves.Samples.DotnetConsole.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Nerves.Cli/Nerves.Cli.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Nerves.Identity.UnitTests/Nerves.Identity.UnitTests.csproj" />

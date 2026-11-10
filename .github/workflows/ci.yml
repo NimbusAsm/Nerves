@@ -81,7 +81,7 @@ jobs:
       - name: Build every service image
         run: |
           set -euo pipefail
-          for svc in Gateway Idp Identity Session Authorization Directory Audit ComplianceCn Notification; do
+          for svc in Gateway Idp Identity Session Authorization Directory Audit ComplianceCn Notification ConsoleApi; do
             echo "::group::Building $svc"
             docker build \
               -f deploy/docker/Dockerfile \

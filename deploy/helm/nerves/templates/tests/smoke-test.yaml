@@ -21,4 +21,8 @@ spec:
           set -eu
           curl -fsS "http://{{ include "nerves.serviceFullname" (dict "root" . "name" "gateway") }}:{{ .Values.services.gateway.port | default 80 }}/healthz"
           echo "gateway is healthy"
+          {{ if .Values.services.console.enabled }}
+          curl -fsS "http://{{ include "nerves.serviceFullname" (dict "root" . "name" "console") }}:{{ .Values.services.console.port | default 80 }}/healthz"
+          echo "console is healthy"
+          {{ end }}
 {{- end }}
