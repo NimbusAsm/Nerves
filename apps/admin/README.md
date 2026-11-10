@@ -178,3 +178,18 @@ pnpm test
 ## License
 
 Apache-2.0，见仓库根目录 `LICENSE`。
+
+
+## Production image
+
+```bash
+docker build -f apps/admin/Dockerfile -t nerves-admin \
+  --build-arg VITE_API_BASE_URL=https://nerves.example.com/api/v1 \
+  --build-arg VITE_IDP_URL=https://auth.example.com \
+  --build-arg VITE_USE_MOCK=false \
+  apps/admin
+```
+
+The image serves the SPA on port 8080 with /healthz, SPA fallback and the
+static /oidc-callback.html. The redirect URI is derived from the browser origin,
+so register https://<admin-host>/oidc-callback.html on the nerves-admin client.

@@ -323,3 +323,12 @@ helm upgrade --install nerves deploy/helm/nerves \
 
 Then set `seed.enabled=false` and upgrade again. `config.adminOrigins` lists the
 browser origins allowed to call the IdP and the gateway (the admin console).
+
+
+## Admin console
+
+services.admin deploys the static admin image (nerves-admin) with its /healthz
+probe. Build it with apps/admin/Dockerfile and the VITE_API_BASE_URL /
+VITE_IDP_URL build arguments; expose it either on its own host or behind the
+same ingress. Register https://<admin-host>/oidc-callback.html on the
+nerves-admin OpenIddict client (see First install).

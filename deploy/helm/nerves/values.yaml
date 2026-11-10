@@ -240,6 +240,33 @@ services:
     extraEnv: []
     extraEnvFrom: []
 
+  # The admin console is a static nginx image; probes hit its /healthz.
+  admin:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        cpu: "200m"
+        memory: 128Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
   compliance:
     enabled: true
     replicaCount: 1
