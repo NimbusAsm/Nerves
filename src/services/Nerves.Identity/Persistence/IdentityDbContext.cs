@@ -21,6 +21,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<RoutingIndexEntry> RoutingIndex => Set<RoutingIndexEntry>();
 
+    public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

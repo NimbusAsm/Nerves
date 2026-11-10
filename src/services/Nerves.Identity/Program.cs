@@ -33,6 +33,8 @@ builder.Services.Configure<ShardingOptions>(builder.Configuration.GetSection(Sha
 builder.Services.AddSingleton<ShardResolver>();
 builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddSingleton<Nerves.Identity.Integration.SessionClient>();
+builder.Services.AddSingleton<Nerves.Identity.Integration.IAuditPublisher, Nerves.Identity.Integration.AuditPublisher>();
+builder.Services.AddHostedService<Nerves.Identity.Integration.OutboxDispatcher>();
 builder.Services.AddSingleton<IFido2>(_ => new Fido2(new Fido2Configuration
 {
     RPID = "nerves.local",
@@ -79,6 +81,7 @@ app.MapNervesDefaults("nerves-identity");
 app.MapGrpcService<IdentityGrpcService>();
 app.MapAccountEndpoints();
 app.MapLegalEntityEndpoints();
+app.MapEventEndpoints();
 app.MapStatsEndpoints();
 app.MapMfaEndpoints();
 app.MapScimUserEndpoints();
