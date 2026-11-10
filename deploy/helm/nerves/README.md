@@ -1,7 +1,7 @@
 # Nerves Helm Chart
 
-把 Nerves 的六个核心服务（gateway / idp / identity / session / authorization / directory）
-部署到 Kubernetes。Chart 同时内置**可选**的单节点 PostgreSQL 18 与 NATS JetStream，
+把 Nerves 的核心服务（gateway / idp / identity / session / authorization / directory /
+audit / compliance / notification）部署到 Kubernetes。Chart 同时内置**可选**的单节点 PostgreSQL 18 与 NATS JetStream，
 默认值面向 Kind / Minikube；生产环境应改用外部 PostgreSQL / NATS。
 
 > 当前仓库处于 M0 骨架阶段：服务已提供 `/healthz`、`/readyz`、`/api/v1/meta`
@@ -58,7 +58,7 @@
 Chart 不含镜像构建。仓库根目录执行：
 
 ```bash
-SERVICES="gateway idp identity session authorization directory"
+SERVICES="gateway idp identity session authorization directory audit compliance notification"
 TAG=0.1.0
 for s in $SERVICES; do
   dotnet="Nerves.${s^}"
@@ -281,10 +281,10 @@ helm test nerves -n nerves
 
 | Resource | Count | Notes |
 | --- | --- | --- |
-| Deployments | 8 | gateway, idp, identity, session, authorization, directory, audit, compliance |
-| Services | 8 | plus PostgreSQL/NATS when bundled |
+| Deployments | 10 | gateway, idp, identity, session, authorization, directory, audit, compliance, notification, admin |
+| Services | 10 | 12 with bundled PostgreSQL and NATS |
 | gRPC service ports | 5 | identity, session, authorization, directory, audit (8081) |
-| Migration Jobs | 7 | pre-install/pre-upgrade, Database__MigrateOnly=true |
+| Migration Jobs | 8 | pre-install/pre-upgrade, Database__MigrateOnly=true |
 | PVCs | 2 | data protection key rings for identity and idp |
 
 Wiring uses environment variables:
@@ -296,6 +296,31 @@ Wiring uses environment variables:
   are set on every resource service from config.publicIssuer and config.audience.
 * DataProtection__KeysDirectory is set for identity and idp, backed by the two
   PVCs (or dataProtection.existingClaim).
+* Smtp__* and Delivery__* are set on the notification service from
+  config.notification. The SMTP password is injected from
+  config.notification.smtp.existingSecret (key config.notification.smtp.passwordSecretKey)
+  and is never rendered into values or a ConfigMap.
+
+### Notification email delivery
+
+`config.notification.smtp.disabled=true` (the default) uses the no-op sender,
+so the service records deliveries without contacting a mail server. To deliver
+real mail set:
+
+```yaml
+config:
+  notification:
+    smtp:
+      disabled: false
+      host: smtp.example.com
+      port: 587
+      from: noreply@example.com
+      tls: true
+      user: nerves
+      existingSecret: nerves-smtp      # Secret with the SMTP password
+```
+
+Create the Secret out-of-band (`kubectl create secret generic nerves-smtp --from-literal=password=...`).
 
 
 ## Multiple replicas

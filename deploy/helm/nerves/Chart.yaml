@@ -1,6 +1,6 @@
 apiVersion: v2
 name: nerves
-description: Nerves — self-hosted account center (gateway, IdP, identity, session, authorization, directory)
+description: Nerves — self-hosted account center (gateway, IdP, identity, session, authorization, directory, notification)
 type: application
 version: 0.1.0
 appVersion: "0.1.0"

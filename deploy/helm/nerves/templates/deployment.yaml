@@ -150,6 +150,39 @@ spec:
             - name: Gateway__Services__idp
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "idp") }}:{{ (index $.Values.services "idp").port }}/"
             {{- end }}
+            {{- if eq $name "notification" }}
+            - name: Smtp__Disabled
+              value: {{ $.Values.config.notification.smtp.disabled | quote }}
+            - name: Smtp__Host
+              value: {{ $.Values.config.notification.smtp.host | quote }}
+            - name: Smtp__Port
+              value: {{ $.Values.config.notification.smtp.port | quote }}
+            - name: Smtp__From
+              value: {{ $.Values.config.notification.smtp.from | quote }}
+            - name: Smtp__Tls
+              value: {{ $.Values.config.notification.smtp.tls | quote }}
+            - name: Smtp__User
+              value: {{ $.Values.config.notification.smtp.user | quote }}
+            {{- with $.Values.config.notification.smtp }}
+            {{- if .existingSecret }}
+            - name: Smtp__Password
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .existingSecret }}
+                  key: {{ .passwordSecretKey }}
+            {{- end }}
+            {{- end }}
+            - name: Delivery__SweepSeconds
+              value: {{ $.Values.config.notification.delivery.sweepSeconds | quote }}
+            - name: Delivery__MaxAttempts
+              value: {{ $.Values.config.notification.delivery.maxAttempts | quote }}
+            - name: Delivery__BaseDelaySeconds
+              value: {{ $.Values.config.notification.delivery.baseDelaySeconds | quote }}
+            - name: Delivery__MaxDelaySeconds
+              value: {{ $.Values.config.notification.delivery.maxDelaySeconds | quote }}
+            - name: Delivery__BatchSize
+              value: {{ $.Values.config.notification.delivery.batchSize | quote }}
+            {{- end }}
             {{- range (default (list) $svc.extraEnv) }}
             - {{ toYaml . | nindent 14 }}
             {{- end }}

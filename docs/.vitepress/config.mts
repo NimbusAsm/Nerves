@@ -64,6 +64,7 @@ export default defineConfig({
             { text: '密钥轮换', link: '/guide/operations/key-rotation' },
             { text: '升级与回滚', link: '/guide/operations/upgrade' },
             { text: '上线安全检查', link: '/guide/operations/security-checklist' },
+            { text: '通知服务（Email）', link: '/guide/operations/notification' },
           ],
         },
           { text: '接入概览', link: '/guide/integration/' },

@@ -17,6 +17,7 @@
     <Project Path="src/services/Nerves.Gateway/Nerves.Gateway.csproj" />
     <Project Path="src/services/Nerves.Identity/Nerves.Identity.csproj" />
     <Project Path="src/services/Nerves.Idp/Nerves.Idp.csproj" />
+    <Project Path="src/services/Nerves.Notification/Nerves.Notification.csproj" />
     <Project Path="src/services/Nerves.Session/Nerves.Session.csproj" />
   </Folder>
   <Folder Name="/tests/">
