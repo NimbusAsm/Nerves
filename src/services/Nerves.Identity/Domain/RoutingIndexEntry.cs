@@ -53,6 +53,14 @@ public sealed class RoutingIndexEntry
 
     public DateTimeOffset CreatedAt { get; private set; }
 
+    /// <summary>Moves the entry to another logical shard after a shard count change.</summary>
+    public void Reshard(int shard)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(shard);
+
+        Shard = shard;
+    }
+
     public static RoutingIndexEntry Create(
         string identifierHash,
         string identifierType,

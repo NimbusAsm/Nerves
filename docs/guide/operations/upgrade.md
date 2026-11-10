@@ -20,3 +20,12 @@
 
 - 迁移脚本**只做加法**（新增列/表），不重命名或删除列。
 - API 破坏性变更必须通过 `buf breaking` 与 OpenAPI 差异检查。
+
+
+## Shard count change
+
+1. Back up the database and stop traffic to identity.
+2. Dry run: `Sharding__ShardCount=<new> Sharding__Recompute=true Sharding__RecomputeDryRun=true`, and compare the printed distribution.
+3. Apply: same command without the dry-run flag; it prints `scanned` / `changed`.
+4. Re-run the apply command: `changed` must be 0 (idempotent).
+5. Start identity with the new `Sharding:ShardCount` so writes use the same mapping.

@@ -35,6 +35,7 @@ builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddSingleton<Nerves.Identity.Integration.SessionClient>();
 builder.Services.AddSingleton<Nerves.Identity.Integration.IAuditPublisher, Nerves.Identity.Integration.AuditPublisher>();
 builder.Services.AddHostedService<Nerves.Identity.Integration.OutboxDispatcher>();
+builder.Services.AddScoped<Nerves.Identity.Sharding.RoutingIndexReconciler>();
 builder.Services.AddSingleton<IFido2>(_ => new Fido2(new Fido2Configuration
 {
     RPID = "nerves.local",
@@ -66,6 +67,21 @@ app.UseNervesProxyHeaders();
 
 if (await app.MigrateNervesDatabaseAsync<IdentityDbContext>())
 {
+    return;
+}
+
+if (app.Configuration.GetValue("Sharding:Recompute", false))
+{
+    await using var reconcileScope = app.Services.CreateAsyncScope();
+    var reconciler = reconcileScope.ServiceProvider.GetRequiredService<RoutingIndexReconciler>();
+    var dryRun = app.Configuration.GetValue("Sharding:RecomputeDryRun", false);
+    var report = await reconciler.RunAsync(dryRun, CancellationToken.None);
+    Console.WriteLine(
+        "shard reconciliation: scanned={0} changed={1} dryRun={2} distribution={3}",
+        report.Scanned,
+        report.Changed,
+        dryRun,
+        string.Join(",", report.Distribution.OrderBy(x => x.Key).Select(x => x.Key + ":" + x.Value)));
     return;
 }
 
