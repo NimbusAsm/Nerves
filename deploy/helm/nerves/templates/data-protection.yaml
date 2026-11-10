@@ -1,0 +1,20 @@
+{{- if not .Values.dataProtection.existingClaim }}
+{{- range $name := list "identity" "idp" }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "nerves.dpClaimName" (dict "root" $ "name" $name) }}
+  labels:
+    {{- include "nerves.labels" (dict "root" $ "name" $name) | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- with $.Values.dataProtection.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $.Values.dataProtection.size }}
+{{- end }}
+{{- end }}

@@ -276,3 +276,23 @@ helm test nerves -n nerves
 - 未内置 ServiceMonitor / PodMonitor；`config.otelExporterOtlpEndpoint` 可接 OTel Collector。
 - 签名私钥、实名 HMAC 密钥等应用密钥不属于本 Chart 的默认 values；
   通过 `services.<name>.extraEnv` + `extraEnvFrom` 从外部 Secret 注入。
+
+## What the chart renders
+
+| Resource | Count | Notes |
+| --- | --- | --- |
+| Deployments | 8 | gateway, idp, identity, session, authorization, directory, audit, compliance |
+| Services | 8 | plus PostgreSQL/NATS when bundled |
+| gRPC service ports | 5 | identity, session, authorization, directory, audit (8081) |
+| Migration Jobs | 7 | pre-install/pre-upgrade, Database__MigrateOnly=true |
+| PVCs | 2 | data protection key rings for identity and idp |
+
+Wiring uses environment variables:
+
+* Gateway__Services__<cluster> points the gateway at each service.
+* Identity__GrpcAddress, Session__GrpcAddress, Authorization__GrpcAddress and
+  Audit__GrpcAddress point the IdP at the gRPC listeners.
+* Authentication__Authority, Authentication__Issuer and Authentication__Audience
+  are set on every resource service from config.publicIssuer and config.audience.
+* DataProtection__KeysDirectory is set for identity and idp, backed by the two
+  PVCs (or dataProtection.existingClaim).

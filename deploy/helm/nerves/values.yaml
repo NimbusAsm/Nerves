@@ -41,6 +41,11 @@ config:
   # OTLP endpoint for the OpenTelemetry exporter, e.g.
   # http://otel-collector.observability.svc:4317. Empty disables the exporter.
   otelExporterOtlpEndpoint: ""
+  # Public issuer of the IdP. Tokens carry it as the iss claim, so it must be
+  # the URL clients and resource services actually use (ingress or LB).
+  publicIssuer: "https://nerves.example.com/"
+  # Audience placed on access tokens and required by resource services.
+  audience: "nerves.api"
 
 # One entry per service. Every Nerves service listens on HTTP 8080 inside the
 # container and exposes /healthz, /readyz and /api/v1/meta.
@@ -101,6 +106,7 @@ services:
     enabled: true
     replicaCount: 1
     port: 80
+    grpcPort: 8081
     serviceType: ClusterIP
     serviceAnnotations: {}
     image:
@@ -127,6 +133,7 @@ services:
     enabled: true
     replicaCount: 1
     port: 80
+    grpcPort: 8081
     serviceType: ClusterIP
     serviceAnnotations: {}
     image:
@@ -153,6 +160,7 @@ services:
     enabled: true
     replicaCount: 1
     port: 80
+    grpcPort: 8081
     serviceType: ClusterIP
     serviceAnnotations: {}
     image:
@@ -179,6 +187,7 @@ services:
     enabled: true
     replicaCount: 1
     port: 80
+    grpcPort: 8081
     serviceType: ClusterIP
     serviceAnnotations: {}
     image:
@@ -201,10 +210,35 @@ services:
     extraEnv: []
     extraEnvFrom: []
 
-  # Optional services from the architecture plan. They are NOT implemented in
-  # this repository yet: enabling them requires images that do not exist here.
   audit:
-    enabled: false
+    enabled: true
+    replicaCount: 1
+    port: 80
+    grpcPort: 8081
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
+  compliance:
+    enabled: true
     replicaCount: 1
     port: 80
     serviceType: ClusterIP
@@ -229,31 +263,25 @@ services:
     extraEnv: []
     extraEnvFrom: []
 
-  notification:
-    enabled: false
-    replicaCount: 1
-    port: 80
-    serviceType: ClusterIP
-    serviceAnnotations: {}
-    image:
-      repository: ""
-      tag: ""
-      digest: ""
-      pullPolicy: ""
-    resources:
-      requests:
-        cpu: 50m
-        memory: 128Mi
-      limits:
-        cpu: "1"
-        memory: 512Mi
-    podAnnotations: {}
-    podLabels: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    extraEnv: []
-    extraEnvFrom: []
+# DataProtection holds the keys that encrypt MFA secrets and cookies. Losing
+# them makes enrolled factors unreadable, so they live on a PVC by default.
+dataProtection:
+  size: 1Gi
+  storageClass: ""
+  existingClaim: ""
+
+# Schema migrations run as pre-install/pre-upgrade Jobs in migrate-only mode.
+migrations:
+  enabled: true
+  backoffLimit: 3
+  services:
+    - idp
+    - identity
+    - session
+    - authorization
+    - directory
+    - audit
+    - compliance
 
 ingress:
   enabled: false

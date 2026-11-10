@@ -24,6 +24,7 @@
 | CI（三作业） | ✅ 已实现 | dotnet（build/test/format/pack/buf）+ frontend（admin 与 TS SDK）+ python（pytest），均绿 |
 | 开发 compose | ✅ 已实现 | PG 18.6 + NATS 2.15.2 + 六个服务 |
 | Helm Chart | ✅ 已实现 | helm lint --strict 与 kubeconform 通过；未在真实集群安装验证 |
+| Helm chart | ✅ 已实现（生产可用） | 8 个 Deployment/Service、5 个 gRPC 端口、7 个迁移 Job（MigrateOnly）、2 个 DataProtection PVC；网关与 IdP 互通地址由 values 注入 |
 | 集成状态页 | ✅ 已实现 | 管理台新增「集成」页：LDAP（启用/主机/BaseDN/过滤器）、OIDC 联邦提供方、PDP（启用/端点/超时/fail-open）；数据来自 IdP /api/v1/admin/integrations 与 Authorization /api/v1/admin/pdp，只读 |
 | 管理后台（Vue 3） | ✅ 已实现 | 11 个页面（含用户组、集成）、mock/live 切换、中英 i18n、35 个测试 |
 | 管理后台 live 模式 | ✅ 已实现 | VITE_USE_MOCK=false 走 OIDC 授权码 + PKCE（登录 API 取票 → 跳 IdP → 回调换令牌），令牌仅存内存 |
