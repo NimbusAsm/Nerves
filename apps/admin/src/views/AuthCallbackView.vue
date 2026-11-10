@@ -10,9 +10,16 @@ const auth = useAuthStore()
 const router = useRouter()
 const error = ref<string | null>(null)
 
+/** Hash routing keeps the query inside the fragment, not location.search. */
+function authorizationResponse(): string {
+  const hash = window.location.hash
+  const query = hash.indexOf('?')
+  return query >= 0 ? hash.slice(query) : window.location.search
+}
+
 onMounted(async () => {
   try {
-    const redirectTo = await auth.finishLogin(window.location.search)
+    const redirectTo = await auth.finishLogin(authorizationResponse())
     await router.replace(safeRedirect(redirectTo))
   } catch (cause) {
     error.value = describeError(cause)

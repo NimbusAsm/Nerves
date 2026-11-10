@@ -14,7 +14,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "vue-tsc --noEmit"
+    "typecheck": "vue-tsc --noEmit",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@lucide/vue": "1.70.0",
@@ -27,6 +28,7 @@
     "vue-router": "5.4.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.5",
     "@types/node": "26.6.6",
     "@vitejs/plugin-vue": "6.0.10",

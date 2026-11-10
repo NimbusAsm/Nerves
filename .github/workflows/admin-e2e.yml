@@ -1,0 +1,100 @@
+name: admin-e2e
+
+on:
+  pull_request:
+    paths:
+      - 'apps/admin/**'
+      - '.github/workflows/admin-e2e.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/admin/**'
+      - '.github/workflows/admin-e2e.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: admin-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-alpine
+        env:
+          POSTGRES_USER: nerves
+          POSTGRES_PASSWORD: nerves
+          POSTGRES_DB: nerves
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nerves -d nerves"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/admin/pnpm-lock.yaml
+
+      - name: Restore and build backend
+        run: |
+          dotnet restore
+          dotnet build Nerves.slnx -warnaserror
+
+      - name: Run the console against the real stack
+        env:
+          E2E_DB_HOST: 127.0.0.1
+          E2E_DB_PORT: '5432'
+          E2E_DB_DATABASE: nerves
+          E2E_DB_USER: nerves
+          E2E_DB_PASSWORD: nerves
+          E2E_PORT_BASE: '5100'
+          E2E_LOG_DIR: ${{ runner.temp }}/e2e-logs
+          E2E_KEEP: '1'
+        run: |
+          set -euo pipefail
+          bash scripts/e2e-smoke.sh
+
+          docker build -f apps/admin/Dockerfile -t nerves-admin:ci \
+            --build-arg VITE_USE_MOCK=false \
+            --build-arg VITE_API_BASE_URL=http://127.0.0.1:5100/api/v1 \
+            --build-arg VITE_IDP_URL=http://127.0.0.1:5101 \
+            apps/admin
+          docker run -d --name nerves-admin-ci -p 5300:8080 nerves-admin:ci
+          for _ in $(seq 1 30); do
+            curl -fsS -o /dev/null http://127.0.0.1:5300/healthz && break
+            sleep 1
+          done
+
+          cd apps/admin
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e
+
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-e2e-traces
+          path: apps/admin/test-results
+
+      - name: Upload backend logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: admin-e2e-backend-logs
+          path: ${{ runner.temp }}/e2e-logs
