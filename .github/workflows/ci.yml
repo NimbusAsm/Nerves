@@ -81,7 +81,7 @@ jobs:
       - name: Build every service image
         run: |
           set -euo pipefail
-          for svc in Gateway Idp Identity Session Authorization Directory Audit; do
+          for svc in Gateway Idp Identity Session Authorization Directory Audit ComplianceCn; do
             echo "::group::Building $svc"
             docker build \
               -f deploy/docker/Dockerfile \
@@ -92,6 +92,12 @@ jobs:
               "nerves-$(echo "$svc" | tr '[:upper:]' '[:lower:]'):ci" --info >/dev/null
             echo "::endgroup::"
           done
+
+          echo "::group::Building admin"
+          docker build -f apps/admin/Dockerfile -t nerves-admin:ci \
+            --build-arg VITE_USE_MOCK=false apps/admin
+          docker run --rm --entrypoint nginx nerves-admin:ci -v
+          echo "::endgroup::"
 
   e2e:
     runs-on: ubuntu-latest
