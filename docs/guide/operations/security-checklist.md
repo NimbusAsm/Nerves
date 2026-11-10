@@ -31,3 +31,10 @@
 
 - [ ] 恢复演练通过（数据库 + 密钥）。
 - [ ] 轮换签名证书后旧令牌行为符合预期。
+
+
+## 供应链
+
+- [ ] CI 的 Check for vulnerable packages 步骤保持开启（NuGet 传递依赖也会扫描）。
+- [ ] Dependabot 每周提交 NuGet / npm / pip / Actions 更新 PR，合并前看 CI。
+- [ ] 升级大版本时先读迁移说明，再按 upgrade.md 演练。
