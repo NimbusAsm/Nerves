@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using OpenIddict.Abstractions;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
@@ -22,6 +23,7 @@ public sealed class AuthorizationController(
     Nerves.Idp.Logout.BackchannelLogoutDispatcher backchannel) : Controller
 {
     [HttpGet("~/connect/authorize")]
+    [EnableRateLimiting("authorize")]
     public async Task<IActionResult> Authorize()
     {
         var request = HttpContext.GetOpenIddictServerRequest()
@@ -147,6 +149,7 @@ public sealed class AuthorizationController(
     }
 
     [HttpPost("~/connect/token")]
+    [EnableRateLimiting("token")]
     [IgnoreAntiforgeryToken]
     [Produces("application/json")]
     public async Task<IActionResult> Exchange()
@@ -175,6 +178,7 @@ public sealed class AuthorizationController(
     }
 
     [Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
+    [EnableRateLimiting("authorize")]
     [HttpGet("~/connect/userinfo")]
     [Produces("application/json")]
     public async Task<IActionResult> Userinfo()
