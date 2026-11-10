@@ -21,5 +21,6 @@
     <ProjectReference Include="..\..\src\services\Nerves.ComplianceCn\Nerves.ComplianceCn.csproj" />
     <ProjectReference Include="..\..\src\services\Nerves.Identity\Nerves.Identity.csproj" />
     <ProjectReference Include="..\..\src\services\Nerves.Gateway\Nerves.Gateway.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Session\Nerves.Session.csproj" />
   </ItemGroup>
 </Project>

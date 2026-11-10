@@ -38,3 +38,9 @@
 - [ ] CI 的 Check for vulnerable packages 步骤保持开启（NuGet 传递依赖也会扫描）。
 - [ ] Dependabot 每周提交 NuGet / npm / pip / Actions 更新 PR，合并前看 CI。
 - [ ] 升级大版本时先读迁移说明，再按 upgrade.md 演练。
+
+
+## 会话
+
+- [ ] `Session:IdleMinutes` / `Session:AbsoluteHours` 与合规要求一致（IdP Cookie 与 session 服务共用）。
+- [ ] `Session:ExpirySweepSeconds` 已配置，过期会话会被标记为 expired。

@@ -3,6 +3,8 @@ using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
 using Nerves.Session.Api;
 using Nerves.Session.Grpc;
+using Nerves.Session.Integration;
+using Nerves.Session.Options;
 using Nerves.Session.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +13,8 @@ builder.AddNervesDefaults("nerves-session");
 builder.Services.AddNervesProxyHeaders(builder.Configuration);
 
 builder.Services.AddOpenApi();
+builder.Services.Configure<SessionLifetimeOptions>(builder.Configuration.GetSection(SessionLifetimeOptions.SectionName));
+builder.Services.AddHostedService<SessionExpiryWorker>();
 builder.Services.AddGrpc();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);

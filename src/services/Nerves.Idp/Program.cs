@@ -29,6 +29,10 @@ builder.Services.AddControllers();
 
 builder.Services.AddNervesDataProtection(builder.Configuration, builder.Environment);
 
+var sessionLifetime = builder.Configuration
+    .GetSection(SessionLifetimeOptions.SectionName)
+    .Get<SessionLifetimeOptions>() ?? new SessionLifetimeOptions();
+
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
@@ -36,8 +40,11 @@ builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationSc
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-        options.ExpireTimeSpan = TimeSpan.FromHours(12);
-        options.SlidingExpiration = true;
+
+        // No sliding: the absolute cap must hold even for an active browser.
+        options.SlidingExpiration = false;
+        options.ExpireTimeSpan = TimeSpan.FromHours(sessionLifetime.AbsoluteHours);
+        options.Cookie.MaxAge = TimeSpan.FromHours(sessionLifetime.AbsoluteHours);
     });
 
 builder.Services.AddAuthorization();
@@ -145,6 +152,8 @@ builder.Services.AddOpenIddict()
 
 builder.Services.Configure<OpenIddictSeedOptions>(
     builder.Configuration.GetSection(OpenIddictSeedOptions.SectionName));
+builder.Services.Configure<SessionLifetimeOptions>(
+    builder.Configuration.GetSection(SessionLifetimeOptions.SectionName));
 builder.Services.Configure<IdentityClientOptions>(
     builder.Configuration.GetSection(IdentityClientOptions.SectionName));
 
