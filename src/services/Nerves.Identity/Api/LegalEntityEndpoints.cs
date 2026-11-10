@@ -1,8 +1,8 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Integration;
 using Nerves.Identity.Persistence;
-
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Identity.Api;
@@ -17,6 +17,9 @@ public static class LegalEntityEndpoints
         group.MapPost("/", CreateAsync);
         group.MapGet("/", ListAsync);
         group.MapGet("/{id:guid}", GetAsync);
+        group.MapPost("/{id:guid}/verify", VerifyAsync);
+        group.MapPost("/{id:guid}/reject", RejectAsync);
+        group.MapPost("/{id:guid}/expire", ExpireAsync);
         group.MapPost("/{id:guid}/disable", DisableAsync);
         group.MapPost("/{id:guid}/enable", EnableAsync);
 
@@ -111,6 +114,104 @@ public static class LegalEntityEndpoints
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         return entity is null ? Results.NotFound() : Results.Ok(ToResponse(entity));
+    }
+
+    private static Task<IResult> VerifyAsync(
+        Guid id,
+        VerificationRequest? request,
+        IdentityDbContext db,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken) =>
+        TransitionVerificationAsync(
+            id,
+            db,
+            audit,
+            http,
+            "legal-entity.verified",
+            (entity, now) => entity.MarkVerified(request?.ProviderReference, now),
+            cancellationToken);
+
+    private static Task<IResult> RejectAsync(
+        Guid id,
+        VerificationRequest? request,
+        IdentityDbContext db,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken) =>
+        TransitionVerificationAsync(
+            id,
+            db,
+            audit,
+            http,
+            "legal-entity.rejected",
+            (entity, now) => entity.MarkRejected(request?.ProviderReference, now),
+            cancellationToken);
+
+    private static Task<IResult> ExpireAsync(
+        Guid id,
+        IdentityDbContext db,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken) =>
+        TransitionVerificationAsync(
+            id,
+            db,
+            audit,
+            http,
+            "legal-entity.expired",
+            static (entity, now) => entity.Expire(now),
+            cancellationToken);
+
+    /// <summary>
+    /// Applies a verification transition and fans out one event per owned
+    /// account inside the same transaction (invariant I7).
+    /// </summary>
+    private static async Task<IResult> TransitionVerificationAsync(
+        Guid id,
+        IdentityDbContext db,
+        AuditClient audit,
+        HttpContext http,
+        string action,
+        Func<LegalEntity, DateTimeOffset, Nerves.Core.Result> transition,
+        CancellationToken cancellationToken)
+    {
+        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null)
+        {
+            return Results.NotFound();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var result = transition(entity, now);
+        if (result.IsFailure)
+        {
+            return Results.Problem(result.Reason.Message, statusCode: StatusCodes.Status409Conflict);
+        }
+
+        var accounts = await db.NetworkAccounts
+            .Where(x => x.LegalEntityId == id)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            legalEntityId = entity.Id,
+            state = entity.VerificationState.ToString(),
+        });
+
+        foreach (var accountId in accounts)
+        {
+            db.OutboxEvents.Add(OutboxEvent.Create("realname.changed", accountId, entity.Id, payload, now));
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.AppendAsync(
+            action, "admin", null, "legal-entity", entity.Id.ToString(), "success",
+            http.TraceIdentifier, null, cancellationToken);
+
+        return Results.Ok(ToResponse(entity));
     }
 
     private static async Task<IResult> DisableAsync(

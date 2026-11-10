@@ -3,6 +3,9 @@ namespace Nerves.Identity.Api;
 /// <summary>Request body for creating a network account.</summary>
 public sealed record ChangePasswordRequest(string? NewPassword);
 
+/// <summary>Optional provider reference recorded by a verification transition.</summary>
+public sealed record VerificationRequest(string? ProviderReference);
+
 public sealed record CreateAccountRequest(
     Guid? LegalEntityId,
     string Realm,
