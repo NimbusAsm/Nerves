@@ -342,6 +342,34 @@ services:
     extraEnv: []
     extraEnvFrom: []
 
+  # Read-only aggregation layer behind the admin console: no database, only
+  # fan-out calls to the services above. Disable it if the console is not used.
+  console:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: "500m"
+        memory: 256Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
 # DataProtection holds the keys that encrypt MFA secrets and cookies. Losing
 # them makes enrolled factors unreadable, so they live on a PVC by default.
 dataProtection:

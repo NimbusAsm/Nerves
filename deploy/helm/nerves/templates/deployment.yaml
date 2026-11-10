@@ -152,6 +152,12 @@ spec:
             - name: Gateway__Services__idp
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "idp") }}:{{ (index $.Values.services "idp").port }}/"
             {{- end }}
+            {{- if eq $name "console" }}
+            {{- range $service := list "identity" "session" "authorization" "audit" "compliance" }}
+            - name: Console__Services__{{ $service }}
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" $service) }}:{{ (index $.Values.services $service).port }}/"
+            {{- end }}
+            {{- end }}
             {{- if eq $name "notification" }}
             - name: Smtp__Disabled
               value: {{ $.Values.config.notification.smtp.disabled | quote }}

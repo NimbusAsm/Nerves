@@ -26,6 +26,10 @@ First production-ready release of the unified account platform.
 - Identity domain-event outbox with incremental `/api/v1/events` reads and durable
   delivery to the audit stream.
 - Routing-index shard reconciliation tooling for shard-count changes.
+- Read-only console aggregation API (`Nerves.ConsoleApi`) that fans out to the
+  services in parallel and degrades to warnings when one of them is unavailable.
+- `nerves` operations CLI (dotnet tool): database migrations, development seed,
+  health doctor and routing-index shard reconciliation.
 - Prometheus metrics, OpenTelemetry export, health and readiness probes.
 - Admin console (Vue 3) container image with OIDC PKCE login.
 - Multi-language SDKs: .NET, TypeScript, Python.

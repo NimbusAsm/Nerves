@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Nerves.Cli</RootNamespace>
+    <AssemblyName>nerves</AssemblyName>
+    <PackageId>Nerves.Cli</PackageId>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>nerves</ToolCommandName>
+    <Description>Nerves operations CLI: database migrations, development seed, health doctor and shard reconciliation.</Description>
+    <PackageTags>nerves;identity;operations;cli</PackageTags>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Nerves.Core\Nerves.Core.csproj" />
+    <ProjectReference Include="..\..\src\Nerves.ServiceDefaults\Nerves.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Identity\Nerves.Identity.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Session\Nerves.Session.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Authorization\Nerves.Authorization.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Audit\Nerves.Audit.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Directory\Nerves.Directory.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.ComplianceCn\Nerves.ComplianceCn.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Notification\Nerves.Notification.csproj" />
+    <ProjectReference Include="..\..\src\services\Nerves.Idp\Nerves.Idp.csproj" />
+  </ItemGroup>
+</Project>

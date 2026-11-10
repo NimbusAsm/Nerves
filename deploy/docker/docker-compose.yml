@@ -267,6 +267,42 @@ services:
       Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
     ports: ["5108:8080"]
 
+  # Read-only aggregation layer for the admin console. It owns no database and
+  # only fans out to the services above.
+  console:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.ConsoleApi/Nerves.ConsoleApi.csproj
+        ENTRY_DLL: Nerves.ConsoleApi.dll
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Authentication__Authority: http://idp:8080
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Authentication__Audience: nerves.api
+      Console__Services__identity: http://identity:8080/
+      Console__Services__session: http://session:8080/
+      Console__Services__authorization: http://authorization:8080/
+      Console__Services__audit: http://audit:8080/
+      Console__Services__compliance: http://compliance:8080/
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+    ports: ["5109:8080"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      identity:
+        condition: service_started
+      session:
+        condition: service_started
+      authorization:
+        condition: service_started
+      audit:
+        condition: service_started
+      compliance:
+        condition: service_started
+
 volumes:
   pgdata:
   audit-archive:

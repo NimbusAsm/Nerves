@@ -11,6 +11,7 @@ import urllib.request
 
 IDP = os.environ.get("E2E_IDP", "http://127.0.0.1:5101")
 GATEWAY = os.environ.get("E2E_GATEWAY", "http://127.0.0.1:5100")
+CONSOLE = os.environ.get("E2E_CONSOLE", "http://127.0.0.1:5109")
 USERNAME = os.environ.get("E2E_USERNAME", "admin")
 PASSWORD = os.environ.get("E2E_PASSWORD", "ChangeMe!123")
 REDIRECT = os.environ.get("E2E_REDIRECT", "http://127.0.0.1:5300/oidc-callback.html")
@@ -50,6 +51,12 @@ def main():
                        ("authorization", 5104), ("audit", 5105), ("directory", 5106), ("compliance", 5107)]:
         status, _, _ = call(f"http://127.0.0.1:{port}/healthz")
         expect(status, 200, f"{name} health")
+
+    status, _, _ = call(f"{CONSOLE}/healthz")
+    expect(status, 200, "console health")
+
+    status, _, _ = call(f"{CONSOLE}/api/v1/console/overview")
+    expect(status, 401, "console overview without a token")
 
     status, _, body = call(
         f"{IDP}/api/v1/auth/login",
@@ -119,6 +126,33 @@ def main():
 
     status, _, _ = call(f"{GATEWAY}/api/v1/notifications")
     expect(status, 401, "gateway notifications without a token")
+
+    status, _, body = call(f"{CONSOLE}/api/v1/console/overview", headers=auth)
+    expect(status, 200, "console overview")
+    overview = json.loads(body)
+    services = overview.get("services") or []
+    if len(services) != 5:
+        fail(f"console overview: expected 5 service statuses, got {len(services)}")
+    print(f"   ok  console overview services -> {len(services)}")
+    if not isinstance(overview.get("warnings"), list):
+        fail("console overview: warnings must be a list")
+    print("   ok  console overview warnings -> list")
+
+    status, _, body = call(f"{GATEWAY}/api/v1/accounts?limit=1", headers=auth)
+    expect(status, 200, "gateway accounts list")
+    accounts = json.loads(body).get("items") or []
+    if not accounts:
+        fail("gateway accounts list: no accounts to inspect")
+
+    account_id = accounts[0]["id"]
+    status, _, body = call(f"{CONSOLE}/api/v1/console/account/{account_id}", headers=auth)
+    expect(status, 200, "console account detail")
+    detail = json.loads(body)
+    for key in ("account", "sessions", "auditEvents", "warnings"):
+        if key not in detail:
+            fail(f"console account detail: missing {key}")
+    print("   ok  console account detail -> account, sessions, auditEvents, warnings")
+
     print("e2e smoke passed")
 
 

@@ -33,6 +33,7 @@ audit_port=$((base + 5))
 directory_port=$((base + 6))
 compliance_port=$((base + 7))
 notification_port=$((base + 8))
+console_port=$((base + 9))
 gateway_port=$((base + 0))
 
 identity_grpc=$((base + 102))
@@ -84,6 +85,16 @@ start_service() {
     )
   fi
 
+  if [[ "${project}" == "Nerves.ConsoleApi" ]]; then
+    envs+=(
+      "Console__Services__identity=http://127.0.0.1:${identity_port}/"
+      "Console__Services__session=http://127.0.0.1:${session_port}/"
+      "Console__Services__authorization=http://127.0.0.1:${authorization_port}/"
+      "Console__Services__audit=http://127.0.0.1:${audit_port}/"
+      "Console__Services__compliance=http://127.0.0.1:${compliance_port}/"
+    )
+  fi
+
   if [[ "${project}" == "Nerves.Gateway" ]]; then
     envs+=(
       "Gateway__Services__identity=http://127.0.0.1:${identity_port}/"
@@ -104,7 +115,7 @@ start_service() {
 echo "== building"
 dotnet build "${repo_root}/Nerves.slnx" -warnaserror >/dev/null
 
-for port in "${gateway_port}" "${idp_port}" "${identity_port}" "${session_port}" "${authorization_port}"             "${audit_port}" "${directory_port}" "${compliance_port}"; do
+for port in "${gateway_port}" "${idp_port}" "${identity_port}" "${session_port}" "${authorization_port}"             "${audit_port}" "${directory_port}" "${compliance_port}" "${console_port}"; do
   if ss -ltn 2>/dev/null | grep -q ":${port} "; then
     echo "port ${port} is already in use; choose another E2E_PORT_BASE" >&2
     exit 1
@@ -119,6 +130,7 @@ start_service Nerves.Audit "${audit_port}" "${audit_grpc}"
 start_service Nerves.Directory "${directory_port}" "${directory_grpc}"
 start_service Nerves.ComplianceCn "${compliance_port}"
 start_service Nerves.Notification "${notification_port}"
+start_service Nerves.ConsoleApi "${console_port}"
 start_service Nerves.Gateway "${gateway_port}"
 start_service Nerves.Idp "${idp_port}"
 
@@ -143,6 +155,7 @@ wait_for "${directory_port}" Directory
 wait_for "${compliance_port}" ComplianceCn
 wait_for "${notification_port}" Notification
 wait_for "${idp_port}" Idp
+wait_for "${console_port}" ConsoleApi
 wait_for "${gateway_port}" Gateway
 
 echo "== running the login flow"
@@ -154,7 +167,17 @@ E2E_AUTHORIZATION="http://127.0.0.1:${authorization_port}" \
 E2E_AUDIT="http://127.0.0.1:${audit_port}" \
 E2E_DIRECTORY="http://127.0.0.1:${directory_port}" \
 E2E_COMPLIANCE="http://127.0.0.1:${compliance_port}" \
+E2E_CONSOLE="http://127.0.0.1:${console_port}" \
   python3 "${repo_root}/scripts/e2e_smoke.py"
+
+echo "== checking the operations CLI"
+cli_dll="${repo_root}/tools/Nerves.Cli/bin/Debug/net10.0/nerves.dll"
+if [[ ! -f "${cli_dll}" ]]; then
+  echo "the CLI was not built at ${cli_dll}" >&2
+  exit 1
+fi
+dotnet "${cli_dll}" db migrate --dry-run --connection-string "${connection_string}"
+echo "== CLI database check passed"
 
 echo "== smoke passed"
 
