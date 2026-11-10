@@ -9,6 +9,8 @@ public sealed class SessionDbContext(DbContextOptions<SessionDbContext> options)
 
     public DbSet<Domain.Session> Sessions => Set<Domain.Session>();
 
+    public DbSet<Domain.OutboxEvent> OutboxEvents => Set<Domain.OutboxEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -28,6 +30,17 @@ public sealed class SessionDbContext(DbContextOptions<SessionDbContext> options)
             builder.HasIndex(x => new { x.AccountId, x.RevokedAt });
             builder.HasIndex(x => x.AbsoluteExpiresAt);
             builder.Property<uint>("xmin").IsRowVersion();
+        });
+
+        modelBuilder.Entity<Domain.OutboxEvent>(builder =>
+        {
+            builder.ToTable("outbox_event");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Type).HasMaxLength(128).IsRequired();
+            builder.Property(x => x.TargetType).HasMaxLength(64);
+            builder.Property(x => x.TargetId).HasMaxLength(64);
+            builder.Property(x => x.Payload).HasColumnType("text").IsRequired();
+            builder.HasIndex(x => new { x.DispatchedAt, x.OccurredAt });
         });
     }
 }

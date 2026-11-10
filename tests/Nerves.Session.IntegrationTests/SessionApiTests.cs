@@ -88,6 +88,14 @@ public sealed class SessionApiTests : IAsyncLifetime
         var db = scope.ServiceProvider.GetRequiredService<SessionDbContext>();
         var stored = await db.Sessions.AsNoTracking().SingleAsync(x => x.Id == sessionId, TestContext.Current.CancellationToken);
         stored.RevokedAt.ShouldNotBeNull();
+
+        // The audit row is written in the same request as the revocation.
+        var outbox = await db.OutboxEvents.AsNoTracking()
+            .Where(x => x.Type == "session.admin_revoked")
+            .ToListAsync(TestContext.Current.CancellationToken);
+        outbox.ShouldNotBeEmpty();
+        outbox.ShouldAllBe(x => x.DispatchedAt == null);
+        outbox.ShouldAllBe(x => x.TargetId == sessionId.ToString());
     }
 
     private async Task<Guid> SeedSessionAsync(Guid accountId)

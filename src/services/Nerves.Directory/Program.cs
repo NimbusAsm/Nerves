@@ -1,6 +1,9 @@
+using Grpc.Net.Client;
 using Microsoft.EntityFrameworkCore;
+using Nerves.Contracts.Audit.V1;
 using Nerves.Directory.Api;
 using Nerves.Directory.Grpc;
+using Nerves.Directory.Integration;
 using Nerves.Directory.Persistence;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
@@ -14,6 +17,11 @@ builder.Services.AddOpenApi();
 builder.Services.AddGrpc();
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
+
+var auditAddress = builder.Configuration["Audit:GrpcAddress"] ?? "http://127.0.0.1:5205";
+builder.Services.AddSingleton(_ => new AuditService.AuditServiceClient(GrpcChannel.ForAddress(auditAddress)));
+builder.Services.AddSingleton<IAuditPublisher, AuditPublisher>();
+builder.Services.AddHostedService<OutboxDispatcher>();
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))

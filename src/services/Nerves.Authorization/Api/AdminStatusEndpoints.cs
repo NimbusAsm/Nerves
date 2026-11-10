@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Nerves.Authorization.Integration;
+using Nerves.Authorization.Persistence;
 using Nerves.Authorization.Policy;
 using Nerves.ServiceDefaults.Security;
 
@@ -37,7 +38,7 @@ public static class AdminStatusEndpoints
         [FromBody] PdpSettingsPatch patch,
         IOptions<PdpOptions> options,
         IntegrationSettingsStore store,
-        AuthorizationAuditClient audit,
+        AuthorizationDbContext db,
         CancellationToken cancellationToken)
     {
         var current = options.Value;
@@ -69,13 +70,14 @@ public static class AdminStatusEndpoints
 
         await store.SavePdpAsync(current, cancellationToken);
 
-        await audit.AppendAsync(
+        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
             "admin.integration.pdp.updated",
-            "admin",
             "integration",
             "pdp",
             "{\"enabled\":" + (string.IsNullOrWhiteSpace(current.Url) ? "false" : "true") + "}",
-            cancellationToken);
+            DateTimeOffset.UtcNow));
+
+        await db.SaveChangesAsync(cancellationToken);
 
         return Results.Ok(new
         {

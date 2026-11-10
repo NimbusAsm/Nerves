@@ -52,6 +52,13 @@ public static class SessionEndpoints
         }
 
         session.Revoke("revoked by administrator", DateTimeOffset.UtcNow);
+        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
+            "session.admin_revoked",
+            "session",
+            session.Id.ToString(),
+            "{}",
+            DateTimeOffset.UtcNow));
+
         await db.SaveChangesAsync(cancellationToken);
         return Results.Ok();
     }

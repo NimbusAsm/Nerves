@@ -14,6 +14,8 @@ public sealed class ComplianceDbContext(DbContextOptions<ComplianceDbContext> op
 
     public DbSet<ErasureRequest> ErasureRequests => Set<ErasureRequest>();
 
+    public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -47,6 +49,17 @@ public sealed class ComplianceDbContext(DbContextOptions<ComplianceDbContext> op
             builder.HasKey(x => x.Id);
             builder.Property(x => x.Category).HasMaxLength(128).IsRequired();
             builder.HasIndex(x => x.Category).IsUnique();
+        });
+
+        modelBuilder.Entity<OutboxEvent>(builder =>
+        {
+            builder.ToTable("outbox_event");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Type).HasMaxLength(128).IsRequired();
+            builder.Property(x => x.TargetType).HasMaxLength(64);
+            builder.Property(x => x.TargetId).HasMaxLength(64);
+            builder.Property(x => x.Payload).HasColumnType("text").IsRequired();
+            builder.HasIndex(x => new { x.DispatchedAt, x.OccurredAt });
         });
     }
 }

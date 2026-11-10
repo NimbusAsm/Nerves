@@ -10,6 +10,8 @@ public sealed class DirectoryDbContext(DbContextOptions<DirectoryDbContext> opti
 
     public DbSet<Organization> Organizations => Set<Organization>();
 
+    public DbSet<OutboxEvent> OutboxEvents => Set<OutboxEvent>();
+
     public DbSet<Membership> Memberships => Set<Membership>();
 
     public DbSet<Invitation> Invitations => Set<Invitation>();
@@ -52,6 +54,17 @@ public sealed class DirectoryDbContext(DbContextOptions<DirectoryDbContext> opti
             builder.Property(x => x.TokenHash).HasMaxLength(64).IsRequired();
             builder.HasIndex(x => x.TokenHash).IsUnique();
             builder.HasIndex(x => x.OrganizationId);
+        });
+
+        modelBuilder.Entity<OutboxEvent>(builder =>
+        {
+            builder.ToTable("outbox_event");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.Type).HasMaxLength(128).IsRequired();
+            builder.Property(x => x.TargetType).HasMaxLength(64);
+            builder.Property(x => x.TargetId).HasMaxLength(64);
+            builder.Property(x => x.Payload).HasColumnType("text").IsRequired();
+            builder.HasIndex(x => new { x.DispatchedAt, x.OccurredAt });
         });
     }
 }

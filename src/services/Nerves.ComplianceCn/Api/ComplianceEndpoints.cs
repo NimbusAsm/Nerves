@@ -76,6 +76,13 @@ public static class ComplianceEndpoints
             request.SubjectId, request.Purpose, request.Version, now, request.ExpiresAt);
 
         db.Consents.Add(consent);
+        db.OutboxEvents.Add(OutboxEvent.Create(
+            "compliance.consent.granted",
+            "consent",
+            consent.Id.ToString(),
+            "{\"purpose\":\"" + consent.Purpose + "\"}",
+            now));
+
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/v1/compliance/consents/{consent.Id}", new
@@ -101,7 +108,15 @@ public static class ComplianceEndpoints
             return Results.NotFound();
         }
 
-        consent.Revoke(DateTimeOffset.UtcNow, request?.Reason);
+        var revokedAt = DateTimeOffset.UtcNow;
+        consent.Revoke(revokedAt, request?.Reason);
+        db.OutboxEvents.Add(OutboxEvent.Create(
+            "compliance.consent.revoked",
+            "consent",
+            consent.Id.ToString(),
+            "{}",
+            revokedAt));
+
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Ok(new { consent.Id, consent.RevokedAt, consent.RevocationReason });
