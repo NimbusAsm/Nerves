@@ -25,8 +25,10 @@ vus="${LOAD_VUS:-10}"
 k6_cmd="${K6_CMD:-k6}"
 wrk_cmd="${WRK_CMD:-wrk}"
 
-if ! curl -fsS -o /dev/null --max-time 10 "${url}"; then
-  echo "target ${url} is not reachable; start the stack first (scripts/e2e-smoke.sh --keep)" >&2
+# Only the connection is checked here: a 4xx/5xx still proves the stack answers,
+# and counting those responses is exactly what LOAD_STRICT is for.
+if ! curl -sS -o /dev/null --max-time 10 "${url}"; then
+  echo "target ${url} is not reachable; start the stack first (E2E_KEEP=1 bash scripts/e2e-smoke.sh)" >&2
   exit 1
 fi
 
@@ -58,7 +60,7 @@ EOF
   LOAD_URL="${url}" LOAD_VUS="${vus}" LOAD_DURATION="${duration}" LOAD_SUMMARY="${summary}" \
     "${k6_cmd}" run --quiet "${script}" || true
   python3 - "${summary}" "${url}" "${duration}" "${vus}" <<'PYCODE'
-import json, sys
+import json, os, sys
 
 path, url, duration, vus = sys.argv[1:5]
 try:
@@ -94,6 +96,10 @@ print(f"  requests      {count if count is not None else 'n/a'}")
 print(f"  p95 latency   {fmt(p95, ' ms')}")
 print(f"  avg latency   {fmt(latency.get('avg'), ' ms')}")
 print(f"  error rate    {'n/a' if rate is None else f'{rate * 100:.2f}%'}")
+
+if rate is not None and rate > 0 and os.environ.get("LOAD_STRICT") == "1":
+    print("load smoke: LOAD_STRICT=1 and the run observed HTTP errors")
+    raise SystemExit(1)
 PYCODE
   exit 0
 fi
