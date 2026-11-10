@@ -12,6 +12,8 @@ public sealed class ComplianceDbContext(DbContextOptions<ComplianceDbContext> op
 
     public DbSet<RetentionPolicy> RetentionPolicies => Set<RetentionPolicy>();
 
+    public DbSet<ErasureRequest> ErasureRequests => Set<ErasureRequest>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);
@@ -27,6 +29,16 @@ public sealed class ComplianceDbContext(DbContextOptions<ComplianceDbContext> op
             builder.Property(x => x.Version).HasMaxLength(64).IsRequired();
             builder.HasIndex(x => new { x.SubjectId, x.Purpose });
             builder.Ignore(x => x.IsActive);
+        });
+
+        modelBuilder.Entity<ErasureRequest>(builder =>
+        {
+            builder.ToTable("erasure_request");
+            builder.HasKey(x => x.Id);
+            builder.Property(x => x.SubjectId).HasMaxLength(128).IsRequired();
+            builder.Property(x => x.Reason).HasMaxLength(500).IsRequired();
+            builder.Property(x => x.Status).HasMaxLength(32).IsRequired();
+            builder.HasIndex(x => x.SubjectId);
         });
 
         modelBuilder.Entity<RetentionPolicy>(builder =>

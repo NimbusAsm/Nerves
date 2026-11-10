@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nerves.ComplianceCn.Api;
+using Nerves.ComplianceCn.Integration;
 using Nerves.ComplianceCn.Persistence;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
@@ -9,6 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddNervesDefaults("nerves-compliance-cn");
 
 builder.Services.AddOpenApi();
+builder.Services.AddSingleton<IdentityClient>();
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 
 var connectionString = builder.Configuration.GetConnectionString("Default");
@@ -35,6 +37,7 @@ app.UseAuthorization();
 app.MapOpenApi();
 app.MapNervesDefaults("nerves-compliance-cn");
 app.MapComplianceEndpoints();
+app.MapSubjectEndpoints();
 
 app.Run();
 

@@ -274,4 +274,33 @@ public sealed class IdentityGrpcService(
 
         return new CompletePasskeyAssertionResponse { Valid = ok };
     }
+
+    public override async Task<DisableAccountResponse> DisableAccount(
+        DisableAccountRequest request,
+        ServerCallContext context)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!Guid.TryParse(request.AccountId, out var accountId))
+        {
+            return new DisableAccountResponse { Disabled = false };
+        }
+
+        var account = await dbContext.NetworkAccounts
+            .FirstOrDefaultAsync(x => x.Id == accountId, context.CancellationToken);
+
+        if (account is null)
+        {
+            return new DisableAccountResponse { Disabled = false };
+        }
+
+        var result = account.Disable(DateTimeOffset.UtcNow);
+        if (result.IsFailure)
+        {
+            return new DisableAccountResponse { Disabled = false };
+        }
+
+        await dbContext.SaveChangesAsync(context.CancellationToken);
+        return new DisableAccountResponse { Disabled = true };
+    }
 }
