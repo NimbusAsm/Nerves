@@ -296,3 +296,12 @@ Wiring uses environment variables:
   are set on every resource service from config.publicIssuer and config.audience.
 * DataProtection__KeysDirectory is set for identity and idp, backed by the two
   PVCs (or dataProtection.existingClaim).
+
+
+## Multiple replicas
+
+identity and idp own the DataProtection key ring that encrypts MFA secrets and
+cookies. More than one replica therefore needs a shared key ring: provide
+dataProtection.existingClaim pointing at a ReadWriteMany claim, or run those
+two services with a single replica. The chart refuses to render
+replicaCount > 1 for them without such a claim.
