@@ -63,7 +63,7 @@ NERVES_API_URL=http://127.0.0.1:5280
 | `#/roles` | 角色与权限：角色授权编辑 + 权限目录 | `authz:role:read` |
 | `#/audit` | 审计日志：时间/操作人/结果/动作过滤、事件详情、CSV 导出 | `audit:event:read` |
 | `#/notifications` | 通知中心：投递日志（状态过滤、收件人搜索、游标分页）+ 发送模板邮件、事件详情 | `nerves:admin` |
-| `#/applications` | 应用目录：列表、新建（client_id / 回调地址 / Logo / scopes）、详情 | `directory:application:read` |
+| `#/applications` | 应用目录：真实 OIDC 客户端列表（搜索 + 游标分页）、新建 / 编辑 / 启用停用 / 删除、详情 | `directory:application:read`（写操作需 `nerves:admin`） |
 
 写操作另有权限门控（如 `identity:account:write`、`authz:role:write`、`audit:event:export`），
 路由守卫在进入页面前校验一次，按钮再按权限隐藏。
@@ -92,8 +92,13 @@ PATCH  /api/v1/organizations/{id}/members/{mid}  { orgRole }
 DELETE /api/v1/organizations/{id}/members/{mid}
 GET    /api/v1/roles | /api/v1/permissions
 PATCH  /api/v1/roles/{id}                        { name, description, permissions[] }
-GET    /api/v1/applications
-POST   /api/v1/applications                      { name, clientId, redirectUris[], scopes[], logoUrl }
+GET    /api/v1/admin/applications?limit&cursor&q -> { items, nextCursor }
+GET    /api/v1/admin/applications/{client_id}
+POST   /api/v1/admin/applications                { clientId, displayName, description, logoUrl,
+                                                   redirectUris[], postLogoutRedirectUris[], scopes[], enabled }
+PATCH  /api/v1/admin/applications/{client_id}    { displayName?, description?, logoUrl?,
+                                                   redirectUris?, postLogoutRedirectUris?, scopes?, enabled? }
+DELETE /api/v1/admin/applications/{client_id}
 GET    /api/v1/audit-events?limit&cursor&filter[from]&filter[to]&filter[result]&actor&action
 GET    /api/v1/notifications?limit&cursor&status&to   投递日志（status: pending|sent|failed，to 精确匹配）
 GET    /api/v1/notifications/{id}                     单条投递详情

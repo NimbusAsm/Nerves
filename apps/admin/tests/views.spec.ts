@@ -120,7 +120,10 @@ describe('views', () => {
     await router.push('/applications')
     await flushPromises()
     expect(wrapper.text()).toContain('应用目录')
-    expect(wrapper.text()).toContain('nerves-console')
+    // The catalogue now comes from the real API contract: the seeded
+    // clients are the ones the IdP registers, and built-in ones say so.
+    expect(wrapper.text()).toContain('nerves-admin')
+    expect(wrapper.text()).toContain('内置')
   })
 
   it('changes an organization member role through the select control', async () => {
@@ -204,5 +207,49 @@ describe('views', () => {
     const page = await api.listNotifications({ limit: 20, to: 'new-recipient@example.com' })
     expect(page.items).toHaveLength(1)
     expect(page.items[0]?.status).toBe('sent')
+  })
+  it('creates, disables and deletes an application through the real API contract', async () => {
+    const pinia = freshPinia()
+    setApi(testApi())
+    await useAuthStore().login('admin', 'nerves2026')
+
+    const api = getApi()
+    const router = createAppRouter(
+      () => ({ isAuthenticated: true, hasPermission: () => true }),
+      createMemoryHistory(),
+    )
+    await router.push('/applications')
+    await router.isReady()
+
+    const wrapper = mount(App, {
+      global: { plugins: [pinia, i18n, router], stubs: { teleport: true } },
+    })
+    await flushPromises()
+
+    const createButton = wrapper.findAll('button').find((button) => button.text().includes('新建应用'))
+    expect(createButton).toBeDefined()
+    await createButton?.trigger('click')
+    await flushPromises()
+
+    await wrapper.find('#app-name').setValue('契约测试应用')
+    await wrapper.find('#app-client-id').setValue('contract-app')
+    await wrapper.find('#app-callbacks').setValue('https://contract.example.com/cb')
+    await wrapper.find('#app-post-logout').setValue('https://contract.example.com/')
+
+    const submit = wrapper.findAll('button').find((button) => button.text() === '新建')
+    expect(submit).toBeDefined()
+    await submit?.trigger('click')
+    await flushPromises()
+
+    const created = await api.getApplication('contract-app')
+    expect(created.name).toBe('契约测试应用')
+    expect(created.redirectUris).toEqual(['https://contract.example.com/cb'])
+    expect(created.builtIn).toBe(false)
+
+    await api.updateApplication('contract-app', { enabled: false })
+    expect((await api.getApplication('contract-app')).status).toBe('disabled')
+
+    await api.deleteApplication('contract-app')
+    await expect(api.getApplication('contract-app')).rejects.toMatchObject({ status: 404 })
   })
 })

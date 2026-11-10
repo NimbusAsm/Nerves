@@ -34,6 +34,50 @@ test('lists legal entities after signing in', async ({ page }) => {
   await expect(page.locator('table')).toBeVisible()
 })
 
+test('manages the OIDC application catalogue from the sidebar', async ({ page }) => {
+  await signIn(page)
+
+  await page.getByRole('link', { name: /应用目录/ }).first().click()
+  await expect(page).toHaveURL(/\/applications/)
+  await expect(page.getByRole('heading', { name: '应用目录', exact: true })).toBeVisible()
+  await expect(page.locator('table')).toBeVisible()
+
+  // The list is backed by the IdP's OpenIddict registry, so the seeded
+  // console client must be there and must be marked as built-in.
+  const adminRow = page.locator('tr', { hasText: 'nerves-admin' })
+  await expect(adminRow).toBeVisible()
+  await expect(adminRow.getByText('内置')).toBeVisible()
+  await expect(adminRow.getByRole('button', { name: /移除/ })).toHaveCount(0)
+
+  const clientId = `e2e-app-${Date.now().toString(36)}`
+  await page.getByRole('button', { name: /新建应用/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.locator('#app-name').fill('E2E 契约应用')
+  await page.locator('#app-client-id').fill(clientId)
+  await page.locator('#app-callbacks').fill('https://e2e.example.com/callback')
+  await page.locator('#app-post-logout').fill('https://e2e.example.com/')
+  await page.getByRole('dialog').getByRole('button', { name: /^新建$/ }).click()
+
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  const createdRow = page.locator('tr', { hasText: clientId })
+  await expect(createdRow).toContainText('E2E 契约应用')
+
+  // Disable it: the status badge flips and the row keeps the same client id.
+  await createdRow.getByRole('button', { name: /^编辑$/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.locator('#edit-app-name')
+  await page.getByRole('dialog').getByRole('checkbox').last().uncheck()
+  await page.getByRole('dialog').getByRole('button', { name: /^保存$/ }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('tr', { hasText: clientId })).toContainText('停用')
+
+  // Deleting cleans up the registry again.
+  await page.locator('tr', { hasText: clientId }).getByRole('button', { name: /移除/ }).click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('dialog').getByRole('button', { name: /^移除$/ }).click()
+  await expect(page.locator('tr', { hasText: clientId })).toHaveCount(0)
+})
+
 test('opens the notification center from the sidebar and sends a template email', async ({ page }) => {
   await signIn(page)
 

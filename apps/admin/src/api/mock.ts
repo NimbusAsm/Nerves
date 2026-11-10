@@ -21,6 +21,8 @@ import type {
   ActorType,
   Application,
   ApplicationInput,
+  ApplicationPatch,
+  ApplicationQuery,
   AuditEvent,
   AuditQuery,
   AuditResult,
@@ -390,93 +392,106 @@ const ORG_SEEDS: OrgSeed[] = [
 ]
 
 interface AppSeed {
-  id: string
+  clientId: string
   name: string
   description: string
-  clientId: string
   logoUrl: string | null
   redirectUris: string[]
+  postLogoutRedirectUris: string[]
   scopes: string[]
   status: 'active' | 'disabled'
+  builtIn: boolean
   createdAtDaysAgo: number
-  lastRotatedDaysAgo: number | null
 }
 
 const APP_SEEDS: AppSeed[] = [
   {
-    id: 'app_console',
-    name: 'Nerves Console',
+    clientId: 'nerves-admin',
+    name: 'Nerves 管理台',
     description: '账户中心自带的管理后台，使用授权码 + PKCE 登录。',
-    clientId: 'nerves-console',
     logoUrl:
       "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231f6feb'/%3E%3Cpath d='M9 23V9h3.6l6.8 9.2V9H23v14h-3.6l-6.8-9.2V23z' fill='%23fff'/%3E%3C/svg%3E",
-    redirectUris: ['https://console.nerves.example/connect/callback'],
+    redirectUris: ['http://127.0.0.1:5300/oidc-callback.html'],
+    postLogoutRedirectUris: ['http://127.0.0.1:5300/'],
     scopes: ['openid', 'profile', 'email', 'offline_access'],
     status: 'active',
+    builtIn: true,
     createdAtDaysAgo: 420,
-    lastRotatedDaysAgo: 63,
   },
   {
-    id: 'app_website',
+    clientId: 'nerves-demo',
+    name: 'Nerves 演示客户端',
+    description: '随 IdP 一起 seed 的演示客户端，用于联调授权码流程。',
+    logoUrl: null,
+    redirectUris: ['http://127.0.0.1:5100/signin-oidc'],
+    postLogoutRedirectUris: ['http://127.0.0.1:5100/signout-callback-oidc'],
+    scopes: ['openid', 'profile', 'email', 'nerves.api'],
+    status: 'active',
+    builtIn: true,
+    createdAtDaysAgo: 420,
+  },
+  {
+    clientId: 'crequency-site',
     name: '云矩数阁官网',
     description: '集团门户的单点登录接入，登录后跳回站点会话。',
-    clientId: 'crequency-site',
     logoUrl: null,
     redirectUris: ['https://www.crequency.cn/auth/callback', 'https://crequency.cn/auth/callback'],
+    postLogoutRedirectUris: ['https://www.crequency.cn/'],
     scopes: ['openid', 'profile'],
     status: 'active',
+    builtIn: false,
     createdAtDaysAgo: 310,
-    lastRotatedDaysAgo: 21,
   },
   {
-    id: 'app_portal',
+    clientId: 'open-data-portal',
     name: '开放数据门户',
     description: '面向合作伙伴的数据目录，按组织授权访问数据集。',
-    clientId: 'open-data-portal',
     logoUrl: null,
     redirectUris: ['https://data.nerves.example/oauth/callback'],
-    scopes: ['openid', 'profile', 'openid:data.read'],
+    postLogoutRedirectUris: ['https://data.nerves.example/'],
+    scopes: ['openid', 'profile', 'nerves.api'],
     status: 'active',
+    builtIn: false,
     createdAtDaysAgo: 180,
-    lastRotatedDaysAgo: 180,
   },
   {
-    id: 'app_cli',
-    name: 'Nerves CLI',
-    description: '命令行工具的设备码登录（device_code）客户端。',
     clientId: 'nerves-cli',
+    name: 'Nerves CLI',
+    description: '命令行工具的授权码客户端，带 PKCE。',
     logoUrl: null,
     redirectUris: ['http://127.0.0.1:41731/device/callback'],
+    postLogoutRedirectUris: [],
     scopes: ['openid', 'offline_access'],
     status: 'active',
+    builtIn: false,
     createdAtDaysAgo: 96,
-    lastRotatedDaysAgo: 96,
   },
   {
-    id: 'app_docs',
+    clientId: 'nerves-docs',
     name: 'Nerves API 文档',
     description: '文档站的示例应用，用于演示授权码流程。',
-    clientId: 'nerves-docs',
     logoUrl: null,
     redirectUris: ['https://docs.nerves.example/oauth/callback'],
+    postLogoutRedirectUris: ['https://docs.nerves.example/'],
     scopes: ['openid', 'profile'],
     status: 'active',
+    builtIn: false,
     createdAtDaysAgo: 58,
-    lastRotatedDaysAgo: null,
   },
   {
-    id: 'app_partner',
+    clientId: 'partner-sandbox',
     name: '合作伙伴接入（测试）',
     description: '沙箱应用，合作伙伴联调期间使用，当前已停用。',
-    clientId: 'partner-sandbox',
     logoUrl: null,
     redirectUris: ['https://partner.example.com/sso/callback'],
+    postLogoutRedirectUris: ['https://partner.example.com/'],
     scopes: ['openid', 'profile', 'email'],
     status: 'disabled',
+    builtIn: false,
     createdAtDaysAgo: 140,
-    lastRotatedDaysAgo: 30,
   },
 ]
+
 
 const LOGIN_ACTION = 'auth.login.succeeded'
 const LOGIN_FAILED_ACTION = 'auth.login.failed'
@@ -503,6 +518,14 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
     const account = state.accounts.find((item) => item.id === id)
     if (!account) throw new ApiError(404, '账户不存在', `未找到账户 ${id}。`)
     return account
+  }
+
+  const requireApplication = (id: string) => {
+    const application = state.applications.find(
+      (item) => item.id === id || item.clientId === id,
+    )
+    if (!application) throw new ApiError(404, '应用不存在', `未找到应用 ${id}。`)
+    return application
   }
 
   const requireRole = (id: string) => {
@@ -1112,58 +1135,52 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
       return clone(role)
     },
 
-    async listApplications(): Promise<Application[]> {
+    async listApplications(query: ApplicationQuery = {}): Promise<CursorPage<Application>> {
       await delay()
-      return state.applications.map(clone)
+      const keyword = (query.q ?? '').trim().toLowerCase()
+      const items = state.applications
+        .filter((application) => {
+          if (!keyword) return true
+          return [application.name, application.clientId, application.description]
+            .some((value) => value.toLowerCase().includes(keyword))
+        })
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      return paginate(items, query)
+    },
+
+    async getApplication(id: string): Promise<Application> {
+      await delay()
+      return clone(requireApplication(id))
     },
 
     async createApplication(input: ApplicationInput): Promise<Application> {
       await delay()
       const name = input.name.trim()
-      const clientId = input.clientId.trim()
-      const redirectUris = input.redirectUris.map((uri) => uri.trim()).filter(Boolean)
-      const scopes = [...new Set(input.scopes)]
+      const clientId = input.clientId.trim().toLowerCase()
+      const redirectUris = normalizeApplicationUris(input.redirectUris)
+      const postLogoutUris = normalizeApplicationUris(input.postLogoutRedirectUris)
+      const scopes = normalizeApplicationScopes(input.scopes)
 
-      if (name.length < 2) throw new ApiError(400, '参数校验失败', '应用名称至少 2 个字符。', undefined, {
-        name: ['至少 2 个字符。'],
-      })
-      if (!/^[a-z][a-z0-9-]{2,63}$/.test(clientId)) {
-        throw new ApiError(400, '参数校验失败', 'client_id 需为 3-64 位小写字母、数字或连字符，并以字母开头。', undefined, {
-          clientId: ['格式不合法。'],
-        })
-      }
+      validateApplication({ clientId, name, redirectUris, postLogoutRedirectUris: postLogoutUris, scopes })
+
       if (state.applications.some((application) => application.clientId === clientId)) {
         throw new ApiError(409, 'client_id 已存在', `应用 ${clientId} 已被占用。`)
       }
-      if (redirectUris.length === 0) {
-        throw new ApiError(400, '参数校验失败', '至少需要一个回调地址。', undefined, {
-          redirectUris: ['至少填写一个回调地址。'],
-        })
-      }
-      for (const uri of redirectUris) {
-        if (!isAcceptableRedirect(uri)) {
-          throw new ApiError(400, '回调地址不合法', `${uri} 必须是 https 绝对地址（本机开发允许 http://localhost）。`, undefined, {
-            redirectUris: [`${uri} 不合法。`],
-          })
-        }
-      }
-      if (!scopes.includes('openid')) {
-        throw new ApiError(400, '参数校验失败', 'OIDC 应用必须至少申请 openid。', undefined, {
-          scopes: ['缺少 openid。'],
-        })
-      }
 
+      const now = clock().toISOString()
       const application: Application = {
-        id: `app_${clientId.replaceAll('-', '_')}`,
+        id: clientId,
+        clientId,
         name,
         description: input.description.trim(),
-        clientId,
         logoUrl: input.logoUrl?.trim() ? input.logoUrl.trim() : null,
         redirectUris,
+        postLogoutRedirectUris: postLogoutUris,
         scopes,
-        status: 'active',
-        createdAt: clock().toISOString(),
-        lastRotatedAt: clock().toISOString(),
+        status: input.enabled ? 'active' : 'disabled',
+        builtIn: false,
+        createdAt: now,
+        updatedAt: now,
       }
       state.applications.push(application)
       audit({
@@ -1178,6 +1195,60 @@ export function createMockApi(options: MockApiOptions = {}): NervesApi {
         detail: `创建应用，回调地址 ${redirectUris.length} 个，scope ${scopes.join(' ')}。`,
       })
       return clone(application)
+    },
+
+    async updateApplication(id: string, patch: ApplicationPatch): Promise<Application> {
+      await delay()
+      const application = requireApplication(id)
+      const next: Application = {
+        ...application,
+        name: patch.name?.trim() ?? application.name,
+        description: patch.description?.trim() ?? application.description,
+        logoUrl: patch.logoUrl === undefined ? application.logoUrl : patch.logoUrl?.trim() || null,
+        redirectUris: patch.redirectUris ? normalizeApplicationUris(patch.redirectUris) : application.redirectUris,
+        postLogoutRedirectUris: patch.postLogoutRedirectUris
+          ? normalizeApplicationUris(patch.postLogoutRedirectUris)
+          : application.postLogoutRedirectUris,
+        scopes: patch.scopes ? normalizeApplicationScopes(patch.scopes) : application.scopes,
+        status: patch.enabled === undefined ? application.status : patch.enabled ? 'active' : 'disabled',
+        updatedAt: clock().toISOString(),
+      }
+
+      validateApplication({ ...next, clientId: application.clientId })
+      Object.assign(application, next)
+      audit({
+        actorType: 'admin',
+        actorId: 'usr_platform_admin',
+        actorName: '平台管理员',
+        action: 'application.updated',
+        targetType: 'application',
+        targetId: application.id,
+        targetLabel: application.clientId,
+        result: 'success',
+        detail: `更新应用，状态 ${application.status}，scope ${application.scopes.join(' ')}。`,
+      })
+      return clone(application)
+    },
+
+    async deleteApplication(id: string): Promise<void> {
+      await delay()
+      const application = requireApplication(id)
+      if (application.builtIn) {
+        throw new ApiError(409, '内置应用不可删除', `${application.clientId} 由部署配置提供，不能删除。`)
+      }
+
+      state.applications = state.applications.filter((item) => item.id !== application.id)
+      audit({
+        actorType: 'admin',
+        actorId: 'usr_platform_admin',
+        actorName: '平台管理员',
+        action: 'application.deleted',
+        targetType: 'application',
+        targetId: application.id,
+        targetLabel: application.clientId,
+        result: 'success',
+        detail: `删除应用 ${application.name}。`,
+      })
     },
 
     async listAuditEvents(query: AuditQuery): Promise<CursorPage<AuditEvent>> {
@@ -1654,21 +1725,23 @@ function seedState(context: { rand: () => number; now: Date }): MockState {
     memberIndex += 1
   }
 
-  const applications: Application[] = APP_SEEDS.map((application) => ({
-    id: application.id,
-    name: application.name,
-    description: application.description,
-    clientId: application.clientId,
-    logoUrl: application.logoUrl,
-    redirectUris: [...application.redirectUris],
-    scopes: [...application.scopes],
-    status: application.status,
-    createdAt: daysBefore(now, application.createdAtDaysAgo).toISOString(),
-    lastRotatedAt:
-      application.lastRotatedDaysAgo === null
-        ? null
-        : daysBefore(now, application.lastRotatedDaysAgo).toISOString(),
-  }))
+  const applications: Application[] = APP_SEEDS.map((application) => {
+    const createdAt = daysBefore(now, application.createdAtDaysAgo)
+    return {
+      id: application.clientId,
+      clientId: application.clientId,
+      name: application.name,
+      description: application.description,
+      logoUrl: application.logoUrl,
+      redirectUris: [...application.redirectUris],
+      postLogoutRedirectUris: [...application.postLogoutRedirectUris],
+      scopes: [...application.scopes],
+      status: application.status,
+      builtIn: application.builtIn,
+      createdAt: createdAt.toISOString(),
+      updatedAt: createdAt.toISOString(),
+    }
+  })
 
   for (const application of applications) {
     push({
@@ -1808,6 +1881,59 @@ export function decodeCursor(cursor: string): number {
     return Number(match[1])
   } catch {
     throw new ApiError(400, '游标已失效', '请从第一页重新开始查询。')
+  }
+}
+
+const APPLICATION_SCOPES = ['openid', 'profile', 'email', 'roles', 'nerves.api', 'offline_access'] as const
+
+function normalizeApplicationUris(uris: string[] | undefined): string[] {
+  return [...new Set((uris ?? []).map((uri) => uri.trim()).filter(Boolean))]
+}
+
+function normalizeApplicationScopes(scopes: string[] | undefined): string[] {
+  return [...new Set((scopes ?? []).map((scope) => scope.trim().toLowerCase()).filter(Boolean))].sort()
+}
+
+interface ApplicationCandidate {
+  clientId: string
+  name: string
+  redirectUris: string[]
+  postLogoutRedirectUris: string[]
+  scopes: string[]
+}
+
+/** Mirrors Nerves.Idp.ApplicationValidation so mock and live behave the same. */
+function validateApplication(candidate: ApplicationCandidate): void {
+  if (!/^[a-z][a-z0-9-]{2,63}$/.test(candidate.clientId) || candidate.clientId.endsWith('-')) {
+    throw new ApiError(400, '参数校验失败', 'client_id must be 3-64 lowercase letters, digits or hyphens and start with a letter', undefined, {
+      clientId: ['格式不合法。'],
+    })
+  }
+  if (candidate.name.trim().length === 0 || candidate.name.length > 200) {
+    throw new ApiError(400, '参数校验失败', 'displayName must be 1-200 characters', undefined, {
+      name: ['名称不合法。'],
+    })
+  }
+  if (candidate.redirectUris.length === 0) {
+    throw new ApiError(400, '参数校验失败', 'at least one redirect URI is required', undefined, {
+      redirectUris: ['至少填写一个回调地址。'],
+    })
+  }
+  for (const uri of [...candidate.redirectUris, ...candidate.postLogoutRedirectUris]) {
+    if (!isAcceptableRedirect(uri)) {
+      throw new ApiError(400, '回调地址不合法', `${uri} 必须是 https 绝对地址（本机开发允许 http://localhost）。`, undefined, {
+        redirectUris: [`${uri} 不合法。`],
+      })
+    }
+  }
+  if (candidate.scopes.length === 0) {
+    throw new ApiError(400, '参数校验失败', 'at least one scope is required', undefined, {
+      scopes: ['至少选择一个 scope。'],
+    })
+  }
+  const unknown = candidate.scopes.find((scope) => !APPLICATION_SCOPES.includes(scope as (typeof APPLICATION_SCOPES)[number]))
+  if (unknown) {
+    throw new ApiError(400, '参数校验失败', `unknown scope '${unknown}'`)
   }
 }
 

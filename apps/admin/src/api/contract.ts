@@ -5,6 +5,8 @@ import type {
   AccountSummary,
   Application,
   ApplicationInput,
+  ApplicationPatch,
+  ApplicationQuery,
   AuditEvent,
   AuditQuery,
   CursorPage,
@@ -95,8 +97,11 @@ export interface NervesApi {
   listPermissions(): Promise<Permission[]>
   updateRole(id: string, input: { name: string; description: string; permissions: string[] }): Promise<Role>
 
-  listApplications(): Promise<Application[]>
+  listApplications(query?: ApplicationQuery): Promise<CursorPage<Application>>
+  getApplication(id: string): Promise<Application>
   createApplication(input: ApplicationInput): Promise<Application>
+  updateApplication(id: string, patch: ApplicationPatch): Promise<Application>
+  deleteApplication(id: string): Promise<void>
 
   listAuditEvents(query: AuditQuery): Promise<CursorPage<AuditEvent>>
 

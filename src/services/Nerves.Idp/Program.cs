@@ -6,7 +6,9 @@ using Nerves.Contracts.Audit.V1;
 using Nerves.Contracts.Authorization.V1;
 using Nerves.Contracts.Identity.V1;
 using Nerves.Contracts.Session.V1;
+using Nerves.Core;
 using Nerves.Idp.Api;
+using Nerves.Idp.Applications;
 using Nerves.Idp.Federation;
 using Nerves.Idp.Integration;
 using Nerves.Idp.Logout;
@@ -180,6 +182,9 @@ var auditAddress = builder.Configuration["Audit:GrpcAddress"] ?? "http://127.0.0
 builder.Services.AddSingleton(_ => new AuditService.AuditServiceClient(GrpcChannel.ForAddress(auditAddress)));
 builder.Services.AddSingleton<AuditClient>();
 
+builder.Services.AddSingleton<IClock>(SystemClock.Instance);
+builder.Services.AddScoped<ApplicationService>();
+
 builder.Services.AddSingleton<IdentityDirectory>();
 builder.Services.AddSingleton<SessionDirectory>();
 builder.Services.AddSingleton<AuthorizationDirectory>();
@@ -215,6 +220,7 @@ app.MapOpenApi();
 app.MapNervesDefaults("nerves-idp");
 app.MapControllers();
 app.MapAuthEndpoints();
+app.MapApplicationEndpoints();
 app.MapFederationEndpoints();
 app.MapIntegrationStatusEndpoints();
 app.MapIntegrationSettingsEndpoints();
