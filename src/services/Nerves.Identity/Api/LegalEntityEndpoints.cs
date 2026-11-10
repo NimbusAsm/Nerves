@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nerves.Identity.Domain;
+using Nerves.Identity.Integration;
 using Nerves.Identity.Persistence;
 
 using Nerves.ServiceDefaults.Security;
@@ -16,6 +17,8 @@ public static class LegalEntityEndpoints
         group.MapPost("/", CreateAsync);
         group.MapGet("/", ListAsync);
         group.MapGet("/{id:guid}", GetAsync);
+        group.MapPost("/{id:guid}/disable", DisableAsync);
+        group.MapPost("/{id:guid}/enable", EnableAsync);
 
         return group;
     }
@@ -110,10 +113,82 @@ public static class LegalEntityEndpoints
         return entity is null ? Results.NotFound() : Results.Ok(ToResponse(entity));
     }
 
+    private static async Task<IResult> DisableAsync(
+        Guid id,
+        IdentityDbContext db,
+        SessionClient sessions,
+        AuditClient audit,
+        HttpContext http,
+        CancellationToken cancellationToken)
+    {
+        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null)
+        {
+            return Results.NotFound();
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var result = entity.Disable(now);
+        if (result.IsFailure)
+        {
+            return Results.Problem(result.Reason.Message, statusCode: StatusCodes.Status409Conflict);
+        }
+
+        var accounts = await db.NetworkAccounts
+            .Where(x => x.LegalEntityId == id)
+            .ToListAsync(cancellationToken);
+
+        var disabled = 0;
+        foreach (var account in accounts)
+        {
+            if (account.Disable(now).IsSuccess)
+            {
+                disabled++;
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        var revoked = 0;
+        foreach (var account in accounts)
+        {
+            revoked += await sessions.RevokeAllAsync(account.Id.ToString(), "legal-entity.disabled", cancellationToken);
+        }
+
+        await audit.AppendAsync(
+            "legal-entity.disabled", "admin", null, "legal-entity", entity.Id.ToString(), "success",
+            http.TraceIdentifier, null, cancellationToken);
+
+        return Results.Ok(new LegalEntityTransitionResponse(
+            entity.Id.ToString(), entity.Status.ToString(), disabled, revoked));
+    }
+
+    private static async Task<IResult> EnableAsync(
+        Guid id,
+        IdentityDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null)
+        {
+            return Results.NotFound();
+        }
+
+        var result = entity.Enable(DateTimeOffset.UtcNow);
+        if (result.IsFailure)
+        {
+            return Results.Problem(result.Reason.Message, statusCode: StatusCodes.Status409Conflict);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        return Results.Ok(new LegalEntityTransitionResponse(entity.Id.ToString(), entity.Status.ToString(), 0, 0));
+    }
+
     private static LegalEntityResponse ToResponse(LegalEntity entity) => new(
         entity.Id.ToString(),
         entity.Type.ToString(),
         entity.DisplayName,
         entity.VerificationState.ToString(),
-        entity.CreatedAt);
+        entity.CreatedAt,
+        entity.Status.ToString());
 }

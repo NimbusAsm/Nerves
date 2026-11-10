@@ -27,6 +27,13 @@ public enum VerificationState
     Expired = 4,
 }
 
+/// <summary>Lifecycle of the legal entity itself.</summary>
+public enum LegalEntityStatus
+{
+    Active = 1,
+    Disabled = 2,
+}
+
 /// <summary>What the network account is used for.</summary>
 public enum AccountType
 {

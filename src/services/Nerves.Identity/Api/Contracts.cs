@@ -31,12 +31,19 @@ public sealed record AccountResponse(
     DateTimeOffset CreatedAt);
 
 /// <summary>Legal entity representation returned by the management API.</summary>
+public sealed record LegalEntityTransitionResponse(
+    string Id,
+    string Status,
+    int DisabledAccounts,
+    int RevokedSessions);
+
 public sealed record LegalEntityResponse(
     string Id,
     string Type,
     string DisplayName,
     string VerificationState,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    string Status);
 
 /// <summary>Cursor page envelope.</summary>
 public sealed record PageResponse<T>(IReadOnlyList<T> Items, string? NextCursor);
