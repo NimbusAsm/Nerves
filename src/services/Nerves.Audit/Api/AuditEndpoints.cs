@@ -13,6 +13,7 @@ public static class AuditEndpoints
 
         group.MapGet("/audit-events", ListAsync);
         group.MapGet("/audit-events/verify", VerifyAsync);
+        group.MapGet("/audit-events/export", ExportAsync);
         group.MapPost("/audit-events/archive", ArchiveAsync);
         group.MapGet("/audit-events/archive/status", ArchiveStatusAsync);
 
@@ -102,6 +103,45 @@ public static class AuditEndpoints
         }
 
         return Results.Ok(new { valid = true, count = events.Count });
+    }
+
+    private static async Task<IResult> ExportAsync(
+        AuditDbContext db,
+        string? format = "csv",
+        int limit = 5000,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = (format ?? "csv").Trim().ToLowerInvariant();
+        if (normalized is not ("csv" or "json"))
+        {
+            return Results.Problem("format must be csv or json.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
+        limit = Math.Clamp(limit, 1, 20000);
+
+        var events = await db.AuditEvents
+            .AsNoTracking()
+            .OrderBy(x => x.OccurredAt)
+            .ThenBy(x => x.Sequence)
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+
+        var now = DateTimeOffset.UtcNow;
+        var fileName = AuditExport.FileName(normalized, now);
+
+        if (normalized == "csv")
+        {
+            return Results.File(
+                System.Text.Encoding.UTF8.GetBytes(AuditExport.ToCsv(events)),
+                "text/csv; charset=utf-8",
+                fileName);
+        }
+
+        var payload = System.Text.Json.JsonSerializer.Serialize(events);
+        return Results.File(
+            System.Text.Encoding.UTF8.GetBytes(payload),
+            "application/json; charset=utf-8",
+            fileName);
     }
 
     private static async Task<IResult> ArchiveAsync(
