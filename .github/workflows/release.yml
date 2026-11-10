@@ -47,9 +47,6 @@ jobs:
           - name: notification
             project: src/services/Nerves.Notification/Nerves.Notification.csproj
             dll: Nerves.Notification.dll
-          - name: console
-            project: src/services/Nerves.ConsoleApi/Nerves.ConsoleApi.csproj
-            dll: Nerves.ConsoleApi.dll
     steps:
       - uses: actions/checkout@v4
 
