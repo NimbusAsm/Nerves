@@ -96,6 +96,71 @@ internal sealed class ApiRequester
         await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
     }
 
+    public async Task PostVoidAsync(string path, object body, string? idempotencyKey, CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.Serialize(body, Json);
+        var key = idempotencyKey ?? Guid.NewGuid().ToString("D", CultureInfo.InvariantCulture);
+
+        using var response = await SendAsync(
+            () =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Post, BuildUri(path))
+                {
+                    Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+                };
+                ApplyHeaders(request, key, null);
+                return request;
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<T> PutAsync<T>(string path, object body, string? idempotencyKey, CancellationToken cancellationToken)
+    {
+        var payload = JsonSerializer.Serialize(body, Json);
+        var key = idempotencyKey ?? Guid.NewGuid().ToString("D", CultureInfo.InvariantCulture);
+
+        return await SendAndReadAsync<T>(
+            () =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Put, BuildUri(path))
+                {
+                    Content = new StringContent(payload, Encoding.UTF8, "application/json"),
+                };
+                ApplyHeaders(request, key, null);
+                return request;
+            },
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<NervesFile> GetFileAsync(string path, string? query, CancellationToken cancellationToken)
+    {
+        using var response = await SendAsync(
+            () =>
+            {
+                var request = new HttpRequestMessage(HttpMethod.Get, BuildUri(path) + query);
+                ApplyHeaders(request, null, null, "text/csv, application/json");
+                return request;
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        await EnsureSuccessAsync(response, cancellationToken).ConfigureAwait(false);
+
+        var content = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
+        var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
+            ?? response.Content.Headers.ContentDisposition?.FileName;
+        fileName = fileName?.Trim('"');
+
+        return new NervesFile
+        {
+            Content = content,
+            ContentType = contentType,
+            FileName = fileName,
+        };
+    }
+
     private async Task<T> SendAndReadAsync<T>(Func<HttpRequestMessage> requestFactory, CancellationToken cancellationToken)
     {
         using var response = await SendAsync(requestFactory, cancellationToken).ConfigureAwait(false);
@@ -227,9 +292,12 @@ internal sealed class ApiRequester
 
     private string BuildUri(string path) => _root + "/" + path.TrimStart('/');
 
-    private void ApplyHeaders(HttpRequestMessage request, string? idempotencyKey, string? ifMatch)
+    private void ApplyHeaders(HttpRequestMessage request, string? idempotencyKey, string? ifMatch, string accept = "application/json")
     {
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        foreach (var mediaType in accept.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue(mediaType));
+        }
 
         if (_token is not null)
         {

@@ -178,6 +178,57 @@ export class RolesDeleteBuilder {
   }
 }
 
+/** Builds `POST /api/v1/roles/{id}/assign`. */
+export class RolesAssignBuilder {
+  constructor(
+    protected readonly transport: Transport,
+    protected readonly id: string,
+    protected readonly subjectType: string | undefined = undefined,
+    protected readonly subjectId: string | undefined = undefined,
+    protected readonly idempotencyKey: string | undefined = undefined,
+  ) {}
+
+  withSubject(subjectType: string, subjectId: string): RolesAssignBuilder {
+    return new RolesAssignBuilder(this.transport, this.id, subjectType, subjectId, this.idempotencyKey);
+  }
+
+  withIdempotencyKey(idempotencyKey: string): RolesAssignBuilder {
+    return new RolesAssignBuilder(this.transport, this.id, this.subjectType, this.subjectId, idempotencyKey);
+  }
+
+  send(): Promise<void> {
+    return this.sendTo('assign');
+  }
+
+  protected sendTo(action: 'assign' | 'revoke'): Promise<void> {
+    if (this.subjectType === undefined || this.subjectId === undefined) {
+      throw new Error('withSubject() is required before send().');
+    }
+
+    return this.transport.requestVoid({
+      method: 'POST',
+      path: `${ROLE_PATH}/${this.id}/${action}`,
+      body: { subjectType: this.subjectType, subjectId: this.subjectId },
+      idempotencyKey: this.idempotencyKey ?? crypto.randomUUID(),
+    });
+  }
+}
+
+/** Builds `POST /api/v1/roles/{id}/revoke`. */
+export class RolesRevokeBuilder extends RolesAssignBuilder {
+  override withSubject(subjectType: string, subjectId: string): RolesRevokeBuilder {
+    return new RolesRevokeBuilder(this.transport, this.id, subjectType, subjectId, this.idempotencyKey);
+  }
+
+  override withIdempotencyKey(idempotencyKey: string): RolesRevokeBuilder {
+    return new RolesRevokeBuilder(this.transport, this.id, this.subjectType, this.subjectId, idempotencyKey);
+  }
+
+  override send(): Promise<void> {
+    return this.sendTo('revoke');
+  }
+}
+
 /** Entry point for every role operation. */
 export class RolesResource {
   constructor(private readonly transport: Transport) {}
@@ -200,5 +251,13 @@ export class RolesResource {
 
   delete(id: string): RolesDeleteBuilder {
     return new RolesDeleteBuilder(this.transport, id);
+  }
+
+  assign(id: string): RolesAssignBuilder {
+    return new RolesAssignBuilder(this.transport, id);
+  }
+
+  revoke(id: string): RolesRevokeBuilder {
+    return new RolesRevokeBuilder(this.transport, id);
   }
 }

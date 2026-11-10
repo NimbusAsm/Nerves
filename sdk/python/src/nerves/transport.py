@@ -94,9 +94,42 @@ class Transport:
         method: str,
         path: str,
         *,
+        params: Sequence[Tuple[str, str]] | None = None,
+        body: Mapping[str, Any] | None = None,
+        idempotency_key: str | None = None,
         if_match: str | None = None,
     ) -> None:
-        self._send(method, path, if_match=if_match)
+        self._send(
+            method,
+            path,
+            params=params,
+            body=body,
+            idempotency_key=idempotency_key,
+            if_match=if_match,
+        )
+
+    def request_file(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Sequence[Tuple[str, str]] | None = None,
+        accept: str = "text/csv, application/json",
+    ) -> "DownloadedFile":
+        response = self._send_response(
+            method,
+            path,
+            params=params,
+            accept=accept,
+        )
+        disposition = response.headers.get("Content-Disposition") or response.headers.get(
+            "content-disposition", ""
+        )
+        return DownloadedFile(
+            content=response.content,
+            content_type=(response.headers.get("Content-Type") or "application/octet-stream").split(";")[0].strip(),
+            file_name=_file_name(disposition),
+        )
 
     def _send(
         self,
@@ -108,11 +141,31 @@ class Transport:
         idempotency_key: str | None = None,
         if_match: str | None = None,
     ) -> str:
+        return self._send_response(
+            method,
+            path,
+            params=params,
+            body=body,
+            idempotency_key=idempotency_key,
+            if_match=if_match,
+        ).text
+
+    def _send_response(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Sequence[Tuple[str, str]] | None = None,
+        body: Mapping[str, Any] | None = None,
+        idempotency_key: str | None = None,
+        if_match: str | None = None,
+        accept: str = "application/json",
+    ) -> requests.Response:
         url = f"{self._root}/{path.lstrip('/')}"
 
         for attempt in range(self._max_retries + 1):
             headers: MutableMapping[str, str] = {
-                "Accept": "application/json",
+                "Accept": accept,
                 **self._headers,
             }
             if body is not None:
@@ -140,7 +193,7 @@ class Transport:
                 raise
 
             if response.status_code < 400:
-                return response.text
+                return response
 
             if (response.status_code == 429 or response.status_code >= 500) and attempt < self._max_retries:
                 retry_after = response.headers.get("Retry-After")
@@ -181,3 +234,20 @@ class Transport:
                 problem = replace(problem, trace_id=header_trace)
 
         return NervesApiException(response.status_code, problem, body)
+
+@dataclass(frozen=True, slots=True)
+class DownloadedFile:
+    """A non-JSON response body, currently only the audit export."""
+
+    content: bytes
+    content_type: str
+    file_name: str | None
+
+
+def _file_name(disposition: str) -> str | None:
+    """Extracts the file name from a Content-Disposition header."""
+    for chunk in disposition.split(";"):
+        key, _, value = chunk.strip().partition("=")
+        if key.lower() in {"filename", "filename*"}:
+            return value.strip().strip('"')
+    return None
