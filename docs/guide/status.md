@@ -50,6 +50,7 @@
 | 账户切换 | ✅ 已实现 | 同一法人名下账户可凭当前 Bearer 令牌调用 /api/v1/auth/switch-account 换取新登录票据（不重输口令）；跨法人 403。实测新令牌 sub 为目标账户、leid 不变 |
 | 上游联邦：OIDC / LDAP | 🧭 v1.0 计划 | — |
 | 停用/锁定即撤销会话 | ✅ 已实现 | Identity 在 disable/lock 后经 session gRPC 撤销该账户全部会话（理由记入 RevokedReason） |
+| 刷新令牌轮换 | ✅ 已实现 | 开启 offline_access 后发刷新令牌，每次换发都轮换；`SetRefreshTokenReuseLeeway(0)` 使复用旧令牌返回 invalid_grant 并撤销令牌家族 |
 | 失败锁定 | ✅ 已实现 | 15 分钟内 5 次失败锁定 15 分钟；计数与锁定落在 idp.login_attempt，多副本与重启后仍生效 |
 
 ## 授权、目录与审计
