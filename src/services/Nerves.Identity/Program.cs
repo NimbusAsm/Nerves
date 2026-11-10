@@ -1,6 +1,8 @@
 using Fido2NetLib;
 using Grpc.Net.Client;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Nerves.Contracts.Audit.V1;
 using Nerves.Identity.Api;
 using Nerves.Identity.Grpc;
@@ -10,6 +12,7 @@ using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
 using Nerves.Identity.Seeding;
 using Nerves.Identity.Sharding;
+using Nerves.Identity.Verification;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
 
@@ -29,6 +32,29 @@ builder.Services.AddSingleton<IIdentifierHasher, HmacIdentifierHasher>();
 builder.Services.AddSingleton<TotpService>();
 builder.Services.AddSingleton<TotpSecretProtector>();
 builder.Services.AddSingleton<RecoveryCodes>();
+builder.Services.AddScoped<PasswordResetTokens>();
+builder.Services.AddScoped<Nerves.Identity.PasswordReset.PasswordResetService>();
+builder.Services.Configure<Nerves.Identity.PasswordReset.PasswordResetOptions>(
+    builder.Configuration.GetSection(Nerves.Identity.PasswordReset.PasswordResetOptions.SectionName));
+builder.Services.Configure<NotificationClientOptions>(builder.Configuration.GetSection(NotificationClientOptions.SectionName));
+builder.Services.AddHttpClient(NotificationClient.HttpClientName, (services, client) =>
+{
+    var options = services.GetRequiredService<IOptions<NotificationClientOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 1, 30));
+});
+builder.Services.AddSingleton<NotificationClient>();
+builder.Services.AddSingleton<INotificationSender>(services => services.GetRequiredService<NotificationClient>());
+builder.Services.AddSingleton<ISessionRevoker>(services => services.GetRequiredService<SessionClient>());
+builder.Services.Configure<VerificationOptions>(builder.Configuration.GetSection(VerificationOptions.SectionName));
+builder.Services.Configure<HttpVerificationOptions>(builder.Configuration.GetSection(HttpVerificationOptions.SectionName));
+builder.Services.AddHttpClient(HttpVerificationProvider.HttpClientName, (services, client) =>
+{
+    var options = services.GetRequiredService<IOptions<HttpVerificationOptions>>().Value;
+    client.Timeout = TimeSpan.FromSeconds(Math.Clamp(options.TimeoutSeconds, 1, 60));
+});
+builder.Services.AddSingleton<IVerificationProvider, ManualVerificationProvider>();
+builder.Services.AddSingleton<IVerificationProvider, HttpVerificationProvider>();
+builder.Services.AddSingleton<VerificationProviderFactory>();
 builder.Services.Configure<ShardingOptions>(builder.Configuration.GetSection(ShardingOptions.SectionName));
 builder.Services.AddSingleton<ShardResolver>();
 builder.Services.AddScoped<PasskeyService>();
@@ -43,6 +69,20 @@ builder.Services.AddSingleton<IFido2>(_ => new Fido2(new Fido2Configuration
     Origins = new HashSet<string> { "http://127.0.0.1:5300", "http://localhost:5300" },
 }));
 builder.Services.AddNervesDataProtection(builder.Configuration, builder.Environment);
+
+// Provider callbacks are anonymous; a fixed window keeps a broken or hostile
+// provider from turning them into a database write amplifier.
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddFixedWindowLimiter("verification-callback", limiter =>
+    {
+        limiter.PermitLimit = 30;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+});
 
 builder.Services.AddNervesBearerAuthentication(builder.Configuration);
 
@@ -89,6 +129,7 @@ app.UseNervesSecurityHeaders();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -101,6 +142,7 @@ app.MapEventEndpoints();
 app.MapStatsEndpoints();
 app.MapMfaEndpoints();
 app.MapScimUserEndpoints();
+app.MapVerificationEndpoints();
 
 app.Run();
 

@@ -20,6 +20,11 @@ service IdentityService {
   // Creates or refreshes an account provisioned from an external directory.
   // Idempotent on realm + username, then on email. Never touches credentials.
   rpc UpsertDirectoryAccount(UpsertDirectoryAccountRequest) returns (UpsertDirectoryAccountResponse);
+  // Issues a single-use password reset token and queues the notification email.
+  // The reply is uniform: callers cannot learn whether the identifier exists.
+  rpc RequestPasswordReset(RequestPasswordResetRequest) returns (RequestPasswordResetResponse);
+  // Spends a reset token, replaces the password and revokes every session.
+  rpc CompletePasswordReset(CompletePasswordResetRequest) returns (CompletePasswordResetResponse);
 }
 
 message GetServiceInfoRequest {}
@@ -162,4 +167,31 @@ message UpsertDirectoryAccountResponse {
   string account_id = 3;
   // Empty on success; otherwise a stable machine-readable code.
   string failure_code = 4;
+}
+message RequestPasswordResetRequest {
+  // Realm scoped username, email or phone number.
+  string identifier = 1;
+  string realm = 2;
+  // Public base URL of the page that accepts the token, without a trailing slash.
+  string reset_url_base = 3;
+}
+
+message RequestPasswordResetResponse {
+  // Always true when the request was processed; never reveals existence.
+  bool accepted = 1;
+  int32 expires_in_seconds = 2;
+  // Empty on success; otherwise a stable machine-readable code.
+  string failure_code = 3;
+}
+
+message CompletePasswordResetRequest {
+  string token = 1;
+  string new_password = 2;
+}
+
+message CompletePasswordResetResponse {
+  bool reset = 1;
+  string account_id = 2;
+  // Empty on success; otherwise a stable machine-readable code.
+  string failure_code = 3;
 }

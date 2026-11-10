@@ -4,7 +4,7 @@ using Nerves.Contracts.Session.V1;
 namespace Nerves.Identity.Integration;
 
 /// <summary>Revokes sessions when an account is disabled or locked.</summary>
-public sealed class SessionClient
+public sealed class SessionClient : ISessionRevoker
 {
     private readonly SessionService.SessionServiceClient _client;
 

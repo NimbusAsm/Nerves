@@ -9,14 +9,16 @@ using Nerves.Identity.Sharding;
 namespace Nerves.Identity.Grpc;
 
 /// <summary>Serves the internal identity contract over gRPC.</summary>
-public sealed class IdentityGrpcService(
+public sealed partial class IdentityGrpcService(
     IdentityDbContext dbContext,
     IPasswordHasher passwordHasher,
     PasskeyService passkeys,
     IIdentifierHasher identifierHasher,
     ShardResolver shards,
     TotpService totp,
-    TotpSecretProtector protector) : IdentityService.IdentityServiceBase
+    TotpSecretProtector protector,
+    Nerves.Identity.PasswordReset.PasswordResetService passwordReset,
+    Microsoft.Extensions.Options.IOptions<Nerves.Identity.PasswordReset.PasswordResetOptions> passwordResetOptions) : IdentityService.IdentityServiceBase
 {
     public override Task<GetServiceInfoResponse> GetServiceInfo(
         GetServiceInfoRequest request,

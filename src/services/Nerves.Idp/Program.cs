@@ -73,6 +73,15 @@ builder.Services.AddRateLimiter(options =>
         limiter.QueueLimit = 0;
     });
 
+    // Anonymous reset endpoints: a small fixed window blunts identifier probing
+    // without punishing a legitimate user who mistyped their address.
+    options.AddFixedWindowLimiter("password-reset", limiter =>
+    {
+        limiter.PermitLimit = 5;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+
     options.AddFixedWindowLimiter("authorize", limiter =>
     {
         limiter.PermitLimit = 120;
@@ -184,7 +193,7 @@ builder.Services.AddSingleton<AuditClient>();
 
 builder.Services.AddSingleton<IClock>(SystemClock.Instance);
 builder.Services.AddScoped<ApplicationService>();
-
+builder.Services.AddSingleton<PasswordResetDirectory>();
 builder.Services.AddSingleton<IdentityDirectory>();
 builder.Services.AddSingleton<SessionDirectory>();
 builder.Services.AddSingleton<AuthorizationDirectory>();
@@ -221,6 +230,7 @@ app.MapNervesDefaults("nerves-idp");
 app.MapControllers();
 app.MapAuthEndpoints();
 app.MapApplicationEndpoints();
+app.MapPasswordResetEndpoints();
 app.MapFederationEndpoints();
 app.MapIntegrationStatusEndpoints();
 app.MapIntegrationSettingsEndpoints();
