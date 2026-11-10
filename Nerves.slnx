@@ -8,6 +8,7 @@
     <Project Path="src/Nerves.Contracts.Grpc/Nerves.Contracts.Grpc.csproj" />
     <Project Path="src/Nerves.Core/Nerves.Core.csproj" />
     <Project Path="src/Nerves.ServiceDefaults/Nerves.ServiceDefaults.csproj" />
+    <Project Path="src/Nerves.Sharding/Nerves.Sharding.csproj" />
   </Folder>
   <Folder Name="/src/services/">
     <Project Path="src/services/Nerves.Audit/Nerves.Audit.csproj" />
@@ -24,6 +25,7 @@
     <Project Path="tests/Nerves.Identity.UnitTests/Nerves.Identity.UnitTests.csproj" />
     <Project Path="tests/Nerves.IntegrationTests/Nerves.IntegrationTests.csproj" />
     <Project Path="tests/Nerves.Session.IntegrationTests/Nerves.Session.IntegrationTests.csproj" />
+    <Project Path="tests/Nerves.Sharding.Tests/Nerves.Sharding.Tests.csproj" />
     <Project Path="tests/Nerves.UnitTests/Nerves.UnitTests.csproj" />
   </Folder>
 </Solution>
