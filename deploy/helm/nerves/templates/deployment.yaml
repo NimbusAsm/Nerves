@@ -99,6 +99,28 @@ spec:
             {{- if eq $name "idp" }}
             - name: OpenIddict__Issuer
               value: {{ $.Values.config.publicIssuer | quote }}
+            {{- range $index, $origin := $.Values.config.adminOrigins }}
+            - name: Cors__AdminOrigins__{{ $index }}
+              value: {{ $origin | quote }}
+            {{- end }}
+            {{- if $.Values.seed.enabled }}
+            - name: OpenIddictSeed__Enabled
+              value: "true"
+            - name: OpenIddictSeed__AllowInProduction
+              value: {{ $.Values.seed.allowInProduction | quote }}
+            {{- range $index, $uri := $.Values.seed.redirectUris }}
+            - name: OpenIddictSeed__RedirectUris__{{ $index }}
+              value: {{ $uri | quote }}
+            {{- end }}
+            {{- range $index, $uri := $.Values.seed.postLogoutRedirectUris }}
+            - name: OpenIddictSeed__PostLogoutRedirectUris__{{ $index }}
+              value: {{ $uri | quote }}
+            {{- end }}
+            {{- range $index, $uri := $.Values.seed.adminRedirectUris }}
+            - name: OpenIddictSeed__AdminRedirectUris__{{ $index }}
+              value: {{ $uri | quote }}
+            {{- end }}
+            {{- end }}
             - name: Identity__GrpcAddress
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "identity") }}:{{ (index $.Values.services "identity").grpcPort }}"
             - name: Session__GrpcAddress
@@ -109,6 +131,10 @@ spec:
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "audit") }}:{{ (index $.Values.services "audit").grpcPort }}"
             {{- end }}
             {{- if eq $name "gateway" }}
+            {{- range $index, $origin := $.Values.config.adminOrigins }}
+            - name: Cors__AdminOrigins__{{ $index }}
+              value: {{ $origin | quote }}
+            {{- end }}
             - name: Gateway__Services__identity
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "identity") }}:{{ (index $.Values.services "identity").port }}/"
             - name: Gateway__Services__session

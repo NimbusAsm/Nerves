@@ -305,3 +305,21 @@ cookies. More than one replica therefore needs a shared key ring: provide
 dataProtection.existingClaim pointing at a ReadWriteMany claim, or run those
 two services with a single replica. The chart refuses to render
 replicaCount > 1 for them without such a claim.
+
+
+## First install
+
+OpenIddict clients only exist after the seeder runs, and production refuses the
+seeder by default. For the first installation:
+
+```bash
+helm upgrade --install nerves deploy/helm/nerves \
+  --set seed.enabled=true \
+  --set seed.allowInProduction=true \
+  --set 'seed.adminRedirectUris[0]=https://admin.example.com/oidc-callback.html' \
+  --set 'seed.redirectUris[0]=https://nerves.example.com/signin-oidc' \
+  --set 'seed.postLogoutRedirectUris[0]=https://nerves.example.com/signout-callback-oidc'
+```
+
+Then set `seed.enabled=false` and upgrade again. `config.adminOrigins` lists the
+browser origins allowed to call the IdP and the gateway (the admin console).
