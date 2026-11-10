@@ -29,7 +29,7 @@
 | 管理后台（Vue 3） | ✅ 已实现 | 11 个页面（含用户组、集成）、mock/live 切换、中英 i18n、35 个测试 |
 | 管理后台 live 模式 | ✅ 已实现 | VITE_USE_MOCK=false 走 OIDC 授权码 + PKCE（登录 API 取票 → 跳 IdP → 回调换令牌），令牌仅存内存 |
 | 管理聚合层（console-api） | 🧭 v1.0 计划 | 目前由网关按路径转发，未做响应聚合 |
-| 通知服务（notification） | 🧭 v1.0 计划 | — |
+| 通知服务（notification） | ✅ 已实现 | Email 投递与投递日志（游标分页、状态/收件人过滤）；模板渲染与占位符校验；失败指数退避重试；SMTP 可关闭（no-op）；经网关 `/api/v1/notifications` 就绪 |
 | CLI（迁移 / 初始化 / 诊断） | 🧭 v1.0 计划 | 当前迁移使用 dotnet ef |
 
 ## 身份、认证与会话

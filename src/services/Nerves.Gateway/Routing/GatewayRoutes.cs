@@ -21,6 +21,7 @@ public static class GatewayRoutes
         ("organizations", 9, "directory", "/api/v1/organizations/{**catch-all}"),
         ("invitations", 10, "directory", "/api/v1/invitations/{**catch-all}"),
         ("compliance", 11, "compliance", "/api/v1/compliance/{**catch-all}"),
+        ("notifications", 16, "notification", "/api/v1/notifications/{**catch-all}"),
         ("scim-users", 12, "identity", "/scim/v2/Users/{**catch-all}"),
         ("scim-groups", 13, "authorization", "/scim/v2/Groups/{**catch-all}"),
         ("idp-admin", 14, "idp", "/api/v1/admin/integrations/{**catch-all}"),
@@ -35,6 +36,7 @@ public static class GatewayRoutes
         ["audit"] = "http://127.0.0.1:5105/",
         ["directory"] = "http://127.0.0.1:5106/",
         ["compliance"] = "http://127.0.0.1:5107/",
+        ["notification"] = "http://127.0.0.1:5108/",
         ["idp"] = "http://127.0.0.1:5101/",
     };
 

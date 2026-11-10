@@ -145,6 +145,8 @@ spec:
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "audit") }}:{{ (index $.Values.services "audit").port }}/"
             - name: Gateway__Services__directory
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "directory") }}:{{ (index $.Values.services "directory").port }}/"
+            - name: Gateway__Services__notification
+              value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "notification") }}:{{ (index $.Values.services "notification").port }}/"
             - name: Gateway__Services__compliance
               value: "http://{{ include "nerves.serviceFullname" (dict "root" $ "name" "compliance") }}:{{ (index $.Values.services "compliance").port }}/"
             - name: Gateway__Services__idp
