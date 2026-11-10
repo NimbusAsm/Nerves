@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\\..\\Nerves.Core\\Nerves.Core.csproj" />
+    <ProjectReference Include="..\\..\\Nerves.Sharding\\Nerves.Sharding.csproj" />
     <ProjectReference Include="..\\..\\Nerves.ServiceDefaults\\Nerves.ServiceDefaults.csproj" />
     <ProjectReference Include="..\\..\\Nerves.Contracts.Grpc\\Nerves.Contracts.Grpc.csproj" />
   </ItemGroup>

@@ -1,13 +1,11 @@
 using Grpc.Core;
-using Microsoft.EntityFrameworkCore;
 using Nerves.Contracts.Session.V1;
-using Nerves.Session.Domain;
 using Nerves.Session.Persistence;
 
 namespace Nerves.Session.Grpc;
 
-/// <summary>Serves the internal session contract.</summary>
-public sealed class SessionGrpcService(SessionDbContext db) : SessionService.SessionServiceBase
+/// <summary>Serves the internal session contract through the shard-aware store.</summary>
+public sealed class SessionGrpcService(SessionStore store) : SessionService.SessionServiceBase
 {
     public override Task<GetServiceInfoResponse> GetServiceInfo(
         GetServiceInfoRequest request,
@@ -44,8 +42,7 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
             idle,
             absolute);
 
-        db.Sessions.Add(session);
-        await db.SaveChangesAsync(context.CancellationToken);
+        await store.AddAsync(session, context.CancellationToken);
 
         return new CreateSessionResponse
         {
@@ -64,22 +61,8 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
             return new RevokeSessionResponse { Revoked = false };
         }
 
-        var session = await db.Sessions.FirstOrDefaultAsync(x => x.Id == sessionId, context.CancellationToken);
-        if (session is null || session.RevokedAt is not null)
-        {
-            return new RevokeSessionResponse { Revoked = false };
-        }
-
-        session.Revoke(request.Reason, DateTimeOffset.UtcNow);
-        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
-            "session.revoked",
-            "session",
-            session.Id.ToString(),
-            "{\"reason\":\"" + request.Reason.Replace("\"", "'", StringComparison.Ordinal) + "\"}",
-            DateTimeOffset.UtcNow));
-
-        await db.SaveChangesAsync(context.CancellationToken);
-        return new RevokeSessionResponse { Revoked = true };
+        var revoked = await store.RevokeSessionAsync(sessionId, request.Reason, context.CancellationToken);
+        return new RevokeSessionResponse { Revoked = revoked };
     }
 
     public override async Task<RevokeAccountSessionsResponse> RevokeAccountSessions(
@@ -91,25 +74,8 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
             return new RevokeAccountSessionsResponse();
         }
 
-        var sessions = await db.Sessions
-            .Where(x => x.AccountId == accountId && x.RevokedAt == null)
-            .ToListAsync(context.CancellationToken);
-
-        var now = DateTimeOffset.UtcNow;
-        foreach (var session in sessions)
-        {
-            session.Revoke(request.Reason, now);
-        }
-
-        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
-            "session.account_revoked",
-            "account",
-            accountId.ToString(),
-            "{\"revoked\":" + sessions.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}",
-            now));
-
-        await db.SaveChangesAsync(context.CancellationToken);
-        return new RevokeAccountSessionsResponse { Revoked = sessions.Count };
+        var revoked = await store.RevokeAccountAsync(accountId, request.Reason, context.CancellationToken);
+        return new RevokeAccountSessionsResponse { Revoked = revoked };
     }
 
     public override async Task<ListSessionsResponse> ListSessions(
@@ -121,10 +87,7 @@ public sealed class SessionGrpcService(SessionDbContext db) : SessionService.Ses
             return new ListSessionsResponse();
         }
 
-        var sessions = await db.Sessions.AsNoTracking()
-            .Where(x => x.AccountId == accountId)
-            .OrderByDescending(x => x.CreatedAt)
-            .ToListAsync(context.CancellationToken);
+        var sessions = await store.ListAsync(accountId, context.CancellationToken);
 
         var response = new ListSessionsResponse();
         response.Sessions.AddRange(sessions.Select(s => new SessionInfo

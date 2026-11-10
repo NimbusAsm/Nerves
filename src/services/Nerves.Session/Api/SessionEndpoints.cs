@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Nerves.ServiceDefaults.Security;
 using Nerves.Session.Persistence;
 
@@ -19,47 +18,35 @@ public static class SessionEndpoints
 
     private static async Task<IResult> ListAsync(
         Guid accountId,
-        SessionDbContext db,
+        SessionStore store,
         CancellationToken cancellationToken)
     {
-        var sessions = await db.Sessions.AsNoTracking()
-            .Where(x => x.AccountId == accountId)
-            .OrderByDescending(x => x.CreatedAt)
-            .Select(x => new
-            {
-                x.Id,
-                x.DeviceId,
-                x.CreatedAt,
-                x.LastSeenAt,
-                x.AbsoluteExpiresAt,
-                revoked = x.RevokedAt != null,
-                x.RevokedReason,
-            })
-            .ToListAsync(cancellationToken);
+        var sessions = await store.ListAsync(accountId, cancellationToken);
 
-        return Results.Ok(sessions);
+        return Results.Ok(sessions.Select(x => new
+        {
+            x.Id,
+            x.DeviceId,
+            x.CreatedAt,
+            x.LastSeenAt,
+            x.AbsoluteExpiresAt,
+            revoked = x.RevokedAt != null,
+            x.RevokedReason,
+        }));
     }
 
     private static async Task<IResult> RevokeAsync(
         Guid sessionId,
-        SessionDbContext db,
+        SessionStore store,
         CancellationToken cancellationToken)
     {
-        var session = await db.Sessions.FirstOrDefaultAsync(x => x.Id == sessionId, cancellationToken);
-        if (session is null)
+        var revoked = await store.RevokeSessionAsync(sessionId, "revoked by administrator", cancellationToken);
+        if (!revoked)
         {
-            return Results.NotFound();
+            var existing = await store.FindAsync(sessionId, cancellationToken);
+            return existing is null ? Results.NotFound() : Results.Ok();
         }
 
-        session.Revoke("revoked by administrator", DateTimeOffset.UtcNow);
-        db.OutboxEvents.Add(Domain.OutboxEvent.Create(
-            "session.admin_revoked",
-            "session",
-            session.Id.ToString(),
-            "{}",
-            DateTimeOffset.UtcNow));
-
-        await db.SaveChangesAsync(cancellationToken);
         return Results.Ok();
     }
 }
