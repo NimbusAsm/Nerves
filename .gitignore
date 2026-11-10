@@ -40,3 +40,6 @@ secrets/
 # ---- Tools ----
 .kiota/
 *~
+
+# release artifacts
+/dist/
