@@ -7,7 +7,9 @@ builder.AddNervesDefaults("nerves-gateway");
 builder.Services.AddOpenApi();
 
 
-builder.Services.AddReverseProxy().LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+var (routes, clusters) = Nerves.Gateway.Routing.GatewayRoutes.Build(builder.Configuration);
+
+builder.Services.AddReverseProxy().LoadFromMemory(routes, clusters);
 
 var adminOrigins = builder.Configuration.GetSection("Cors:AdminOrigins").Get<string[]>() ?? [];
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
