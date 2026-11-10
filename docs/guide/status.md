@@ -48,7 +48,7 @@
 | MFA：恢复码 | ✅ 已实现 | 生成 10 个一次性恢复码（明文只返回一次、库中仅存 SHA-256），可查询剩余数量与重置；登录时与 TOTP 共用 /api/v1/auth/mfa，使用后即作废 |
 | MFA：Passkey | ✅ 已实现 | WebAuthn 注册/认证（Fido2NetLib）：challenge 单次使用并持久化，凭据 Data Protection 加密、签名计数递增校验；管理台账户详情可登记/移除通行密钥 |
 | 账户切换 | ✅ 已实现 | 同一法人名下账户可凭当前 Bearer 令牌调用 /api/v1/auth/switch-account 换取新登录票据（不重输口令）；跨法人 403。实测新令牌 sub 为目标账户、leid 不变 |
-| 上游联邦：OIDC / LDAP | 🧭 v1.0 计划 | — |
+| LDAP 目录同步 | ✅ 已实现 | Ldap:Sync 配置（Enabled/IntervalMinutes/BaseDn/Filter/AttributeMap）；后台按间隔同步用户到 identity（新 gRPC UpsertDirectoryAccount，realm+username 优先、email 次之，幂等且不改口令/不删除）；GET /api/v1/admin/directory-sync/status 返回最近一次统计；审计 directory.sync.completed |
 | 会话生命周期 | ✅ 已实现 | `Session:IdleMinutes / AbsoluteHours / ExpirySweepSeconds` 可配；IdP Cookie 不滑动且带 Max-Age；session 服务定期把过期会话标记为 expired |
 | 分片重算工具 | ✅ 已实现 | Sharding:Recompute（可 DryRun）重算 routing_index.Shard 并输出分布；幂等，供扩容前校验 |
 | 领域事件 outbox | ✅ 已实现 | 实名状态变更在同一事务写入 outbox，每个账户一条 realname.changed；后台每 5s 投递审计并标记 dispatched，失败重试；GET /api/v1/events 增量拉取 |
@@ -70,7 +70,7 @@
 | 授权决策缓存 | ✅ 已实现 | 按 account+legalEntity 缓存权限快照，用 subject 版本号失效（角色/组变更即失效）；POST /api/v1/decisions/check 与 GET /api/v1/decisions/stats |
 | 用户组 | ✅ 已实现 | 组 CRUD、成员增删、按组授予角色；权限解析展开组成员，成员变动递增版本使令牌刷新 |
 | 上游 LDAP 联邦 | ✅ 已实现（基础） | POST /api/v1/auth/federation/ldap 用服务账号检索后二次绑定校验口令；按 mail 或 username 关联本地账户，成功签发登录票据，未关联 403；配置 Ldap:Enabled/Host/BaseDn/UserFilter |
-| 上游 OIDC 联邦 | ✅ 已实现（OIDC） | 配置多个上游提供方；POST /api/v1/auth/federation/start 返回授权 URL（state + PKCE），回调校验 state 单次使用并验签上游 id_token（JWKS + aud），按 email 关联本地账户后签发登录票据；未关联返回 403。LDAP 未实现 |
+| 上游 OIDC 联邦 | ✅ 已实现（OIDC） | 配置多个上游提供方；POST /api/v1/auth/federation/start 返回授权 URL（state + PKCE），回调校验 state 单次使用并验签上游 id_token（JWKS + aud），按 email 关联本地账户后签发登录票据；未关联返回 403 |
 | 网关路由 | ✅ 已实现 | 路由表内置于代码，下游地址由 Gateway:Services:* 配置（缺省回落本机开发端口），任意环境可直接接线 |
 | 运维文档 | ✅ 已实现 | 备份与恢复、密钥轮换、升级与回滚、上线安全检查四篇，并提供 scripts/backup.sh（pg_dump + 密钥包 + 校验和） |
 | 反向代理支持 | ✅ 已实现 | 所有服务启用 ForwardedHeaders（X-Forwarded-Proto/For），IdP issuer 随 https 头切换；默认只信任 loopback，Proxy:TrustAll 显式放开 |
