@@ -32,6 +32,28 @@ jobs:
       - name: Test
         run: dotnet test --no-build
 
+      - name: Check for vulnerable packages
+        run: dotnet list package --vulnerable --include-transitive --format json > vulnerabilities.json
+
+      - name: Fail on known vulnerabilities
+        run: |
+          python3 - <<'PYCODE'
+          import json
+          import sys
+          data = json.load(open("vulnerabilities.json"))
+          found = []
+          for project in data.get("projects", []):
+              for framework in project.get("frameworks", []):
+                  for package in framework.get("transitivePackages", []) + framework.get("topLevelPackages", []):
+                      if package.get("vulnerabilities"):
+                          found.append((project["path"], package["id"]))
+          if found:
+              for project, package in found:
+                  print(f"vulnerable: {package} in {project}")
+              sys.exit(1)
+          print("no known vulnerabilities")
+          PYCODE
+
       - name: Pack SDK
         run: dotnet pack sdk/dotnet/Nerves.Client/Nerves.Client.csproj -c Release -o artifacts/packages
 
