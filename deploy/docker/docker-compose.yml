@@ -247,6 +247,26 @@ services:
       Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
     ports: ["5107:8080"]
 
+  notification:
+    <<: *service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+      args:
+        PROJECT: src/services/Nerves.Notification/Nerves.Notification.csproj
+        ENTRY_DLL: Nerves.Notification.dll
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Default: Host=postgres;Port=5432;Database=nerves;Username=nerves;Password=nerves
+      Authentication__Authority: http://idp:8080
+      Authentication__Issuer: http://127.0.0.1:5101/
+      Authentication__Audience: nerves.api
+      Database__MigrateOnStart: "true"
+      Smtp__Disabled: "true"
+      Delivery__SweepSeconds: "30"
+      Kestrel__Endpoints__Http__Url: http://0.0.0.0:8080
+    ports: ["5108:8080"]
+
 volumes:
   pgdata:
   audit-archive:

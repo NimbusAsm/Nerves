@@ -49,6 +49,27 @@ config:
   # Browser origins allowed to call the gateway and the IdP (the admin console).
   adminOrigins:
     - "https://nerves.example.com"
+  # Notification service: the no-op sender is the default so an install without
+  # an SMTP relay still accepts requests and records deliveries.
+  notification:
+    smtp:
+      disabled: true
+      host: ""
+      port: 587
+      from: "noreply@nerves.example.com"
+      tls: true
+      user: ""
+      # Secret (in the release namespace) holding the SMTP password. The chart
+      # never renders a password into values or a ConfigMap. Leave empty to skip
+      # SMTP authentication.
+      existingSecret: ""
+      passwordSecretKey: password
+    delivery:
+      sweepSeconds: 30
+      maxAttempts: 5
+      baseDelaySeconds: 60
+      maxDelaySeconds: 3600
+      batchSize: 20
 
 # One entry per service. Every Nerves service listens on HTTP 8080 inside the
 # container and exposes /healthz, /readyz and /api/v1/meta.
@@ -293,6 +314,34 @@ services:
     extraEnv: []
     extraEnvFrom: []
 
+  # Email delivery log and retry worker. The default no-op sender keeps a fresh
+  # install usable; set smtp.disabled=false and fill the SMTP values to deliver.
+  notification:
+    enabled: true
+    replicaCount: 1
+    port: 80
+    serviceType: ClusterIP
+    serviceAnnotations: {}
+    image:
+      repository: ""
+      tag: ""
+      digest: ""
+      pullPolicy: ""
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: "1"
+        memory: 512Mi
+    podAnnotations: {}
+    podLabels: {}
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+    extraEnv: []
+    extraEnvFrom: []
+
 # DataProtection holds the keys that encrypt MFA secrets and cookies. Losing
 # them makes enrolled factors unreadable, so they live on a PVC by default.
 dataProtection:
@@ -322,6 +371,7 @@ migrations:
     - directory
     - audit
     - compliance
+    - notification
 
 ingress:
   enabled: false

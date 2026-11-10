@@ -1,7 +1,7 @@
 # Local stack
 
 docker compose -f deploy/docker/docker-compose.yml up -d --build starts
-PostgreSQL and all eight services. Every service listens on :8080 inside the
+PostgreSQL and all nine services. Every service listens on :8080 inside the
 network; the host mapping is:
 
 | Service | Host port | Purpose |
@@ -14,6 +14,7 @@ network; the host mapping is:
 | audit | 5105 / 5205 | audit trail |
 | directory | 5106 / 5206 | organizations |
 | compliance | 5107 | Compliance.CN |
+| notification | 5108 | email delivery log and retry worker (no-op sender by default) |
 
 The internal gRPC ports (5202-5206) must stay HTTP/2; the REST ports are HTTP/1.1.
 
