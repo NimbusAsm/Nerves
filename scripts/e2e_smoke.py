@@ -99,6 +99,21 @@ def main():
         status, _, _ = call(f"{GATEWAY}{path}", headers=auth)
         expect(status, 200, f"gateway {path}")
 
+    email = {
+        "to": "e2e@nerves.local",
+        "template": "account.welcome",
+        "values": {"displayName": "E2E", "username": "e2e", "issuer": IDP},
+    }
+    status, _, _ = call(
+        f"{GATEWAY}/api/v1/notifications/email",
+        json.dumps(email).encode(),
+        {**auth, "Content-Type": "application/json"},
+    )
+    expect(status, 201, "gateway notifications send")
+
+    status, _, _ = call(f"{GATEWAY}/api/v1/notifications?limit=1", headers=auth)
+    expect(status, 200, "gateway notifications list")
+
     status, _, _ = call(f"{GATEWAY}/api/v1/stats")
     expect(status, 401, "gateway without a token")
 
