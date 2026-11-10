@@ -52,6 +52,8 @@ test('opens the notification center from the sidebar and sends a template email'
   await page.locator('#notification-value-issuer').fill('https://nerves.example.com/')
   await page.getByRole('dialog').getByRole('button', { name: /^发送$/ }).click()
 
-  await expect(page.getByText(/通知已进入投递队列/)).toBeVisible()
+  // The dialog only closes once the API accepted the message, and the toast is
+  // short-lived, so assert on the refreshed delivery log instead.
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('table')).toContainText('e2e@example.com')
 })

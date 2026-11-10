@@ -109,10 +109,13 @@ POST   /api/v1/notifications/email                    { to, template, values }�
 
 ### 与 PLAN §9.2 的差异（需要 Lead 确认）
 
-- 登录按任务约定用 `POST /api/v1/auth/login` 返回 `{ token, user }`，HTTP 层带 `Authorization: Bearer`。
-  PLAN §9.2 要求管理面板走 **会话 Cookie + CSRF**；本实现同时发送 `credentials: include`，
-  但目前没有 CSRF token 交换。切生产前应改为 BFF：登录态进 HttpOnly Cookie、增加 CSRF 校验与刷新机制。
-  改动只涉及 `src/api/http.ts` 与 `src/api/session-storage.ts`，页面不受影响。
+- 登录走 IdP 的授权码 + PKCE，访问令牌**只存内存**；HTTP 层带 `Authorization: Bearer`
+  并使用 `credentials: 'omit'`。PLAN §9.2 要求管理面板走 **会话 Cookie + CSRF**；当前网关的
+  CORS 策略只放行 `Access-Control-Allow-Origin`、不返回 `Access-Control-Allow-Credentials`，
+  浏览器端 `credentials: 'include'` 会被 CORS 直接拒绝（实测 `TypeError: Failed to fetch`），
+  而控制台本来也没有会话 Cookie。切生产时应改为 BFF：登录态进 HttpOnly Cookie、
+  网关补发 `Access-Control-Allow-Credentials: true` 并加 CSRF 校验与刷新机制。
+  改动仍只涉及 `src/api/http.ts` 与会话存储，页面不受影响。
 - PLAN §6.2 指定 TypeScript 7.0.2；实测 **vue-tsc 3.3.14（Volar）要求 typescript <7**，
   TS 7 的原生编译器不再导出 `lib/tsc`，`vue-tsc` 直接崩溃。因此本包锁 **TypeScript 5.9.3**
   以保留 `.vue` 文件类型检查，待上游支持 TS 7 再升级（这是目前唯一与 PLAN 版本表不一致的依赖）。
