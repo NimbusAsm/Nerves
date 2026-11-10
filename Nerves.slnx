@@ -22,6 +22,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Nerves.Identity.UnitTests/Nerves.Identity.UnitTests.csproj" />
     <Project Path="tests/Nerves.IntegrationTests/Nerves.IntegrationTests.csproj" />
+    <Project Path="tests/Nerves.Session.IntegrationTests/Nerves.Session.IntegrationTests.csproj" />
     <Project Path="tests/Nerves.UnitTests/Nerves.UnitTests.csproj" />
   </Folder>
 </Solution>
