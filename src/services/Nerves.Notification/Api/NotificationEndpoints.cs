@@ -1,15 +1,13 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
 using Nerves.Core;
 using Nerves.Notification.Domain;
-using Nerves.Notification.Options;
 using Nerves.Notification.Persistence;
 using Nerves.Notification.Templates;
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Notification.Api;
 
-/// <summary>Management API for queueing emails and reading the delivery log.</summary>
+/// <summary>Management API for queueing notifications and reading the delivery log.</summary>
 public static class NotificationEndpoints
 {
     public static RouteGroupBuilder MapNotificationEndpoints(this IEndpointRouteBuilder app)
@@ -17,14 +15,18 @@ public static class NotificationEndpoints
         var group = app.MapGroup("/api/v1/notifications")
             .RequireAuthorization(BearerAuthentication.AdminPolicy);
 
+        // Kept for the existing console and smoke script; equivalent to channel=email.
         group.MapPost("/email", SendEmailAsync);
+
+        // Channel-explicit entry point: email or sms.
+        group.MapPost("/send", SendAsync);
         group.MapGet("/", ListAsync);
         group.MapGet("/{id:guid}", GetAsync);
 
         return group;
     }
 
-    private static async Task<IResult> SendEmailAsync(
+    private static Task<IResult> SendEmailAsync(
         SendEmailRequest request,
         NotificationDbContext db,
         IClock clock,
@@ -32,32 +34,90 @@ public static class NotificationEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var address = EmailAddress.Create(request.To);
-        if (address.IsFailure)
-        {
-            return Results.Problem(address.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
-        }
-
         if (!string.IsNullOrWhiteSpace(request.Subject) || !string.IsNullOrWhiteSpace(request.Body))
         {
-            return Results.Problem(
+            return Task.FromResult(Results.Problem(
                 "custom subject/body are not supported; send a template code instead",
-                statusCode: StatusCodes.Status400BadRequest);
+                statusCode: StatusCodes.Status400BadRequest));
         }
 
-        var template = EmailTemplateCatalog.Render(request.Template ?? string.Empty, request.Values);
+        return QueueAsync(
+            NotificationChannel.Email,
+            request.To,
+            request.Template,
+            request.Values,
+            db,
+            clock,
+            cancellationToken);
+    }
+
+    private static Task<IResult> SendAsync(
+        SendMessageRequest request,
+        NotificationDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        if (!NotificationChannelWire.TryParse(request.Channel, out var channel))
+        {
+            return Task.FromResult(Results.Problem(
+                "channel must be one of email or sms",
+                statusCode: StatusCodes.Status400BadRequest));
+        }
+
+        return QueueAsync(channel, request.To, request.Template, request.Values, db, clock, cancellationToken);
+    }
+
+    private static async Task<IResult> QueueAsync(
+        NotificationChannel channel,
+        string? recipient,
+        string? templateCode,
+        IReadOnlyDictionary<string, string>? values,
+        NotificationDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var template = EmailTemplateCatalog.Render(templateCode ?? string.Empty, values);
         if (template.IsFailure)
         {
             return Results.Problem(template.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
         }
 
         var now = clock.UtcNow;
-        var message = NotificationMessage.Create(
-            address.Value,
-            template.Value.Template,
-            template.Value.Subject,
-            template.Value.Body,
-            now);
+        NotificationMessage message;
+
+        if (channel == NotificationChannel.Sms)
+        {
+            var phone = PhoneNumber.Create(recipient);
+            if (phone.IsFailure)
+            {
+                return Results.Problem(phone.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            message = NotificationMessage.Create(
+                channel,
+                phone.Value.Value,
+                template.Value.Template,
+                template.Value.Subject,
+                template.Value.Body,
+                now);
+        }
+        else
+        {
+            var address = EmailAddress.Create(recipient);
+            if (address.IsFailure)
+            {
+                return Results.Problem(address.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            message = NotificationMessage.Create(
+                address.Value,
+                template.Value.Template,
+                template.Value.Subject,
+                template.Value.Body,
+                now);
+        }
 
         db.Messages.Add(message);
         await db.SaveChangesAsync(cancellationToken);
@@ -68,6 +128,7 @@ public static class NotificationEndpoints
     private static async Task<IResult> ListAsync(
         NotificationDbContext db,
         string? status = null,
+        string? channel = null,
         string? to = null,
         int limit = 50,
         string? cursor = null,
@@ -87,6 +148,18 @@ public static class NotificationEndpoints
             }
 
             query = query.Where(x => x.Status == parsed);
+        }
+
+        if (!string.IsNullOrWhiteSpace(channel))
+        {
+            if (!NotificationChannelWire.TryParse(channel, out var parsedChannel))
+            {
+                return Results.Problem(
+                    "channel must be one of email or sms",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            query = query.Where(x => x.Channel == parsedChannel);
         }
 
         if (!string.IsNullOrWhiteSpace(to))
@@ -147,11 +220,13 @@ public static class NotificationEndpoints
     private static NotificationResponse ToResponse(NotificationMessage message) => new(
         message.Id,
         message.To,
+        message.Channel.ToWire(),
         message.Template,
         message.Subject,
         message.Status.ToWire(),
         message.Attempts,
         message.Error,
+        message.SourceEventId,
         message.CreatedAt,
         message.SentAt,
         message.NextAttemptAt);

@@ -46,6 +46,24 @@ public static class EmailTemplateCatalog
             您的账户于 {{occurredAt}} 在 {{device}} 登录。
             如果这不是您本人的操作，请立即重置口令并联系管理员。
             """),
+
+        ["account.realname-changed"] = new(
+            "account.realname-changed",
+            "实名信息更新：{{state}}",
+            """
+            您好 {{displayName}}：
+
+            您的实名信息于 {{occurredAt}} 更新，当前状态为 {{state}}。
+
+            如果这不是您本人的操作，请联系管理员。
+            """),
+
+        // Short enough to stay in one SMS segment after rendering; the SMS
+        // transport sends the body only.
+        ["security.sms-code"] = new(
+            "security.sms-code",
+            "验证码",
+            "您的验证码是 {{code}}，{{minutes}} 分钟内有效。请勿转发给他人。"),
     };
 
     public static IReadOnlyCollection<string> Codes => Templates.Keys;

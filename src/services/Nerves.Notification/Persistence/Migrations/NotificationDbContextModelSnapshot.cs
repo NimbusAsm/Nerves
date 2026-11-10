@@ -36,6 +36,11 @@ namespace Nerves.Notification.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<int>("Channel")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -48,6 +53,9 @@ namespace Nerves.Notification.Persistence.Migrations
 
                     b.Property<DateTimeOffset?>("SentAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SourceEventId")
+                        .HasColumnType("uuid");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -75,13 +83,38 @@ namespace Nerves.Notification.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("Channel");
+
                     b.HasIndex("CreatedAt");
+
+                    b.HasIndex("SourceEventId")
+                        .IsUnique();
 
                     b.HasIndex("To");
 
                     b.HasIndex("Status", "NextAttemptAt");
 
                     b.ToTable("notification_message", "notification");
+                });
+
+            modelBuilder.Entity("Nerves.Notification.Persistence.EventConsumerState", b =>
+                {
+                    b.Property<string>("Consumer")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid?>("LastEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("LastOccurredAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Consumer");
+
+                    b.ToTable("event_consumer_state", "notification");
                 });
 #pragma warning restore 612, 618
         }
