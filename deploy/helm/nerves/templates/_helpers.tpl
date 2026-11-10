@@ -180,6 +180,61 @@ fails the render with a readable message otherwise.
 {{- fail "nats.url is for external NATS: set nats.enabled=false" -}}
 {{- end -}}
 
+
+{{- if .Values.admin.ingress.enabled -}}
+{{- if not .Values.services.admin.enabled -}}
+{{- fail "admin.ingress.enabled requires services.admin.enabled" -}}
+{{- end -}}
+{{- if not .Values.admin.ingress.hosts -}}
+{{- fail "admin.ingress.enabled requires at least one entry in admin.ingress.hosts" -}}
+{{- end -}}
+{{- range .Values.admin.ingress.hosts -}}
+{{- if not .host -}}
+{{- fail "each admin.ingress.hosts entry needs a host" -}}
+{{- end -}}
+{{- if not .paths -}}
+{{- fail (printf "admin.ingress host %q has no paths; set admin.ingress.hosts in a values file instead of --set on the array" .host) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{- if .Values.backup.enabled -}}
+{{- if and (not .Values.backup.persistence.enabled) (not .Values.backup.objectStorage.enabled) -}}
+{{- fail "backup.enabled needs somewhere to write: enable backup.persistence or backup.objectStorage" -}}
+{{- end -}}
+{{- if lt (int .Values.backup.retentionDays) 1 -}}
+{{- fail "backup.retentionDays must be at least 1" -}}
+{{- end -}}
+{{- if not .Values.backup.schedule -}}
+{{- fail "backup.enabled requires backup.schedule" -}}
+{{- end -}}
+{{- if and .Values.backup.persistence.existingClaim (not .Values.backup.persistence.enabled) -}}
+{{- fail "backup.persistence.existingClaim requires backup.persistence.enabled=true" -}}
+{{- end -}}
+{{- if .Values.backup.objectStorage.enabled -}}
+{{- if not .Values.backup.objectStorage.remote -}}
+{{- fail "backup.objectStorage.enabled requires backup.objectStorage.remote" -}}
+{{- end -}}
+{{- if not .Values.backup.objectStorage.existingSecret -}}
+{{- fail "backup.objectStorage.enabled requires backup.objectStorage.existingSecret with an rclone.conf" -}}
+{{- end -}}
+{{- end -}}
+{{- if not .Values.postgresql.enabled -}}
+{{- if not .Values.backup.database.host -}}
+{{- fail "backup against an external database needs backup.database.host" -}}
+{{- end -}}
+{{- if not .Values.backup.database.username -}}
+{{- fail "backup against an external database needs backup.database.username" -}}
+{{- end -}}
+{{- if not .Values.backup.database.database -}}
+{{- fail "backup against an external database needs backup.database.database" -}}
+{{- end -}}
+{{- if not (or .Values.backup.database.existingSecret .Values.database.existingSecret) -}}
+{{- fail "backup against an external database needs backup.database.existingSecret (or database.existingSecret)" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
 {{- if and .Values.podDisruptionBudget.enabled .Values.podDisruptionBudget.minAvailable (ne (toString .Values.podDisruptionBudget.minAvailable) "") -}}
 {{- if ne (toString .Values.podDisruptionBudget.maxUnavailable) "" -}}
 {{- fail "set only one of podDisruptionBudget.minAvailable and podDisruptionBudget.maxUnavailable" -}}

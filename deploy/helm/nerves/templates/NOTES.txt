@@ -11,6 +11,23 @@ No Ingress is created. Reach the gateway with:
   curl http://127.0.0.1:8080/healthz
 {{- end }}
 
+{{- if .Values.admin.ingress.enabled }}
+
+The admin console is exposed at:
+{{- range .Values.admin.ingress.hosts }}
+  http{{ if $.Values.admin.ingress.tls }}s{{ end }}://{{ .host }}/
+{{- end }}
+{{- end }}
+
+{{- if .Values.backup.enabled }}
+
+Backups: CronJob "{{ include "nerves.fullname" . }}-backup" runs on schedule
+"{{ .Values.backup.schedule }}" and keeps {{ .Values.backup.retentionDays }} day(s).
+{{- if .Values.backup.objectStorage.enabled }}
+Off-site copies go to {{ .Values.backup.objectStorage.remote }}.
+{{- end }}
+{{- end }}
+
 Services installed:
 {{- range $name, $svc := .Values.services }}
 {{- if $svc.enabled }}

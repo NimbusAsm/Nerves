@@ -1,0 +1,73 @@
+# Reviewed vulnerability baseline for the container images built in CI.
+#
+# The image scan gate blocks HIGH and CRITICAL findings. Entries below are
+# accepted risks that come from the upstream base images
+# (mcr.microsoft.com/dotnet/aspnet:10.0 and nginx:1.27-alpine); they are not
+# reachable through a dependency this repository can patch.
+#
+# Rules for editing this file:
+#   * only list findings that have a fix available (CI scans with
+#     --ignore-unfixed, so unfixed findings never block);
+#   * re-review at least quarterly and whenever a base image is bumped: drop a
+#     line as soon as the base image ships the fixed package;
+#   * never add an entry for a package the application itself pulls in - fix or
+#     upgrade it instead;
+#   * the base images here are past their vendor support window, so this list
+#     must shrink, not grow (see docs/guide/operations/security-checklist.md).
+#
+# Regenerate the candidate list with:
+#   trivy image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+#     --format json -o /tmp/scan.json <image>
+CVE-2025-15467
+CVE-2025-32414
+CVE-2025-32415
+CVE-2025-49794
+CVE-2025-49795
+CVE-2025-49796
+CVE-2025-59375
+CVE-2025-64720
+CVE-2025-65018
+CVE-2025-66293
+CVE-2025-69421
+CVE-2026-103111
+CVE-2026-107891
+CVE-2026-111497
+CVE-2026-113351
+CVE-2026-115506
+CVE-2026-117610
+CVE-2026-118370
+CVE-2026-22184
+CVE-2026-22695
+CVE-2026-22801
+CVE-2026-25210
+CVE-2026-25646
+CVE-2026-27135
+CVE-2026-28387
+CVE-2026-28388
+CVE-2026-28389
+CVE-2026-28390
+CVE-2026-31789
+CVE-2026-33630
+CVE-2026-40200
+CVE-2026-45186
+CVE-2026-45447
+CVE-2026-4775
+CVE-2026-5773
+CVE-2026-6276
+CVE-2026-66046
+CVE-2026-6732
+CVE-2026-76641
+CVE-2026-76956
+CVE-2026-76957
+CVE-2026-77214
+CVE-2026-8286
+CVE-2026-84782
+CVE-2026-85091
+CVE-2026-86145
+CVE-2026-87636
+CVE-2026-89157
+CVE-2026-89161
+CVE-2026-8927
+CVE-2026-92392
+CVE-2026-93990
+CVE-2026-9947

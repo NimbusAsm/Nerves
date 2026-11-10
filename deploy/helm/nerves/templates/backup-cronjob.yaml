@@ -1,0 +1,184 @@
+{{- if .Values.backup.enabled }}
+{{- $fullname := include "nerves.fullname" . }}
+{{- $postgresTag := default .Values.postgresql.image.tag .Values.backup.image.tag }}
+{{- $image := printf "%s:%s" .Values.backup.image.repository $postgresTag }}
+{{- $claimName := default (printf "%s-backup" $fullname) .Values.backup.persistence.existingClaim }}
+{{- $db := .Values.backup.database }}
+{{- $dbHost := default (printf "%s-postgresql" $fullname) $db.host }}
+{{- $dbPort := default (toString .Values.postgresql.service.port) $db.port }}
+{{- $dbUser := default .Values.postgresql.auth.username $db.username }}
+{{- $dbName := default .Values.postgresql.auth.database $db.database }}
+{{- $passwordSecret := default (include "nerves.databaseSecretName" .) $db.existingSecret }}
+{{- $passwordKey := default "postgres-password" $db.passwordSecretKey }}
+{{- $retention := int .Values.backup.retentionDays }}
+{{- if and .Values.backup.persistence.enabled (not .Values.backup.persistence.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $claimName }}
+  labels:
+    {{- include "nerves.labels" (dict "root" . "name" "backup") | nindent 4 }}
+  {{- with .Values.backup.persistence.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- toYaml .Values.backup.persistence.accessModes | nindent 4 }}
+  {{- with .Values.backup.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.backup.persistence.size }}
+{{- end }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $fullname }}-backup
+  labels:
+    {{- include "nerves.labels" (dict "root" . "name" "backup") | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: {{ .Values.backup.concurrencyPolicy }}
+  startingDeadlineSeconds: {{ .Values.backup.startingDeadlineSeconds }}
+  successfulJobsHistoryLimit: {{ .Values.backup.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.backup.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        metadata:
+          labels:
+            {{- include "nerves.selectorLabels" (dict "root" . "name" "backup") | nindent 12 }}
+          {{- with .Values.backup.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: {{ include "nerves.serviceAccountName" . }}
+          automountServiceAccountToken: false
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.podSecurityContext | nindent 12 }}
+          initContainers:
+            # The dump runs as an init container so the optional upload container
+            # only starts once a complete archive is on disk.
+            - name: pgdump
+              image: {{ $image | quote }}
+              imagePullPolicy: {{ .Values.backup.image.pullPolicy | quote }}
+              securityContext:
+                {{- toYaml .Values.containerSecurityContext | nindent 16 }}
+              env:
+                - name: HOME
+                  value: /tmp
+                - name: PGHOST
+                  value: {{ $dbHost | quote }}
+                - name: PGPORT
+                  value: {{ $dbPort | quote }}
+                - name: PGUSER
+                  value: {{ $dbUser | quote }}
+                - name: PGDATABASE
+                  value: {{ $dbName | quote }}
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $passwordSecret }}
+                      key: {{ $passwordKey }}
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  set -eu
+                  stamp="$(date -u +%Y%m%d-%H%M%S)"
+                  target="/backup/nerves-${stamp}.dump"
+                  echo "== pg_dump -> ${target}"
+                  pg_dump --format=custom --no-owner --file "${target}"
+                  if [ ! -s "${target}" ]; then
+                    echo "pg_dump produced an empty archive" >&2
+                    exit 1
+                  fi
+                  ( cd /backup && sha256sum "$(basename "${target}")" > "$(basename "${target}").sha256" )
+                  echo "== pruning archives older than {{ $retention }} day(s)"
+                  find /backup -maxdepth 1 -type f \( -name 'nerves-*.dump' -o -name 'nerves-*.dump.sha256' \) -mtime +{{ $retention }} -delete
+                  ls -l /backup
+              volumeMounts:
+                - name: backup-data
+                  mountPath: /backup
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+          {{- if .Values.backup.objectStorage.enabled }}
+          containers:
+            - name: upload
+              image: {{ printf "%s:%s" .Values.backup.objectStorage.image.repository .Values.backup.objectStorage.image.tag | quote }}
+              imagePullPolicy: {{ .Values.backup.objectStorage.image.pullPolicy | quote }}
+              securityContext:
+                {{- toYaml .Values.containerSecurityContext | nindent 16 }}
+              env:
+                - name: HOME
+                  value: /tmp
+              command:
+                - /bin/sh
+                - -ec
+                - |
+                  set -eu
+                  config=""
+                  if [ -f /etc/rclone/rclone.conf ]; then
+                    config="--config /etc/rclone/rclone.conf"
+                  fi
+                  remote={{ .Values.backup.objectStorage.remote | quote }}
+                  echo "== uploading archives to ${remote}"
+                  # shellcheck disable=SC2086
+                  rclone ${config} copy /backup "${remote}" --include 'nerves-*'
+                  echo "== expiring remote archives older than {{ $retention }} day(s)"
+                  # shellcheck disable=SC2086
+                  rclone ${config} delete "${remote}" --include 'nerves-*' --min-age {{ $retention }}d
+              volumeMounts:
+                - name: backup-data
+                  mountPath: /backup
+                - name: rclone-config
+                  mountPath: /etc/rclone
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+              resources:
+                {{- toYaml .Values.backup.resources | nindent 16 }}
+          {{- end }}
+          volumes:
+            - name: backup-data
+              {{- if .Values.backup.persistence.enabled }}
+              persistentVolumeClaim:
+                claimName: {{ $claimName }}
+              {{- else }}
+              emptyDir: {}
+              {{- end }}
+            - name: tmp
+              emptyDir: {}
+            {{- if .Values.backup.objectStorage.enabled }}
+            - name: rclone-config
+              secret:
+                secretName: {{ .Values.backup.objectStorage.existingSecret }}
+                defaultMode: 0400
+            {{- end }}
+          {{- with .Values.backup.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backup.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backup.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}

@@ -36,8 +36,34 @@
 ## 供应链
 
 - [ ] CI 的 Check for vulnerable packages 步骤保持开启（NuGet 传递依赖也会扫描）。
+- [ ] 镜像扫描（Trivy，HIGH/CRITICAL 阻断）保持开启。CI 用
+  `--ignore-unfixed` + `deploy/security/trivyignore`（已复核的接受风险清单）：
+  **只有新增的可修复漏洞会阻断**。修改该清单必须写理由，且**至少每季度复核一次**。
+- [ ] 基础镜像不要长期不动：当前 `apps/admin/Dockerfile` 用 `nginx:1.27-alpine`
+  （Alpine 3.21 已过厂商支持期），升级基础镜像后应同步删除清单中对应条目——
+  清单只应缩小，不应增长。
+- [ ] 每次 CI 产出 SBOM（Syft，CycloneDX）并作为 artifact 保留 30 天，
+  发布前与镜像 digest 一起归档。
 - [ ] Dependabot 每周提交 NuGet / npm / pip / Actions 更新 PR，合并前看 CI。
 - [ ] 升级大版本时先读迁移说明，再按 upgrade.md 演练。
+
+## 契约与性能门禁
+
+- [ ] OpenAPI 兼容门（oasdiff）在 PR 上运行：与 main 归档的 `artifacts/openapi`
+  对比，**破坏性变更**阻断；main 尚无归档时只收集不比对（首跑不误伤）。
+- [ ] 负载冒烟（k6，默认 30s）只报告 P95 与错误率，**不设门槛**；
+  它用来发现明显回归，不替代容量规划。
+- [ ] 本地复现：
+
+```bash
+./scripts/collect-openapi.sh artifacts/openapi            # 需要服务在 5100-5108
+./scripts/openapi-diff.sh artifacts/openapi-main artifacts/openapi
+./scripts/load-smoke.sh http://127.0.0.1:5100/healthz 30s
+./scripts/scan-image.sh ghcr.io/nimbusasm/nerves/gateway:0.1.0
+./scripts/sbom.sh ghcr.io/nimbusasm/nerves/gateway:0.1.0 artifacts/sbom
+```
+
+  未安装对应工具时脚本会打印安装链接并跳过（退出码 0），不会误报失败。
 
 
 ## 会话

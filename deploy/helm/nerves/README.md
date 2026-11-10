@@ -186,6 +186,10 @@ helm upgrade --install nerves ./deploy/helm/nerves \
 | `postgresql.auth.password` | `""` | 空则随机生成并跨升级保留 |
 | `nats.enabled` | `true` | 内置单节点 NATS JetStream |
 | `ingress.enabled` | `false` | 所有 path 都路由到 gateway |
+| `admin.ingress.enabled` | `false` | 为管理台单独创建 Ingress（要求 `services.admin.enabled`） |
+| `backup.enabled` | `false` | 创建 `pg_dump` 的备份 CronJob |
+| `backup.schedule` / `retentionDays` | `0 2 * * *` / `7` | 备份频率与保留天数 |
+| `backup.objectStorage.enabled` | `false` | 用 rclone 把归档上传到对象存储 |
 | `autoscaling.enabled` | `false` | 为 `autoscaling.services` 中的服务创建 HPA |
 | `podDisruptionBudget.enabled` | `false` | 为每个启用的服务创建 PDB |
 | `services.<name>.replicaCount` | `1` | 启用 HPA 时忽略 |
@@ -193,6 +197,45 @@ helm upgrade --install nerves ./deploy/helm/nerves \
 | `tests.enabled` | `true` | 生成 `helm test` smoke-test Pod |
 
 完整可调项见 [`values.yaml`](values.yaml)。
+
+### 管理台独立 Ingress
+
+管理台（`apps/admin`，静态 nginx 镜像）默认只在集群内可达。需要独立域名时：
+
+```yaml
+admin:
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    hosts:
+      - host: admin.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: admin-tls
+        hosts: [admin.example.com]
+```
+
+它与 `ingress.*`（网关入口）互相独立：可以只暴露管理台、只暴露网关，或两个都开。
+管理台 Ingress 只路由到 `services.admin`，不会把管理 API 带进公网入口——网络策略仍需
+自行限制来源（见“已知限制”）。
+
+### 定时备份 CronJob
+
+`backup.enabled=true` 时会渲染一个 CronJob（默认关闭）：
+
+- initContainer 用 `postgres:<tag>` 执行 `pg_dump --format=custom --no-owner`，
+  写入 PVC（`backup.persistence.*`，可复用 `existingClaim`）或 `emptyDir`；
+- 每次产出 `nerves-<时间戳>.dump` 与 `.sha256`，并按 `backup.retentionDays`
+  清理过期归档；
+- 可选 `backup.objectStorage.enabled`：追加 rclone 容器，把归档复制到
+  `backup.objectStorage.remote` 并按相同保留期删除远端旧文件；
+- 外部数据库（`postgresql.enabled=false`）必须提供 `backup.database.host` /
+  `username` / `database` 与口令 Secret，否则渲染直接失败（`validations.yaml`）；
+- `DataProtection` 密钥**不在** CronJob 范围内，仍需 `scripts/backup.sh` 归档。
 
 ## 依赖与优先级
 
