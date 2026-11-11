@@ -121,6 +121,16 @@ def main():
     status, _, _ = call(f"{GATEWAY}/api/v1/notifications?limit=1", headers=auth)
     expect(status, 200, "gateway notifications list")
 
+    status, _, _ = call(
+        f"{IDP}/api/v1/auth/password-reset/request",
+        json.dumps({"identifier": "e2e@nerves.local"}).encode(),
+        {"Content-Type": "application/json"},
+    )
+    expect(status, 202, "password reset request")
+
+    status, _, _ = call(f"{IDP}/api/v1/admin/directory-sync/status", headers=auth)
+    expect(status, 200, "directory sync status")
+
     status, _, _ = call(f"{GATEWAY}/api/v1/stats")
     expect(status, 401, "gateway without a token")
 
