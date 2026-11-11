@@ -80,3 +80,18 @@ Sharding:ConnectionStrings:1      分片 1  passkey_challenge, password_reset_to
 - 账户表与全局表在同一个 PostgreSQL 实例时仍共享连接池；真正的多实例部署需要给每个分片配置独立的连接串。
 - 跨分片的事务不支持：创建补偿是最终一致，不是分布式事务。
 - 分片数变更不是在线操作；`RoutingIndexEntry.Shard` 与映射函数必须同时更新。
+
+
+## 扩容与数据迁移
+
+把分片数从 M 扩到 N（N > M）时，旧分片库里的账户仍按旧哈希分布，需要一次性重平衡：
+
+```bash
+# 1. 备份 + 冻结写入
+# 2. 以新拓扑启动（Sharding:ShardCount=N 与 0..N-1 连接串），并声明旧拓扑：
+Sharding__Enabled=true Sharding__ShardCount=N Sharding__ConnectionStrings__0=... ... Sharding__PreviousShardCount=M Sharding__PreviousConnectionStrings__0=... (旧 0..M-1) Sharding__Rebalance=true Sharding__RebalanceDryRun=true   dotnet Nerves.Identity.dll      # 输出 scanned/moved 后退出
+```
+
+3. 去掉 `RebalanceDryRun` 实际执行；4. 再跑一次，`moved` 必须为 0（幂等）。
+5. 旧库在 outbox 排空后可以下线：outbox 行不随账户迁移，仍由旧库所在分片投递。
+6. 迁移只搬账户相关表（账户、凭据、Passkey 挑战、重置 token），全局库的法人/路由索引不动。
