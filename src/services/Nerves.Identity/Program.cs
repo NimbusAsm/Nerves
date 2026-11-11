@@ -15,6 +15,7 @@ using Nerves.Identity.Sharding;
 using Nerves.Identity.Verification;
 using Nerves.ServiceDefaults;
 using Nerves.ServiceDefaults.Security;
+using Nerves.Sharding;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,6 +59,10 @@ builder.Services.AddSingleton<IVerificationProvider, HttpVerificationProvider>()
 builder.Services.AddSingleton<VerificationProviderFactory>();
 builder.Services.Configure<ShardingOptions>(builder.Configuration.GetSection(ShardingOptions.SectionName));
 builder.Services.AddSingleton<ShardResolver>();
+builder.Services.AddSingleton<ShardConnectionResolver>();
+builder.Services.AddSingleton<IdentityDataPlane>();
+builder.Services.AddSingleton<IdentityStore>();
+builder.Services.AddSingleton<IdentityMigrator>();
 builder.Services.AddScoped<PasskeyService>();
 builder.Services.AddSingleton<Nerves.Identity.Integration.SessionClient>();
 builder.Services.AddSingleton<Nerves.Identity.Integration.IAuditPublisher, Nerves.Identity.Integration.AuditPublisher>();
@@ -95,11 +100,13 @@ builder.Services.AddSingleton<AuditClient>();
 
 builder.Services.AddHostedService<DevSeeder>();
 
+// Kept for design-time migrations, the CLI and tests that resolve the global
+// context directly. Sharded account reads go through IdentityStore.
 var connectionString = builder.Configuration.GetConnectionString("Default");
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddDbContext<IdentityDbContext>(options => options.UseNpgsql(connectionString));
-    builder.Services.AddHealthChecks().AddDbContextCheck<IdentityDbContext>();
+    builder.Services.AddHealthChecks().AddCheck<IdentityDataPlaneHealthCheck>("identity-data-plane");
 }
 
 var app = builder.Build();
@@ -107,9 +114,19 @@ var app = builder.Build();
 app.UseNervesProxyHeaders();
 app.UseNervesRateLimiting();
 
-if (await app.MigrateNervesDatabaseAsync<IdentityDbContext>())
+var migrateOnly = app.Configuration.GetValue("Database:MigrateOnly", false);
+var migrateOnStart = app.Configuration.GetValue("Database:MigrateOnStart", false);
+if (migrateOnly || migrateOnStart)
 {
-    return;
+    // Every database receives the full identity schema: the global store and
+    // each account shard. The unused tables are harmless and keep one history.
+    var migrator = app.Services.GetRequiredService<IdentityMigrator>();
+    await migrator.MigrateAsync(CancellationToken.None);
+
+    if (migrateOnly)
+    {
+        return;
+    }
 }
 
 if (app.Configuration.GetValue("Sharding:Recompute", false))

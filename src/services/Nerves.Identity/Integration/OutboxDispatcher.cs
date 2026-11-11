@@ -4,8 +4,12 @@ using Nerves.Identity.Persistence;
 namespace Nerves.Identity.Integration;
 
 /// <summary>Delivers pending outbox events to the audit stream.</summary>
+/// <remarks>
+/// Outbox rows are written to the shard that owns the account, so a full drain
+/// walks the global database and every account shard.
+/// </remarks>
 public sealed class OutboxDispatcher(
-    IServiceScopeFactory scopes,
+    IdentityStore store,
     IAuditPublisher publisher,
     ILogger<OutboxDispatcher> logger) : BackgroundService
 {
@@ -46,14 +50,31 @@ public sealed class OutboxDispatcher(
 
     private async Task DispatchBatchAsync(CancellationToken cancellationToken)
     {
-        await using var scope = scopes.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        // Global first: legal-entity scoped events live there.
+        await using (var global = store.Global())
+        {
+            await DrainAsync(global, cancellationToken);
+        }
 
+        for (var index = 0; index < store.ShardCount; index++)
+        {
+            await using var shard = store.Plane.CreateShard(index);
+            await DrainAsync(shard, cancellationToken);
+        }
+    }
+
+    private async Task DrainAsync(IdentityDbContext db, CancellationToken cancellationToken)
+    {
         var pending = await db.OutboxEvents
             .Where(x => x.DispatchedAt == null && x.Attempts < 10)
             .OrderBy(x => x.OccurredAt)
             .Take(BatchSize)
             .ToListAsync(cancellationToken);
+
+        if (pending.Count == 0)
+        {
+            return;
+        }
 
         foreach (var item in pending)
         {

@@ -12,8 +12,10 @@ namespace Nerves.Identity.Security;
 /// <summary>
 /// WebAuthn ceremonies backed by Fido2NetLib. Challenges persist in the
 /// identity schema, so no server-side authentication session is required.
+/// Both credentials and challenges are account scoped, so every step runs
+/// against the shard that owns the account.
 /// </summary>
-public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecretProtector protector)
+public sealed class PasskeyService(IFido2 fido2, IdentityStore store, TotpSecretProtector protector)
 {
     private const string RpId = "nerves.local";
     private const string RpName = "Nerves";
@@ -24,7 +26,9 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         string displayName,
         CancellationToken cancellationToken)
     {
-        var exclude = (await LoadPasskeysAsync(accountId, cancellationToken))
+        await using var db = store.AccountShard(accountId);
+
+        var exclude = (await LoadPasskeysAsync(db, accountId, cancellationToken))
             .Select(x => new PublicKeyCredentialDescriptor(Base64Url.DecodeFromChars(x.CredentialId)))
             .ToList();
 
@@ -46,7 +50,7 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         });
 
         var json = JsonSerializer.Serialize(options);
-        var challengeId = await StoreChallengeAsync(accountId, options.Challenge, "registration", json, cancellationToken);
+        var challengeId = await StoreChallengeAsync(db, accountId, options.Challenge, "registration", json, cancellationToken);
         return (json, challengeId);
     }
 
@@ -57,7 +61,9 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         string? nickname,
         CancellationToken cancellationToken)
     {
-        var pending = await TakeChallengeAsync(accountId, challengeId, "registration", cancellationToken);
+        await using var db = store.AccountShard(accountId);
+
+        var pending = await TakeChallengeAsync(db, accountId, challengeId, "registration", cancellationToken);
         if (pending is null)
         {
             return (false, "registration challenge expired");
@@ -75,7 +81,7 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
             return (false, "invalid attestation payload");
         }
 
-        var stored = await LoadPasskeysAsync(accountId, cancellationToken);
+        var stored = await LoadPasskeysAsync(db, accountId, cancellationToken);
 
         RegisteredPublicKeyCredential created;
         try
@@ -122,7 +128,9 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         Guid accountId,
         CancellationToken cancellationToken)
     {
-        var stored = await LoadPasskeysAsync(accountId, cancellationToken);
+        await using var db = store.AccountShard(accountId);
+
+        var stored = await LoadPasskeysAsync(db, accountId, cancellationToken);
 
         var options = fido2.GetAssertionOptions(new GetAssertionOptionsParams
         {
@@ -133,7 +141,7 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         });
 
         var json = JsonSerializer.Serialize(options);
-        var challengeId = await StoreChallengeAsync(accountId, options.Challenge, "assertion", json, cancellationToken);
+        var challengeId = await StoreChallengeAsync(db, accountId, options.Challenge, "assertion", json, cancellationToken);
         return (json, challengeId);
     }
 
@@ -143,7 +151,9 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         JsonElement assertion,
         CancellationToken cancellationToken)
     {
-        var pending = await TakeChallengeAsync(accountId, challengeId, "assertion", cancellationToken);
+        await using var db = store.AccountShard(accountId);
+
+        var pending = await TakeChallengeAsync(db, accountId, challengeId, "assertion", cancellationToken);
         if (pending is null)
         {
             return (false, "assertion challenge expired");
@@ -213,7 +223,10 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         }
     }
 
-    private async Task<List<StoredPasskey>> LoadPasskeysAsync(Guid accountId, CancellationToken cancellationToken)
+    private async Task<List<StoredPasskey>> LoadPasskeysAsync(
+        IdentityDbContext db,
+        Guid accountId,
+        CancellationToken cancellationToken)
     {
         var secrets = await db.AccountCredentials
             .Where(x => x.AccountId == accountId && x.Type == CredentialType.Passkey)
@@ -234,7 +247,8 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         return result;
     }
 
-    private async Task<string> StoreChallengeAsync(
+    private static async Task<string> StoreChallengeAsync(
+        IdentityDbContext db,
         Guid accountId,
         byte[] challenge,
         string purpose,
@@ -248,7 +262,8 @@ public sealed class PasskeyService(IFido2 fido2, IdentityDbContext db, TotpSecre
         return record.Id.ToString();
     }
 
-    private async Task<PasskeyChallenge?> TakeChallengeAsync(
+    private static async Task<PasskeyChallenge?> TakeChallengeAsync(
+        IdentityDbContext db,
         Guid accountId,
         string challengeId,
         string purpose,

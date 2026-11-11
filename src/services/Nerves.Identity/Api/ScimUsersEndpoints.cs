@@ -3,7 +3,6 @@ using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Scim;
 using Nerves.Identity.Security;
-using Nerves.Identity.Sharding;
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Identity.Api;
@@ -11,7 +10,8 @@ namespace Nerves.Identity.Api;
 /// <summary>
 /// SCIM 2.0 user provisioning so external identity providers can push users.
 /// The subset covers create, read, list with a simple eq filter, replace and
-/// deactivate, which is what provisioning clients exercise.
+/// deactivate, which is what provisioning clients exercise. Accounts are
+/// sharded, so lookups fan out and each write targets the owning shard.
 /// </summary>
 public static class ScimUsersEndpoints
 {
@@ -30,7 +30,7 @@ public static class ScimUsersEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        IdentityDbContext db,
+        IdentityStore store,
         string? filter = null,
         int startIndex = 1,
         int count = 100,
@@ -44,59 +44,70 @@ public static class ScimUsersEndpoints
         startIndex = Math.Max(startIndex, 1);
         count = Math.Clamp(count, 1, 200);
 
-        var query = db.NetworkAccounts.AsNoTracking();
-        var ids = await ResolveFilterAsync(db, parsed, cancellationToken);
-
-        if (ids is not null)
+        // Every shard is queried; filters that reference identifiers resolve to
+        // account ids first so the per-shard query stays a primary-key lookup.
+        var ids = await ResolveFilterAsync(store, parsed, cancellationToken);
+        if (ids is not null && ids.Count == 0)
         {
-            query = query.Where(x => ids.Contains(x.Id));
+            return Results.Ok(new ScimListResponse<ScimUser>
+            {
+                TotalResults = 0,
+                StartIndex = startIndex,
+                ItemsPerPage = 0,
+                Resources = [],
+            });
         }
 
-        var total = await query.CountAsync(cancellationToken);
-        var accounts = await query
-            .OrderBy(x => x.Username)
-            .Skip(startIndex - 1)
-            .Take(count)
-            .ToListAsync(cancellationToken);
+        var accounts = await store.QueryShardsAsync(async db =>
+        {
+            var query = db.NetworkAccounts.AsNoTracking();
+            if (ids is not null)
+            {
+                query = query.Where(x => ids.Contains(x.Id));
+            }
+
+            return await query.OrderBy(x => x.Username).ToListAsync(cancellationToken);
+        }, cancellationToken);
+
+        var ordered = accounts.OrderBy(x => x.Username, StringComparer.Ordinal).ToList();
+        var page = ordered.Skip(startIndex - 1).Take(count).ToList();
 
         return Results.Ok(new ScimListResponse<ScimUser>
         {
-            TotalResults = total,
+            TotalResults = ordered.Count,
             StartIndex = startIndex,
-            ItemsPerPage = accounts.Count,
-            Resources = accounts.Select(ToScim).ToArray(),
+            ItemsPerPage = page.Count,
+            Resources = page.Select(ToScim).ToArray(),
         });
     }
 
-    private static Task<List<Guid>?> ResolveFilterAsync(
-        IdentityDbContext db,
+    private static async Task<List<Guid>?> ResolveFilterAsync(
+        IdentityStore store,
         ScimFilter filter,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(filter.Attribute))
         {
-            return Task.FromResult<List<Guid>?>(null);
+            return null;
         }
 
         var attribute = filter.Attribute.ToLowerInvariant();
 
         return attribute switch
         {
-            "username" or "externalid" => db.NetworkAccounts
+            "username" or "externalid" => await store.QueryShardsAsync(async db => await db.NetworkAccounts
                 .Where(x => x.Username == filter.Value)
                 .Select(x => x.Id)
-                .ToListAsync(cancellationToken)
-                .ContinueWith(t => (List<Guid>?)t.Result, TaskScheduler.Default),
-            _ => Task.FromResult<List<Guid>?>([]),
+                .ToListAsync(cancellationToken), cancellationToken),
+            _ => [],
         };
     }
 
     private static async Task<IResult> CreateAsync(
         ScimUser request,
-        IdentityDbContext db,
+        IdentityStore store,
         IPasswordHasher hasher,
         IIdentifierHasher identifiers,
-        ShardResolver shards,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.UserName))
@@ -104,7 +115,7 @@ public static class ScimUsersEndpoints
             return Problem("userName is required.", StatusCodes.Status400BadRequest);
         }
 
-        if (await db.NetworkAccounts.AnyAsync(x => x.Username == request.UserName, cancellationToken))
+        if (await store.FindByUsernameAsync("nerves", request.UserName, cancellationToken) is not null)
         {
             return Problem("userName is already taken.", StatusCodes.Status409Conflict);
         }
@@ -128,36 +139,52 @@ public static class ScimUsersEndpoints
         }
 
         var password = Guid.NewGuid().ToString("N") + "aA1!";
-        db.NetworkAccounts.Add(account.Value);
-        db.AccountCredentials.Add(AccountCredential.Create(
+        var credential = AccountCredential.Create(
             account.Value.Id,
             CredentialType.Password,
             hasher.Hash(password),
             Pbkdf2PasswordHasher.Algorithm,
-            now).Value);
+            now).Value;
 
-        if (!string.IsNullOrWhiteSpace(email))
+        var indexes = new List<RoutingIndexEntry>
         {
-            db.RoutingIndex.Add(RoutingIndexEntry.Create(
+            RoutingIndexEntry.Create(
                 identifiers.Hash("username", "nerves", request.UserName),
                 "username",
                 "nerves",
                 account.Value.Id,
                 account.Value.LegalEntityId,
-                shards.Resolve(account.Value.Id),
+                store.ShardFor(account.Value.Id),
+                now),
+        };
+
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            indexes.Add(RoutingIndexEntry.Create(
+                identifiers.Hash("email", "nerves", email),
+                "email",
+                "nerves",
+                account.Value.Id,
+                account.Value.LegalEntityId,
+                store.ShardFor(account.Value.Id),
                 now));
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        var created = await store.CreateAccountAsync(account.Value, credential, indexes, cancellationToken);
+        if (created.IsFailure)
+        {
+            return Problem(created.Reason.Message, StatusCodes.Status409Conflict);
+        }
 
         return Results.Created($"/scim/v2/Users/{account.Value.Id}", ToScim(account.Value));
     }
 
     private static async Task<IResult> GetAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(id);
         var account = await db.NetworkAccounts.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -167,9 +194,10 @@ public static class ScimUsersEndpoints
     private static async Task<IResult> ReplaceAsync(
         Guid id,
         ScimUser request,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(id);
         var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (account is null)
         {
@@ -187,9 +215,10 @@ public static class ScimUsersEndpoints
 
     private static async Task<IResult> DeactivateAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(id);
         var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (account is null)
         {
@@ -218,9 +247,11 @@ public static class ScimUsersEndpoints
         },
     };
 
-    private static IResult Problem(string detail, int status = StatusCodes.Status400BadRequest) =>
-        Results.Json(new ScimError { Detail = detail, Status = status, ScimType = "invalidValue" }, statusCode: status);
+    private static IResult Problem(string detail, int statusCode = StatusCodes.Status400BadRequest) =>
+        Results.Problem(detail, statusCode: statusCode);
 
-    private static IResult NotFound(Guid id) =>
-        Results.Json(new ScimError { Detail = "User " + id + " not found.", Status = 404, ScimType = "noTarget" }, statusCode: 404);
+    private static IResult NotFound(Guid id) => Results.Problem(
+        type: "about:blank",
+        detail: "User " + id + " not found",
+        statusCode: StatusCodes.Status404NotFound);
 }

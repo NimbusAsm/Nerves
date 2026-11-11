@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Integration;
 using Nerves.Identity.Persistence;
@@ -9,9 +10,9 @@ using Nerves.ServiceDefaults.Security;
 namespace Nerves.Identity.Api;
 
 /// <summary>
-/// Asynchronous real-name verification through a provider. Starting a
-/// verification records an attempt and leaves the legal entity pending until
-/// the provider (or an administrator) records the outcome.
+/// Asynchronous real-name verification through a provider. Legal entities and
+/// their attempts live in the global database; the per-account fan-out writes
+/// its outbox events to the shard that owns each account.
 /// </summary>
 public static class VerificationEndpoints
 {
@@ -36,14 +37,15 @@ public static class VerificationEndpoints
     private static async Task<IResult> StartAsync(
         Guid id,
         VerificationStartRequest? request,
-        IdentityDbContext db,
+        IdentityStore store,
         VerificationProviderFactory providers,
-        Microsoft.Extensions.Options.IOptions<VerificationOptions> options,
+        IOptions<VerificationOptions> options,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken)
     {
-        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        await using var global = store.Global();
+        var entity = await global.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
             return Results.NotFound();
@@ -73,8 +75,8 @@ public static class VerificationEndpoints
             return Results.Problem(attempt.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
         }
 
-        db.VerificationAttempts.Add(attempt.Value);
-        await db.SaveChangesAsync(cancellationToken);
+        global.VerificationAttempts.Add(attempt.Value);
+        await global.SaveChangesAsync(cancellationToken);
 
         var response = await provider.StartAsync(
             new VerificationProviderRequest(
@@ -90,7 +92,7 @@ public static class VerificationEndpoints
 
         var outcome = ApplyOutcome(entity, attempt.Value, response, now);
 
-        db.OutboxEvents.Add(OutboxEvent.Create(
+        global.OutboxEvents.Add(OutboxEvent.Create(
             "realname.verification.started",
             null,
             entity.Id,
@@ -103,15 +105,15 @@ public static class VerificationEndpoints
             }),
             now));
 
+        await global.SaveChangesAsync(cancellationToken);
+
         // A provider may answer synchronously (verified/rejected). Fan the state
         // change out exactly like the asynchronous callback path does, otherwise
         // synchronously verified entities would never notify their accounts.
         if (outcome is not null)
         {
-            await FanOutAsync(db, entity, now);
+            await FanOutAsync(store, entity, now, cancellationToken);
         }
-
-        await db.SaveChangesAsync(cancellationToken);
 
         await audit.AppendAsync(
             "legal-entity.verification.started",
@@ -131,10 +133,11 @@ public static class VerificationEndpoints
 
     private static async Task<IResult> GetAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
-        var entity = await db.LegalEntities.AsNoTracking()
+        await using var global = store.Global();
+        var entity = await global.LegalEntities.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         if (entity is null)
@@ -142,7 +145,7 @@ public static class VerificationEndpoints
             return Results.NotFound();
         }
 
-        var attempt = await db.VerificationAttempts.AsNoTracking()
+        var attempt = await global.VerificationAttempts.AsNoTracking()
             .Where(x => x.LegalEntityId == id)
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -158,8 +161,8 @@ public static class VerificationEndpoints
     private static async Task<IResult> CallbackAsync(
         Guid id,
         VerificationCallbackRequest request,
-        IdentityDbContext db,
-        Microsoft.Extensions.Options.IOptions<VerificationOptions> options,
+        IdentityStore store,
+        IOptions<VerificationOptions> options,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken)
@@ -177,13 +180,14 @@ public static class VerificationEndpoints
                 statusCode: StatusCodes.Status400BadRequest);
         }
 
-        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        await using var global = store.Global();
+        var entity = await global.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
             return Results.NotFound();
         }
 
-        var attempt = await db.VerificationAttempts
+        var attempt = await global.VerificationAttempts
             .Where(x => x.LegalEntityId == id && x.Reference == request.Reference)
             .OrderByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
@@ -208,7 +212,7 @@ public static class VerificationEndpoints
         if (now > attempt.CreatedAt.AddMinutes(options.Value.AttemptLifetimeMinutes))
         {
             attempt.Complete(VerificationAttemptStatus.Expired, "provider callback arrived after the attempt expired", now);
-            await db.SaveChangesAsync(cancellationToken);
+            await global.SaveChangesAsync(cancellationToken);
             return Results.Problem("verification attempt has expired", statusCode: StatusCodes.Status410Gone);
         }
 
@@ -224,8 +228,8 @@ public static class VerificationEndpoints
             return Results.Problem(completed.Reason.Message, statusCode: StatusCodes.Status409Conflict);
         }
 
-        await FanOutAsync(db, entity, now);
-        await db.SaveChangesAsync(cancellationToken);
+        await global.SaveChangesAsync(cancellationToken);
+        await FanOutAsync(store, entity, now, cancellationToken);
 
         await audit.AppendAsync(
             "legal-entity." + status.ToString().ToLowerInvariant(),
@@ -295,12 +299,17 @@ public static class VerificationEndpoints
             _ => Nerves.Core.Result.Success(),
         };
 
-    private static async Task FanOutAsync(IdentityDbContext db, LegalEntity entity, DateTimeOffset now)
+    /// <summary>
+    /// Writes one realname.changed event per owned account, on the shard that
+    /// owns the account.
+    /// </summary>
+    private static async Task FanOutAsync(
+        IdentityStore store,
+        LegalEntity entity,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
     {
-        var accounts = await db.NetworkAccounts
-            .Where(x => x.LegalEntityId == entity.Id)
-            .Select(x => x.Id)
-            .ToListAsync();
+        var accounts = await store.ListAccountsForEntityAsync(entity.Id, cancellationToken);
 
         var payload = JsonSerializer.Serialize(new
         {
@@ -308,9 +317,11 @@ public static class VerificationEndpoints
             state = entity.VerificationState.ToString(),
         });
 
-        foreach (var accountId in accounts)
+        foreach (var account in accounts)
         {
-            db.OutboxEvents.Add(OutboxEvent.Create("realname.changed", accountId, entity.Id, payload, now));
+            await store.AddEventAsync(
+                OutboxEvent.Create("realname.changed", account.Id, entity.Id, payload, now),
+                cancellationToken);
         }
     }
 

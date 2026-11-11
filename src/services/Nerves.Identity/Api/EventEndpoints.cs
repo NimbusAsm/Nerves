@@ -5,6 +5,11 @@ using Nerves.ServiceDefaults.Security;
 namespace Nerves.Identity.Api;
 
 /// <summary>Incremental read of the identity domain event stream.</summary>
+/// <remarks>
+/// Outbox rows live next to the account they belong to, i.e. on that account's
+/// shard. A list without an account id therefore pulls from every shard and
+/// merges by occurrence time.
+/// </remarks>
 public static class EventEndpoints
 {
     public static RouteGroupBuilder MapEventEndpoints(this IEndpointRouteBuilder app)
@@ -18,7 +23,7 @@ public static class EventEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        IdentityDbContext db,
+        IdentityStore store,
         Guid? accountId = null,
         DateTimeOffset? after = null,
         int limit = 100,
@@ -26,22 +31,34 @@ public static class EventEndpoints
     {
         limit = Math.Clamp(limit, 1, 500);
 
-        var query = db.OutboxEvents.AsNoTracking();
-
+        List<Domain.OutboxEvent> items;
         if (accountId is not null)
         {
-            query = query.Where(x => x.AccountId == accountId);
-        }
+            // One shard owns the account, so this is a single index scan.
+            await using var db = store.AccountShard(accountId.Value);
+            var query = db.OutboxEvents.AsNoTracking().Where(x => x.AccountId == accountId);
+            if (after is not null)
+            {
+                query = query.Where(x => x.OccurredAt > after);
+            }
 
-        if (after is not null)
+            items = await query.OrderBy(x => x.OccurredAt).Take(limit).ToListAsync(cancellationToken);
+        }
+        else
         {
-            query = query.Where(x => x.OccurredAt > after);
-        }
+            var merged = await store.QueryShardsAsync(async db =>
+            {
+                var query = db.OutboxEvents.AsNoTracking();
+                if (after is not null)
+                {
+                    query = query.Where(x => x.OccurredAt > after);
+                }
 
-        var items = await query
-            .OrderBy(x => x.OccurredAt)
-            .Take(limit)
-            .ToListAsync(cancellationToken);
+                return await query.OrderBy(x => x.OccurredAt).Take(limit).ToListAsync(cancellationToken);
+            }, cancellationToken);
+
+            items = merged.OrderBy(x => x.OccurredAt).Take(limit).ToList();
+        }
 
         return Results.Ok(items.Select(x => new
         {

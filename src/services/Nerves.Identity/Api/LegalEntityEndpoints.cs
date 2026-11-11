@@ -17,6 +17,7 @@ public static class LegalEntityEndpoints
         group.MapPost("/", CreateAsync);
         group.MapGet("/", ListAsync);
         group.MapGet("/{id:guid}", GetAsync);
+        group.MapGet("/{id:guid}/accounts", ListAccountsAsync);
         group.MapPost("/{id:guid}/verify", VerifyAsync);
         group.MapPost("/{id:guid}/reject", RejectAsync);
         group.MapPost("/{id:guid}/expire", ExpireAsync);
@@ -28,7 +29,7 @@ public static class LegalEntityEndpoints
 
     private static async Task<IResult> CreateAsync(
         CreateLegalEntityRequest request,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -50,6 +51,7 @@ public static class LegalEntityEndpoints
             return Results.Problem(realNameResult.Reason.Message, statusCode: StatusCodes.Status400BadRequest);
         }
 
+        await using var db = store.Global();
         if (await db.LegalEntities.AnyAsync(x => x.RealName.Hash == realNameResult.Value.Hash, cancellationToken))
         {
             return Results.Problem("The identity document is already registered.", statusCode: StatusCodes.Status409Conflict);
@@ -70,7 +72,7 @@ public static class LegalEntityEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        IdentityDbContext db,
+        IdentityStore store,
         int limit = 50,
         string? cursor = null,
         string? state = null,
@@ -78,6 +80,7 @@ public static class LegalEntityEndpoints
     {
         limit = Math.Clamp(limit, 1, 200);
 
+        await using var db = store.Global();
         var entities = db.LegalEntities.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(state)
@@ -107,25 +110,61 @@ public static class LegalEntityEndpoints
 
     private static async Task<IResult> GetAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.Global();
         var entity = await db.LegalEntities.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
         return entity is null ? Results.NotFound() : Results.Ok(ToResponse(entity));
     }
 
+    /// <summary>
+    /// Accounts owned by the entity. Accounts are sharded, so this fans out and
+    /// merges instead of joining against the global database.
+    /// </summary>
+    private static async Task<IResult> ListAccountsAsync(
+        Guid id,
+        IdentityStore store,
+        CancellationToken cancellationToken)
+    {
+        await using var global = store.Global();
+        if (!await global.LegalEntities.AnyAsync(x => x.Id == id, cancellationToken))
+        {
+            return Results.NotFound();
+        }
+
+        var accounts = await store.ListAccountsForEntityAsync(id, cancellationToken);
+
+        return Results.Ok(new
+        {
+            legalEntityId = id,
+            items = accounts
+                .OrderBy(x => x.Id)
+                .Select(x => new
+                {
+                    id = x.Id,
+                    realm = x.Realm,
+                    username = x.Username,
+                    email = x.Email,
+                    status = x.Status.ToString(),
+                    shard = store.ShardFor(x.Id),
+                })
+                .ToList(),
+        });
+    }
+
     private static Task<IResult> VerifyAsync(
         Guid id,
         VerificationRequest? request,
-        IdentityDbContext db,
+        IdentityStore store,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken) =>
         TransitionVerificationAsync(
             id,
-            db,
+            store,
             audit,
             http,
             "legal-entity.verified",
@@ -135,13 +174,13 @@ public static class LegalEntityEndpoints
     private static Task<IResult> RejectAsync(
         Guid id,
         VerificationRequest? request,
-        IdentityDbContext db,
+        IdentityStore store,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken) =>
         TransitionVerificationAsync(
             id,
-            db,
+            store,
             audit,
             http,
             "legal-entity.rejected",
@@ -150,13 +189,13 @@ public static class LegalEntityEndpoints
 
     private static Task<IResult> ExpireAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken) =>
         TransitionVerificationAsync(
             id,
-            db,
+            store,
             audit,
             http,
             "legal-entity.expired",
@@ -165,18 +204,20 @@ public static class LegalEntityEndpoints
 
     /// <summary>
     /// Applies a verification transition and fans out one event per owned
-    /// account inside the same transaction (invariant I7).
+    /// account (invariant I7). Accounts live on different shards, so each event
+    /// is written to the shard that owns its account.
     /// </summary>
     private static async Task<IResult> TransitionVerificationAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         AuditClient audit,
         HttpContext http,
         string action,
         Func<LegalEntity, DateTimeOffset, Nerves.Core.Result> transition,
         CancellationToken cancellationToken)
     {
-        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        await using var global = store.Global();
+        var entity = await global.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
             return Results.NotFound();
@@ -189,23 +230,21 @@ public static class LegalEntityEndpoints
             return Results.Problem(result.Reason.Message, statusCode: StatusCodes.Status409Conflict);
         }
 
-        var accounts = await db.NetworkAccounts
-            .Where(x => x.LegalEntityId == id)
-            .Select(x => x.Id)
-            .ToListAsync(cancellationToken);
+        await global.SaveChangesAsync(cancellationToken);
 
+        var accounts = await store.ListAccountsForEntityAsync(id, cancellationToken);
         var payload = JsonSerializer.Serialize(new
         {
             legalEntityId = entity.Id,
             state = entity.VerificationState.ToString(),
         });
 
-        foreach (var accountId in accounts)
+        foreach (var account in accounts)
         {
-            db.OutboxEvents.Add(OutboxEvent.Create("realname.changed", accountId, entity.Id, payload, now));
+            await store.AddEventAsync(
+                OutboxEvent.Create("realname.changed", account.Id, entity.Id, payload, now),
+                cancellationToken);
         }
-
-        await db.SaveChangesAsync(cancellationToken);
 
         await audit.AppendAsync(
             action, "admin", null, "legal-entity", entity.Id.ToString(), "success",
@@ -216,13 +255,14 @@ public static class LegalEntityEndpoints
 
     private static async Task<IResult> DisableAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         SessionClient sessions,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken)
     {
-        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        await using var global = store.Global();
+        var entity = await global.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
             return Results.NotFound();
@@ -235,25 +275,33 @@ public static class LegalEntityEndpoints
             return Results.Problem(result.Reason.Message, statusCode: StatusCodes.Status409Conflict);
         }
 
-        var accounts = await db.NetworkAccounts
-            .Where(x => x.LegalEntityId == id)
-            .ToListAsync(cancellationToken);
+        await global.SaveChangesAsync(cancellationToken);
 
         var disabled = 0;
-        foreach (var account in accounts)
+        var accountIds = new List<Guid>();
+        await store.MutateShardsAsync(async db =>
         {
-            if (account.Disable(now).IsSuccess)
-            {
-                disabled++;
-            }
-        }
+            var accounts = await db.NetworkAccounts
+                .Where(x => x.LegalEntityId == id)
+                .ToListAsync(cancellationToken);
 
-        await db.SaveChangesAsync(cancellationToken);
+            foreach (var account in accounts)
+            {
+                accountIds.Add(account.Id);
+                if (account.Disable(now).IsSuccess)
+                {
+                    disabled++;
+                }
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
+            return accounts.Count;
+        }, cancellationToken);
 
         var revoked = 0;
-        foreach (var account in accounts)
+        foreach (var accountId in accountIds)
         {
-            revoked += await sessions.RevokeAllAsync(account.Id.ToString(), "legal-entity.disabled", cancellationToken);
+            revoked += await sessions.RevokeAllAsync(accountId.ToString(), "legal-entity.disabled", cancellationToken);
         }
 
         await audit.AppendAsync(
@@ -266,10 +314,11 @@ public static class LegalEntityEndpoints
 
     private static async Task<IResult> EnableAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
-        var entity = await db.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        await using var global = store.Global();
+        var entity = await global.LegalEntities.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (entity is null)
         {
             return Results.NotFound();
@@ -281,7 +330,7 @@ public static class LegalEntityEndpoints
             return Results.Problem(result.Reason.Message, statusCode: StatusCodes.Status409Conflict);
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        await global.SaveChangesAsync(cancellationToken);
         return Results.Ok(new LegalEntityTransitionResponse(entity.Id.ToString(), entity.Status.ToString(), 0, 0));
     }
 

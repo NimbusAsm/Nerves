@@ -10,12 +10,12 @@ using Nerves.Identity.Security;
 namespace Nerves.Identity.PasswordReset;
 
 /// <summary>
-/// Single implementation of the reset flow, shared by the HTTP endpoints and by
-/// the gRPC contract the IdP uses. Keeping one copy means the anti-enumeration
-/// and revocation rules cannot drift between the two entry points.
+/// Single implementation of the reset flow, shared by the IdP proxy and by the
+/// internal gRPC contract. Accounts are sharded, so the routing index resolves
+/// the account and every account-scoped read then targets its shard.
 /// </summary>
 public sealed class PasswordResetService(
-    IdentityDbContext db,
+    IdentityStore store,
     IIdentifierHasher identifiers,
     IPasswordHasher hasher,
     PasswordResetTokens tokens,
@@ -52,30 +52,30 @@ public sealed class PasswordResetService(
         var now = DateTimeOffset.UtcNow;
         var trimmed = identifier.Trim();
 
-        var hash = identifiers.Hash("username", effectiveRealm, trimmed);
-        var entry = await db.RoutingIndex
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.IdentifierHash == hash, cancellationToken);
-
-        // Users type their identifier however they remember it. Try the exact
-        // form first (usernames are case-sensitive on purpose), then the
-        // normalized form for email/phone, then the normalized username.
-        foreach (var (type, value) in new[]
-                 {
-                     ("email", trimmed.ToLowerInvariant()),
-                     ("phone", trimmed),
-                     ("username", trimmed.ToLowerInvariant()),
-                 })
+        RoutingIndexEntry? entry;
+        await using (var global = store.Global())
         {
-            if (entry is not null)
+            // Users type their identifier however they remember it: exact form
+            // first (usernames stay case sensitive), then the normalised forms.
+            entry = null;
+            foreach (var (type, value) in new[]
+                     {
+                         ("username", trimmed),
+                         ("email", trimmed.ToLowerInvariant()),
+                         ("phone", trimmed),
+                         ("username", trimmed.ToLowerInvariant()),
+                     })
             {
-                break;
-            }
+                if (entry is not null)
+                {
+                    break;
+                }
 
-            var candidate = identifiers.Hash(type, effectiveRealm, value);
-            entry = await db.RoutingIndex
-                .AsNoTracking()
-                .FirstOrDefaultAsync(x => x.IdentifierHash == candidate, cancellationToken);
+                var candidate = identifiers.Hash(type, effectiveRealm, value);
+                entry = await global.RoutingIndex
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.IdentifierHash == candidate, cancellationToken);
+            }
         }
 
         if (entry is null)
@@ -86,16 +86,22 @@ public sealed class PasswordResetService(
             return false;
         }
 
-        var account = await db.NetworkAccounts
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.Id == entry.AccountId, cancellationToken);
+        NetworkAccount? account;
+        await using (var shard = store.AccountShard(entry.AccountId))
+        {
+            account = await shard.NetworkAccounts
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == entry.AccountId, cancellationToken);
+        }
 
         if (account is null || account.Status != AccountStatus.Active || string.IsNullOrWhiteSpace(account.Email))
         {
             return false;
         }
 
-        var raw = await tokens.IssueAsync(account.Id, now, TimeSpan.FromMinutes(options.Value.LifetimeMinutes), cancellationToken);
+        var raw = await tokens.IssueAsync(
+            account.Id, now, TimeSpan.FromMinutes(options.Value.LifetimeMinutes), cancellationToken);
+
         var baseUrl = string.IsNullOrWhiteSpace(resetUrlBase)
             ? options.Value.PublicBaseUrl
             : resetUrlBase;
@@ -150,13 +156,22 @@ public sealed class PasswordResetService(
             return Result.Failure<Guid>(Reason.Validation("The reset token is invalid or has expired."));
         }
 
+        await using var db = store.AccountShard(token.AccountId);
+
         var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == token.AccountId, cancellationToken);
         if (account is null || account.Status != AccountStatus.Active)
         {
             return Result.Failure<Guid>(Reason.Validation("The reset token is invalid or has expired."));
         }
 
-        var consumed = token.Consume(now);
+        var storedToken = await db.PasswordResetTokens
+            .FirstOrDefaultAsync(x => x.Id == token.Id, cancellationToken);
+        if (storedToken is null)
+        {
+            return Result.Failure<Guid>(Reason.Validation("The reset token is invalid or has expired."));
+        }
+
+        var consumed = storedToken.Consume(now);
         if (consumed.IsFailure)
         {
             return Result.Failure<Guid>(Reason.Validation("The reset token is invalid or has expired."));

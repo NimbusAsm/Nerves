@@ -93,12 +93,9 @@ public static class SeedCommand
 
             await using var provider = BuildProvider(settings, environment, identifierHashKey, shardCount);
 
-            var shards = provider.GetRequiredService<ShardResolver>();
-
             var identitySeeder = new Nerves.Identity.Seeding.DevSeeder(
                 provider,
                 Options.Create(identitySeed),
-                shards,
                 environment);
 
             await identitySeeder.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -154,6 +151,8 @@ public static class SeedCommand
 
         services.AddSingleton<IHostEnvironment>(environment);
         services.AddSingleton(Options.Create(new ShardingOptions { ShardCount = shardCount }));
+        services.AddSingleton(_ => IdentityDataPlane.SingleDatabase(settings.ConnectionString));
+        services.AddSingleton<IdentityStore>();
         services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
         services.AddSingleton<IIdentifierHasher>(_ => new HmacIdentifierHasher(
             Options.Create(new IdentitySecurityOptions { IdentifierHashKey = identifierHashKey })));
