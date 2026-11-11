@@ -80,6 +80,7 @@
 | Prometheus 指标 | ✅ 已实现 | 所有服务暴露 GET /metrics（http_requests_received_total、dotnet_*、process_*）；由 MapNervesDefaults 统一挂载 |
 | 端到端冒烟 | ✅ 已实现 | scripts/e2e-smoke.sh 启动全部后端服务（独立端口段），walk 登录 API → OIDC → 令牌 → 网关管理 API；CI e2e 作业在 postgres service 上运行 |
 | 仅迁移模式 | ✅ 已实现 | Database:MigrateOnly=true 时服务应用迁移后以 0 退出，供 Kubernetes 迁移 Job 使用；默认仍由 MigrateOnStart 控制 |
+| identity 账户多库分片 | ✅ 已实现 | Sharding:Enabled + ConnectionStrings:0..N：账户/凭据/挑战/重置 token/outbox 按 accountId 落分片；法人/路由索引/核验 attempt 在全局库；创建补偿、跨分片列表与统计、按标识解析、outbox fan-out；迁移逐库执行；默认关闭 |
 | session 多库分片 | ✅ 已实现 | Sharding:Enabled + ConnectionStrings:0..N：创建按 accountId 路由、按账户列表/撤销单分片、按 sessionId 跨分片查找、清扫与 outbox 逐分片；迁移逐库执行；关闭时单库行为不变 |
 | 分片基础设施库 | ✅ 已实现（库） | src/Nerves.Sharding：账号→分片映射、分片连接解析、逐分片迁移执行器；业务服务接线未做，多库部署仍需后续改造 |
 | 分片路由元数据 | ✅ 已实现（元数据层） | 账户→逻辑分片为纯函数（SHA-256 取模），routing_index 记录 shard 并建索引，ResolveIdentifier 返回分片；Identity 之外的数据面仍是单库，切换到多库需要部署级改造 |
