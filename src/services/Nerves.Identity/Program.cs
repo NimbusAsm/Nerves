@@ -68,6 +68,7 @@ builder.Services.AddSingleton<Nerves.Identity.Integration.SessionClient>();
 builder.Services.AddSingleton<Nerves.Identity.Integration.IAuditPublisher, Nerves.Identity.Integration.AuditPublisher>();
 builder.Services.AddHostedService<Nerves.Identity.Integration.OutboxDispatcher>();
 builder.Services.AddScoped<Nerves.Identity.Sharding.RoutingIndexReconciler>();
+builder.Services.AddSingleton<Nerves.Identity.Sharding.IdentityShardRebalancer>();
 builder.Services.AddSingleton<IFido2>(_ => new Fido2(new Fido2Configuration
 {
     RPID = "nerves.local",
@@ -127,6 +128,23 @@ if (migrateOnly || migrateOnStart)
     {
         return;
     }
+}
+
+if (app.Configuration.GetValue("Sharding:Rebalance", false))
+{
+    await using var rebalanceScope = app.Services.CreateAsyncScope();
+    var migrator = rebalanceScope.ServiceProvider.GetRequiredService<IdentityMigrator>();
+    await migrator.MigrateAsync(CancellationToken.None);
+
+    var rebalancer = rebalanceScope.ServiceProvider.GetRequiredService<IdentityShardRebalancer>();
+    var dryRun = app.Configuration.GetValue("Sharding:RebalanceDryRun", false);
+    var report = await rebalancer.RunAsync(dryRun, CancellationToken.None);
+    Console.WriteLine(
+        "identity shard rebalance: scanned={0} moved={1} dryRun={2}",
+        report.Scanned,
+        report.Moved,
+        report.DryRun);
+    return;
 }
 
 if (app.Configuration.GetValue("Sharding:Recompute", false))

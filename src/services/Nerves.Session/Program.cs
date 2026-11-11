@@ -32,6 +32,7 @@ builder.Services.Configure<SessionStoreOptions>(builder.Configuration.GetSection
 builder.Services.AddSingleton<ShardConnectionResolver>();
 builder.Services.AddSingleton<SessionStore>();
 builder.Services.AddSingleton<SessionMigrator>();
+builder.Services.AddSingleton<Nerves.Session.Sharding.SessionShardRebalancer>();
 builder.Services.AddHealthChecks().AddCheck<SessionStoreHealthCheck>("session-store");
 
 // Kept for design-time migrations and tests that resolve the context directly.
