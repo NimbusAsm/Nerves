@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
-
 using Nerves.ServiceDefaults.Security;
 
 namespace Nerves.Identity.Api;
@@ -13,12 +12,15 @@ public static class StatsEndpoints
     {
         var group = app.MapGroup("/api/v1/stats").RequireAuthorization(Nerves.ServiceDefaults.Security.BearerAuthentication.AdminPolicy);
 
-        group.MapGet("/", async (IdentityDbContext db, CancellationToken cancellationToken) =>
+        group.MapGet("/", async (IdentityStore store, CancellationToken cancellationToken) =>
         {
-            var accounts = await db.NetworkAccounts.CountAsync(cancellationToken);
-            var disabled = await db.NetworkAccounts.CountAsync(x => x.Status == AccountStatus.Disabled, cancellationToken);
-            var entities = await db.LegalEntities.CountAsync(cancellationToken);
-            var verified = await db.LegalEntities.CountAsync(x => x.VerificationState == VerificationState.Verified, cancellationToken);
+            // Account counters fan out across shards; entities live in the global database.
+            var accounts = await store.CountAccountsAsync(null, cancellationToken);
+            var disabled = await store.CountAccountsByStatusAsync(AccountStatus.Disabled, cancellationToken);
+
+            await using var global = store.Global();
+            var entities = await global.LegalEntities.CountAsync(cancellationToken);
+            var verified = await global.LegalEntities.CountAsync(x => x.VerificationState == VerificationState.Verified, cancellationToken);
 
             return Results.Ok(new
             {

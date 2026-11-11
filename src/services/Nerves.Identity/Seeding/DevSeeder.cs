@@ -3,15 +3,17 @@ using Microsoft.Extensions.Options;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
-using Nerves.Identity.Sharding;
 
 namespace Nerves.Identity.Seeding;
 
 /// <summary>Creates the development administrator so a fresh database is usable.</summary>
+/// <remarks>
+/// With sharding enabled the admin account lands on the shard derived from its
+/// id while the entity and routing entries stay in the global database.
+/// </remarks>
 public sealed class DevSeeder(
     IServiceProvider services,
     IOptions<DevSeedOptions> options,
-    ShardResolver shards,
     Microsoft.Extensions.Hosting.IHostEnvironment environment) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -26,11 +28,11 @@ public sealed class DevSeeder(
             environment, seed.Enabled, seed.AllowInProduction, "DevSeed");
 
         await using var scope = services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+        var store = scope.ServiceProvider.GetRequiredService<IdentityStore>();
         var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         var identifiers = scope.ServiceProvider.GetRequiredService<IIdentifierHasher>();
 
-        if (await db.NetworkAccounts.AnyAsync(x => x.Realm == seed.Realm && x.Username == seed.Username, cancellationToken))
+        if (await store.FindByUsernameAsync(seed.Realm, seed.Username, cancellationToken) is not null)
         {
             return;
         }
@@ -51,27 +53,34 @@ public sealed class DevSeeder(
         var credential = AccountCredential.Create(
             account.Id, CredentialType.Password, hasher.Hash(seed.Password), Pbkdf2PasswordHasher.Algorithm, now).Value;
 
-        db.LegalEntities.Add(entity);
-        db.NetworkAccounts.Add(account);
-        db.AccountCredentials.Add(credential);
+        await using (var global = store.Global())
+        {
+            global.LegalEntities.Add(entity);
+            await global.SaveChangesAsync(cancellationToken);
+        }
 
+        var indexes = new List<RoutingIndexEntry>();
         foreach (var (type, value) in new[]
                  {
                      ("username", seed.Username),
                      ("email", seed.Email),
                  })
         {
-            db.RoutingIndex.Add(RoutingIndexEntry.Create(
+            indexes.Add(RoutingIndexEntry.Create(
                 identifiers.Hash(type, seed.Realm, value),
                 type,
                 seed.Realm,
                 account.Id,
                 entity.Id,
-                shards.Resolve(account.Id),
+                store.ShardFor(account.Id),
                 now));
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        var created = await store.CreateAccountAsync(account, credential, indexes, cancellationToken);
+        if (created.IsFailure)
+        {
+            throw new InvalidOperationException("development seed failed: " + created.Reason.Message);
+        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

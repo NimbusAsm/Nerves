@@ -32,9 +32,10 @@ public static class MfaEndpoints
 
     private static async Task<IResult> ListAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var factors = await db.AccountCredentials.AsNoTracking()
             .Where(x => x.AccountId == accountId && x.Type != CredentialType.Password)
             .Select(x => new { type = x.Type.ToString(), active = x.ActivatedAt != null, createdAt = x.CreatedAt })
@@ -45,11 +46,12 @@ public static class MfaEndpoints
 
     private static async Task<IResult> EnrollAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         TotpService totp,
         TotpSecretProtector protector,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == accountId, cancellationToken);
         if (account is null)
         {
@@ -100,11 +102,12 @@ public static class MfaEndpoints
     private static async Task<IResult> ActivateAsync(
         Guid accountId,
         [FromBody] ActivateTotpRequest request,
-        IdentityDbContext db,
+        IdentityStore store,
         TotpService totp,
         TotpSecretProtector protector,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var credential = await db.AccountCredentials.FirstOrDefaultAsync(
             x => x.AccountId == accountId && x.Type == CredentialType.Totp, cancellationToken);
 
@@ -116,7 +119,6 @@ public static class MfaEndpoints
         var secret = protector.TryUnprotect(credential.Secret);
         if (secret is null || !totp.Verify(secret, request.Code))
         {
-            await Task.CompletedTask;
             return Results.Problem("Invalid verification code.", statusCode: StatusCodes.Status400BadRequest);
         }
 
@@ -128,9 +130,10 @@ public static class MfaEndpoints
 
     private static async Task<IResult> RemoveAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var credential = await db.AccountCredentials.FirstOrDefaultAsync(
             x => x.AccountId == accountId && x.Type == CredentialType.Totp, cancellationToken);
 
@@ -146,10 +149,11 @@ public static class MfaEndpoints
 
     private static async Task<IResult> StartPasskeyAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         PasskeyService passkeys,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == accountId, cancellationToken);
         if (account is null)
         {
@@ -178,9 +182,10 @@ public static class MfaEndpoints
 
     private static async Task<IResult> RemovePasskeysAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var credentials = await db.AccountCredentials
             .Where(x => x.AccountId == accountId && x.Type == CredentialType.Passkey)
             .ToListAsync(cancellationToken);
@@ -192,9 +197,10 @@ public static class MfaEndpoints
 
     private static async Task<IResult> CountRecoveryCodesAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var remaining = await db.AccountCredentials.CountAsync(
             x => x.AccountId == accountId && x.Type == CredentialType.RecoveryCode,
             cancellationToken);
@@ -204,10 +210,11 @@ public static class MfaEndpoints
 
     private static async Task<IResult> GenerateRecoveryCodesAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         RecoveryCodes generator,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         if (!await db.NetworkAccounts.AnyAsync(x => x.Id == accountId, cancellationToken))
         {
             return Results.NotFound();
@@ -238,9 +245,10 @@ public static class MfaEndpoints
 
     private static async Task<IResult> RemoveRecoveryCodesAsync(
         Guid accountId,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(accountId);
         var existing = await db.AccountCredentials
             .Where(x => x.AccountId == accountId && x.Type == CredentialType.RecoveryCode)
             .ToListAsync(cancellationToken);

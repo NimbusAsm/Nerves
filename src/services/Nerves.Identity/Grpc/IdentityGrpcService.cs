@@ -4,17 +4,19 @@ using Nerves.Contracts.Identity.V1;
 using Nerves.Identity.Domain;
 using Nerves.Identity.Persistence;
 using Nerves.Identity.Security;
-using Nerves.Identity.Sharding;
 
 namespace Nerves.Identity.Grpc;
 
-/// <summary>Serves the internal identity contract over gRPC.</summary>
+/// <summary>
+/// Serves the internal identity contract over gRPC. Accounts live on shards, so
+/// every account-scoped call resolves the routing index first and then opens the
+/// shard that owns the account; identifier resolution still starts globally.
+/// </summary>
 public sealed partial class IdentityGrpcService(
-    IdentityDbContext dbContext,
+    IdentityStore store,
     IPasswordHasher passwordHasher,
     PasskeyService passkeys,
     IIdentifierHasher identifierHasher,
-    ShardResolver shards,
     TotpService totp,
     TotpSecretProtector protector,
     Nerves.Identity.PasswordReset.PasswordResetService passwordReset,
@@ -38,9 +40,13 @@ public sealed partial class IdentityGrpcService(
 
         var hash = identifierHasher.Hash("username", request.Realm, request.Identifier);
 
-        var entry = await dbContext.RoutingIndex
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.IdentifierHash == hash, context.CancellationToken);
+        RoutingIndexEntry? entry;
+        await using (var global = store.Global())
+        {
+            entry = await global.RoutingIndex
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.IdentifierHash == hash, context.CancellationToken);
+        }
 
         if (entry is null)
         {
@@ -49,7 +55,9 @@ public sealed partial class IdentityGrpcService(
             return new VerifyCredentialResponse { Verified = false, FailureCode = "invalid_credentials" };
         }
 
-        var credential = await dbContext.AccountCredentials
+        await using var shard = store.AccountShard(entry.AccountId);
+
+        var credential = await shard.AccountCredentials
             .FirstOrDefaultAsync(
                 x => x.AccountId == entry.AccountId && x.Type == CredentialType.Password,
                 context.CancellationToken);
@@ -59,7 +67,7 @@ public sealed partial class IdentityGrpcService(
             return new VerifyCredentialResponse { Verified = false, FailureCode = "invalid_credentials" };
         }
 
-        var account = await dbContext.NetworkAccounts
+        var account = await shard.NetworkAccounts
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == entry.AccountId, context.CancellationToken);
 
@@ -69,7 +77,7 @@ public sealed partial class IdentityGrpcService(
         }
 
         credential.MarkUsed(DateTimeOffset.UtcNow);
-        await dbContext.SaveChangesAsync(context.CancellationToken);
+        await shard.SaveChangesAsync(context.CancellationToken);
 
         return new VerifyCredentialResponse
         {
@@ -92,7 +100,8 @@ public sealed partial class IdentityGrpcService(
             throw new RpcException(new Status(StatusCode.InvalidArgument, "account_id must be a UUID"));
         }
 
-        var account = await dbContext.NetworkAccounts
+        await using var shard = store.AccountShard(accountId);
+        var account = await shard.NetworkAccounts
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == accountId, context.CancellationToken);
 
@@ -109,6 +118,7 @@ public sealed partial class IdentityGrpcService(
             Username = account.Username,
             DisplayName = account.DisplayName ?? account.Username,
             Status = account.Status.ToString(),
+            Shard = store.ShardFor(account.Id),
         };
     }
 
@@ -123,7 +133,8 @@ public sealed partial class IdentityGrpcService(
             return new HasActiveTotpResponse { Active = false };
         }
 
-        var active = await dbContext.AccountCredentials
+        await using var shard = store.AccountShard(accountId);
+        var active = await shard.AccountCredentials
             .AnyAsync(
                 x => x.AccountId == accountId && x.Type == CredentialType.Totp && x.ActivatedAt != null,
                 context.CancellationToken);
@@ -143,11 +154,12 @@ public sealed partial class IdentityGrpcService(
         }
 
         var code = request.Code.Trim();
+        await using var shard = store.AccountShard(accountId);
 
         // Six digits are treated as a TOTP code; anything else is a recovery code.
         if (code.Length == 6 && code.All(char.IsDigit))
         {
-            var totpCredential = await dbContext.AccountCredentials.FirstOrDefaultAsync(
+            var totpCredential = await shard.AccountCredentials.FirstOrDefaultAsync(
                 x => x.AccountId == accountId && x.Type == CredentialType.Totp && x.ActivatedAt != null,
                 context.CancellationToken);
 
@@ -157,14 +169,14 @@ public sealed partial class IdentityGrpcService(
                 if (secret is not null && totp.Verify(secret, code))
                 {
                     totpCredential.MarkUsed(DateTimeOffset.UtcNow);
-                    await dbContext.SaveChangesAsync(context.CancellationToken);
+                    await shard.SaveChangesAsync(context.CancellationToken);
                     return new VerifyMfaResponse { Valid = true, Method = "totp" };
                 }
             }
         }
 
         var hash = RecoveryCodes.HashCode(code);
-        var recovery = await dbContext.AccountCredentials.FirstOrDefaultAsync(
+        var recovery = await shard.AccountCredentials.FirstOrDefaultAsync(
             x => x.AccountId == accountId && x.Type == CredentialType.RecoveryCode && x.Secret == hash,
             context.CancellationToken);
 
@@ -174,8 +186,8 @@ public sealed partial class IdentityGrpcService(
         }
 
         // Recovery codes are single use: consume the row.
-        dbContext.AccountCredentials.Remove(recovery);
-        await dbContext.SaveChangesAsync(context.CancellationToken);
+        shard.AccountCredentials.Remove(recovery);
+        await shard.SaveChangesAsync(context.CancellationToken);
 
         return new VerifyMfaResponse { Valid = true, Method = "recovery" };
     }
@@ -198,16 +210,21 @@ public sealed partial class IdentityGrpcService(
         var realm = string.IsNullOrWhiteSpace(request.Realm) ? "nerves" : request.Realm;
         var hash = identifierHasher.Hash(request.IdentifierType, realm, request.Value);
 
-        var entry = await dbContext.RoutingIndex
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.IdentifierHash == hash, context.CancellationToken);
+        RoutingIndexEntry? entry;
+        await using (var global = store.Global())
+        {
+            entry = await global.RoutingIndex
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.IdentifierHash == hash, context.CancellationToken);
+        }
 
         if (entry is null)
         {
             return new ResolveIdentifierResponse { Found = false };
         }
 
-        var account = await dbContext.NetworkAccounts
+        await using var shard = store.AccountShard(entry.AccountId);
+        var account = await shard.NetworkAccounts
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == entry.AccountId, context.CancellationToken);
 
@@ -219,7 +236,7 @@ public sealed partial class IdentityGrpcService(
         return new ResolveIdentifierResponse
         {
             Found = true,
-            Shard = entry.Shard,
+            Shard = store.ShardFor(account.Id),
             AccountId = account.Id.ToString(),
             LegalEntityId = account.LegalEntityId?.ToString() ?? string.Empty,
             Realm = account.Realm,
@@ -239,7 +256,8 @@ public sealed partial class IdentityGrpcService(
             return new HasActivePasskeyResponse { Active = false };
         }
 
-        var active = await dbContext.AccountCredentials.AnyAsync(
+        await using var shard = store.AccountShard(accountId);
+        var active = await shard.AccountCredentials.AnyAsync(
             x => x.AccountId == accountId && x.Type == CredentialType.Passkey && x.ActivatedAt != null,
             context.CancellationToken);
 
@@ -272,7 +290,7 @@ public sealed partial class IdentityGrpcService(
             return new CompletePasskeyAssertionResponse { Valid = false };
         }
 
-        var document = System.Text.Json.JsonDocument.Parse(request.AssertionJson);
+        using var document = System.Text.Json.JsonDocument.Parse(request.AssertionJson);
         var (ok, _) = await passkeys.CompleteAssertionAsync(
             accountId, request.ChallengeId, document.RootElement, context.CancellationToken);
 
@@ -290,7 +308,8 @@ public sealed partial class IdentityGrpcService(
             return new DisableAccountResponse { Disabled = false };
         }
 
-        var account = await dbContext.NetworkAccounts
+        await using var shard = store.AccountShard(accountId);
+        var account = await shard.NetworkAccounts
             .FirstOrDefaultAsync(x => x.Id == accountId, context.CancellationToken);
 
         if (account is null)
@@ -304,7 +323,7 @@ public sealed partial class IdentityGrpcService(
             return new DisableAccountResponse { Disabled = false };
         }
 
-        await dbContext.SaveChangesAsync(context.CancellationToken);
+        await shard.SaveChangesAsync(context.CancellationToken);
         return new DisableAccountResponse { Disabled = true };
     }
 
@@ -328,36 +347,27 @@ public sealed partial class IdentityGrpcService(
             return new UpsertDirectoryAccountResponse { FailureCode = "invalid_email" };
         }
 
-        var byUsername = await dbContext.NetworkAccounts
-            .FirstOrDefaultAsync(
-                x => x.Realm == realm && x.Username == username,
-                context.CancellationToken);
-
-        NetworkAccount? byEmail = null;
-        if (email is not null)
-        {
-            // Email is deployment-wide unique, so a match means the same person
-            // already has an account that the directory now describes.
-            byEmail = await dbContext.NetworkAccounts
-                .FirstOrDefaultAsync(x => x.Email == email, context.CancellationToken);
-        }
+        // Accounts are sharded, so both idempotency keys are resolved by fan-out.
+        var byUsername = await store.FindByUsernameAsync(realm, username, context.CancellationToken);
+        var byEmail = email is null ? null : await store.FindByEmailAsync(email, context.CancellationToken);
 
         var candidateIds = new[] { byUsername?.Id, byEmail?.Id }
             .Where(x => x is not null)
             .Select(x => x!.Value)
             .ToArray();
 
-        var emailTaken = email is not null
-            && await dbContext.NetworkAccounts.AnyAsync(
-                x => x.Email == email && !candidateIds.Contains(x.Id),
-                context.CancellationToken);
+        var emailTaken = false;
+        if (email is not null)
+        {
+            var owners = await store.QueryShardsAsync(async db => await db.NetworkAccounts
+                .AsNoTracking()
+                .Where(x => x.Email == email && !candidateIds.Contains(x.Id))
+                .Select(x => x.Id)
+                .ToListAsync(context.CancellationToken), context.CancellationToken);
+            emailTaken = owners.Count > 0;
+        }
 
-        var plan = DirectoryAccountPlanner.Plan(
-            byUsername,
-            byEmail,
-            email,
-            request.DisplayName,
-            emailTaken);
+        var plan = DirectoryAccountPlanner.Plan(byUsername, byEmail, email, request.DisplayName, emailTaken);
 
         var now = DateTimeOffset.UtcNow;
 
@@ -384,7 +394,9 @@ public sealed partial class IdentityGrpcService(
 
             if (plan.Action == DirectoryAccountAction.Update)
             {
-                await dbContext.SaveChangesAsync(context.CancellationToken);
+                await using var shard = store.AccountShard(plan.Account.Id);
+                shard.NetworkAccounts.Update(plan.Account);
+                await shard.SaveChangesAsync(context.CancellationToken);
             }
 
             return new UpsertDirectoryAccountResponse
@@ -428,30 +440,44 @@ public sealed partial class IdentityGrpcService(
         }
 
         var accountId = created.Value.Id;
-        dbContext.LegalEntities.Add(placeholder.Value);
-        dbContext.NetworkAccounts.Add(created.Value);
-        dbContext.RoutingIndex.Add(RoutingIndexEntry.Create(
-            identifierHasher.Hash("username", realm, username),
-            "username",
-            realm,
-            accountId,
-            placeholder.Value.Id,
-            shards.Resolve(accountId),
-            now));
+
+        // The placeholder entity is global; the account and its indexes follow
+        // the same two-phase write as the HTTP create path.
+        await using (var global = store.Global())
+        {
+            global.LegalEntities.Add(placeholder.Value);
+            await global.SaveChangesAsync(context.CancellationToken);
+        }
+
+        var indexes = new List<RoutingIndexEntry>
+        {
+            RoutingIndexEntry.Create(
+                identifierHasher.Hash("username", realm, username),
+                "username",
+                realm,
+                accountId,
+                placeholder.Value.Id,
+                store.ShardFor(accountId),
+                now),
+        };
 
         if (email is not null)
         {
-            dbContext.RoutingIndex.Add(RoutingIndexEntry.Create(
+            indexes.Add(RoutingIndexEntry.Create(
                 identifierHasher.Hash("email", realm, email),
                 "email",
                 realm,
                 accountId,
                 placeholder.Value.Id,
-                shards.Resolve(accountId),
+                store.ShardFor(accountId),
                 now));
         }
 
-        await dbContext.SaveChangesAsync(context.CancellationToken);
+        var write = await store.CreateAccountAsync(created.Value, null, indexes, context.CancellationToken);
+        if (write.IsFailure)
+        {
+            return new UpsertDirectoryAccountResponse { FailureCode = "conflict" };
+        }
 
         return new UpsertDirectoryAccountResponse
         {

@@ -27,10 +27,9 @@ public static class AccountEndpoints
 
     private static async Task<IResult> CreateAsync(
         CreateAccountRequest request,
-        IdentityDbContext db,
+        IdentityStore store,
         IPasswordHasher hasher,
         IIdentifierHasher identifiers,
-        Nerves.Identity.Sharding.ShardResolver shards,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken)
@@ -42,8 +41,9 @@ public static class AccountEndpoints
             return Results.Problem("Invalid account type.", statusCode: StatusCodes.Status400BadRequest);
         }
 
+        await using var global = store.Global();
         if (!string.IsNullOrWhiteSpace(request.LegalEntityId?.ToString())
-            && !await db.LegalEntities.AnyAsync(x => x.Id == request.LegalEntityId, cancellationToken))
+            && !await global.LegalEntities.AnyAsync(x => x.Id == request.LegalEntityId, cancellationToken))
         {
             return Results.Problem("Legal entity not found.", statusCode: StatusCodes.Status400BadRequest);
         }
@@ -89,21 +89,22 @@ public static class AccountEndpoints
             }
 
             var hash = identifiers.Hash(identifierType, request.Realm, value);
-            if (await db.RoutingIndex.AnyAsync(x => x.IdentifierHash == hash, cancellationToken))
+            if (await global.RoutingIndex.AnyAsync(x => x.IdentifierHash == hash, cancellationToken))
             {
                 return Results.Problem(
                     $"The {identifierType} is already in use.",
                     statusCode: StatusCodes.Status409Conflict);
             }
 
-            indexes.Add(RoutingIndexEntry.Create(hash, identifierType, request.Realm, account.Id, account.LegalEntityId, shards.Resolve(account.Id), now));
+            indexes.Add(RoutingIndexEntry.Create(
+                hash, identifierType, request.Realm, account.Id, account.LegalEntityId, store.ShardFor(account.Id), now));
         }
 
-        db.NetworkAccounts.Add(account);
-        db.AccountCredentials.Add(credentialResult.Value);
-        db.RoutingIndex.AddRange(indexes);
-
-        await db.SaveChangesAsync(cancellationToken);
+        var created = await store.CreateAccountAsync(account, credentialResult.Value, indexes, cancellationToken);
+        if (created.IsFailure)
+        {
+            return Results.Problem(created.Reason.Message, statusCode: StatusCodes.Status409Conflict);
+        }
 
         await audit.AppendAsync(
             "account.created",
@@ -122,7 +123,7 @@ public static class AccountEndpoints
     }
 
     private static async Task<IResult> ListAsync(
-        IdentityDbContext db,
+        IdentityStore store,
         int limit = 50,
         string? cursor = null,
         string? status = null,
@@ -132,32 +133,20 @@ public static class AccountEndpoints
     {
         limit = Math.Clamp(limit, 1, 200);
 
-        var accounts = db.NetworkAccounts.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(realm))
+        AccountStatus? parsedStatus = null;
+        if (!string.IsNullOrWhiteSpace(status)
+            && Enum.TryParse<AccountStatus>(status, ignoreCase: true, out var candidate))
         {
-            accounts = accounts.Where(x => x.Realm == realm);
+            parsedStatus = candidate;
         }
 
-        if (!string.IsNullOrWhiteSpace(status) && Enum.TryParse<AccountStatus>(status, ignoreCase: true, out var parsedStatus))
-        {
-            accounts = accounts.Where(x => x.Status == parsedStatus);
-        }
+        Guid? cursorId = Guid.TryParse(cursor, out var parsedCursor) ? parsedCursor : null;
 
-        if (!string.IsNullOrWhiteSpace(query))
-        {
-            accounts = accounts.Where(x => EF.Functions.ILike(x.Username, $"%{query}%"));
-        }
-
-        if (!string.IsNullOrEmpty(cursor) && Guid.TryParse(cursor, out var cursorId))
-        {
-            accounts = accounts.Where(x => x.Id.CompareTo(cursorId) > 0);
-        }
-
-        var items = await accounts
-            .OrderBy(x => x.Id)
-            .Take(limit + 1)
-            .ToListAsync(cancellationToken);
+        var items = await store.ListAccountsAsync(
+            new AccountFilter(realm, parsedStatus, query),
+            limit,
+            cursorId,
+            cancellationToken);
 
         var hasMore = items.Count > limit;
         if (hasMore)
@@ -174,9 +163,10 @@ public static class AccountEndpoints
 
     private static async Task<IResult> GetAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(id);
         var account = await db.NetworkAccounts.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
@@ -186,7 +176,7 @@ public static class AccountEndpoints
     private static async Task<IResult> ChangePasswordAsync(
         Guid id,
         ChangePasswordRequest request,
-        IdentityDbContext db,
+        IdentityStore store,
         IPasswordHasher hasher,
         SessionClient sessions,
         AuditClient audit,
@@ -195,6 +185,7 @@ public static class AccountEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
+        await using var db = store.AccountShard(id);
         var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (account is null)
         {
@@ -249,25 +240,25 @@ public static class AccountEndpoints
 
     private static Task<IResult> DisableAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         SessionClient sessions,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken) =>
-        TransitionAsync(id, db, sessions, audit, http, "account.disabled", static (account, now) => account.Disable(now), cancellationToken);
+        TransitionAsync(id, store, sessions, audit, http, "account.disabled", static (account, now) => account.Disable(now), cancellationToken);
 
     private static Task<IResult> LockAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         SessionClient sessions,
         AuditClient audit,
         HttpContext http,
         CancellationToken cancellationToken) =>
-        TransitionAsync(id, db, sessions, audit, http, "account.locked", static (account, now) => account.Lock(now), cancellationToken);
+        TransitionAsync(id, store, sessions, audit, http, "account.locked", static (account, now) => account.Lock(now), cancellationToken);
 
     private static async Task<IResult> TransitionAsync(
         Guid id,
-        IdentityDbContext db,
+        IdentityStore store,
         SessionClient sessions,
         AuditClient audit,
         HttpContext http,
@@ -275,6 +266,7 @@ public static class AccountEndpoints
         Func<NetworkAccount, DateTimeOffset, Result> transition,
         CancellationToken cancellationToken)
     {
+        await using var db = store.AccountShard(id);
         var account = await db.NetworkAccounts.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (account is null)
         {

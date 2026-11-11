@@ -4,10 +4,17 @@ using Microsoft.Extensions.Options;
 
 namespace Nerves.Identity.Sharding;
 
-/// <summary>Sharding configuration. The data plane stays single-node for now.</summary>
+/// <summary>Sharding configuration.</summary>
 public sealed class ShardingOptions
 {
     public const string SectionName = "Sharding";
+
+    /// <summary>
+    /// When false the identity service keeps everything in ConnectionStrings:Default.
+    /// When true ConnectionStrings:Default is the global database and
+    /// Sharding:ConnectionStrings:0..N are the account shards.
+    /// </summary>
+    public bool Enabled { get; set; }
 
     /// <summary>Number of logical shards. Must be stable for the life of the data.</summary>
     public int ShardCount { get; set; } = 1;
