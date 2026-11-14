@@ -51,7 +51,7 @@ jobs:
             project: src/services/Nerves.ConsoleApi/Nerves.ConsoleApi.csproj
             dll: Nerves.ConsoleApi.dll
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: version
         name: Resolve version
@@ -76,7 +76,7 @@ jobs:
   admin:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - id: version
         name: Resolve version
@@ -102,7 +102,7 @@ jobs:
   chart:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Package chart
         run: |
